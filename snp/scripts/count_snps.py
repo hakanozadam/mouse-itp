@@ -125,7 +125,7 @@ def count_nucleotides(vcf_contents, bam_file):
             for i in range( snp_start_index, snp_stop_index ):
                 #print( sorted_positions[i] )
 
-                nucleotide_in_read = alignment.get_forward_sequence()[ sorted_positions[i] - read_start_position ]
+                nucleotide_in_read = alignment.query_sequence[ sorted_positions[i] - read_start_position ]
             
                 pos_dict[ sorted_positions[i] ][nucleotide_in_read] += 1
 

@@ -161,7 +161,7 @@ def get_cds_counts(bam_file, output_file, left_span, right_span):
         adjusted_stop  = cds_stop  - left_span
         
         counts[transcript] = samfile.count(contig = transcript, 
-                                           start  = adjusted_stop,
+                                           start  = adjusted_start,
                                            stop   = adjusted_stop)
         
     
