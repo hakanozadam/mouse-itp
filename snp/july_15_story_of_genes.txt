@@ -1,0 +1,86 @@
+We have observed paternal genes that are translationally dormant in general even though they were abuntly expressed and maternal translation was detected.
+Sdf4-201
+Snrnp70-201
+Ppp2ca-201
+Bcat-201
+Tnpo3-201
+Bcat1-201
+Ppp2ca-201
+Mysm1-201
+
+
+
+We saw paternal genes translationally activated at the 2-cell stage:
+ 
+Dyrk3-201
+Cdk1-201?? not in replicates
+Spdl1-201
+Rpl26-206
+Isyna1-204
+Tprn-201
+Cct6a-201
+Rps11-201
+fc3h1-201
+
+
+We saw paternal genes translationally activated at the 4-cell stage. These paternal genes were expressed at the 2-cell stage though.
+
+Atp13a3-202 *
+Ncoa3-201
+Rpl28-201 *
+Naalad2-204 *
+Mcm7-201 *
+Slc13a2-201
+Ppat-202 *
+Gtf3c5 *
+
+We saw paternal genes translationally activated at the 8-cell stage. These paternal genes were expressed at the 4-cell stage though.
+
+Mtf1-201
+Mrps9-201
+Rnpep-202
+Slc6a8-203
+Eif3d-201
+Zfp296-201
+Pa2g4-202
+
+
+At the 8-cell stage, some paternal/maternal ratios are higher in translation than expression.
+For example:
+Rps11-201
+Noc2l-201
+Gtf3c5-201
+Plk1-201
+Kdm2b-202
+Terf1-203
+Ankrd10-201
+Pgd-201
+Ccnh-201
+Ctsc-201
+Pkm-201
+Tpnr-201
+Tgoln1-201
+Rpl38-203
+Actr5-201
+Txlna-202
+Atg7-201
+Dnajc21-201
+Atp6v0a4-202
+Ccar1-201
+Pemt-202
+Pa2g4-202
+Cth-201
+Nop14-201
+Rtf2-201
+Zfc3h1-201
+Mcm7-201
+Slc13a2-201
+Mrt04-201
+
+
+
+
+
+
+
+
