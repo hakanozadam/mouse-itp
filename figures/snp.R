@@ -22,6 +22,7 @@ library(dplyr)
 library(reshape2)
 library(pheatmap)
 library(cowplot)
+library(RColorBrewer)
 
 ################################################################################
 #########                  C O L O R I N G                             #########
@@ -37,6 +38,10 @@ PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_PATERNAL_COLOR,
 MAIN_PERCENTAGE_RNASEQ_FILL_COLOR     = "skyblue"
 MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
 MAIN_PERCENTAGE_ERRORBAR_COLOR = "#413bb8"
+
+FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
+
+COUNT_NORMALIZATION_FACTOR = 10000
 
 ################################################################################
 ##### Experiments
@@ -257,8 +262,8 @@ ggplot(data=percentage_averages, aes(x=stage, y=average_percentage, fill = exper
   guides(fill=guide_legend(title="")) + 
   
   labs(title = "Percentages of paternal alleles", 
-       x     = "Percentage", 
-       y     = "Stage")
+       x     = "Stage", 
+       y     = "Percentage")
 
 
 ################################################################################
@@ -351,20 +356,71 @@ detailed_rnaseq_table_raw$group  = unlist(  lapply( strsplit(detailed_rnaseq_tab
 
 experiment_groups = unique( detailed_riboseq_table_raw$group )
   
-experiment_name_mapper
-
-this_gene = "Wtap"
-
-
-
-this_group = "8cell"
-
-gene_riboseq_group_data = gene_riboseq_raw_data %>% filter( group == this_group )
-
-
-gene_rnaseq_group_data = gene_rnaseq_raw_data %>% filter( group == this_group )
+## Add counts per thousand to the dataframes
+detailed_riboseq_table = 
+  detailed_riboseq_table_raw %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
+  mutate(type = "ribo")
 
 
+detailed_rnaseq_table = 
+  detailed_rnaseq_table_raw %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
+  mutate(type = "rna")
+
+
+detailed_table = rbind(detailed_riboseq_table, detailed_rnaseq_table)
+
+###
+# To handle graphs easier, we add dummy experiments to 2,4,8 cell groups
+# so that they have equal (4) number of experiments.
+# The new experiments have 0 counts.
+detailed_riboseq_table_with_dummies =
+  detailed_riboseq_table %>%
+  filter(group == "2cell" | group == "4cell" | group == "8cell")
+
+tmp_dummy_entry = detailed_riboseq_table %>% 
+                    filter( experiment == "2cell-1" ) %>%
+                    mutate( experiment = "2cell-4" ) %>%
+                    mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
+
+
+tmp_dummy_entry = detailed_riboseq_table %>% 
+  filter( experiment == "4cell-1" ) %>%
+  mutate( experiment = "4cell-4" ) %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
+
+
+
+detailed_rnaseq_table_with_dummies =
+  detailed_rnaseq_table %>%
+  filter(group == "2cell" | group == "4cell" | group == "8cell")
+
+tmp_dummy_entry = detailed_rnaseq_table %>%
+  filter(experiment == "4cell-1") %>%
+  mutate(experiment = "4cell-3") %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
+
+tmp_dummy_entry = detailed_rnaseq_table %>%
+  filter(experiment == "4cell-1") %>%
+  mutate(experiment = "4cell-4") %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
+
+detailed_table_with_dummies = rbind(  detailed_riboseq_table_with_dummies, detailed_rnaseq_table_with_dummies )
 ##############################################################
 
 get_gene_percentages = function(this_df, this_gene){
@@ -383,7 +439,7 @@ get_gene_percentages = function(this_df, this_gene){
 
 gene_percentage_ribo_data = get_gene_percentages( detailed_riboseq_table_raw, "Wtap" ) 
 
-
+### To be deleted
 barplot_snp_counts_of_gene_helper = function( gene, df, exp_group, allele_type, ymax  ){
   gene_data = df %>% filter(transcript == gene & group == exp_group ) %>% arrange( position  )
   
@@ -427,7 +483,7 @@ barplot_snp_counts_of_gene_helper = function( gene, df, exp_group, allele_type, 
 }
 
 ################################################################################
-
+### TO be deleted 
 barplot_snp_counts_of_gene = function(gene, exp_group, df){
   
   this_gene      = gene
@@ -473,33 +529,510 @@ barplot_snp_counts_of_gene = function(gene, exp_group, df){
 }
  
 
-barplot_snp_counts_of_gene(gene = "Wtap", exp_group = "8cell", df = detailed_riboseq_table_raw)
+barplot_snp_counts_of_gene(gene = "Nin", exp_group = "8cell", df = detailed_riboseq_table_raw)
 
 ##############################################################
+##############################################################
+##############################################################
 
-# 
-# wtap_ribo_data = detailed_riboseq_table_raw %>% filter(transcript == "Wtap")
-# 
-# wtap_rna_data = detailed_rnaseq_table_raw %>% filter(transcript == "Wtap")
-# 
-# find_paternal_ratio_in_expgroup = function( df, exp_group ){
-#   aggregated_counts = 
-#     df %>% filter(group == exp_group) %>% 
-#     summarise( paternal_total = sum(paternal), maternal_total = sum(maternal) ) 
-#   
-#   paternal_ratio = aggregated_counts$paternal_total / (aggregated_counts$paternal_total + aggregated_counts$maternal_total)
-#   
-#   return(paternal_ratio)
-# }
-# 
-# 
-# find_paternal_ratio_in_expgroup = function( df ){
-#   paternal_ratios = 
-#     df %>% group_by(group) %>% 
-#     summarise( paternal_total = sum(paternal), maternal_total = sum(maternal) ) %>%
-#     mutate(paternal_ratio = paternal_total / (paternal_total + maternal_total) ) %>%
-#     filter( group == "2cell" | group == "4cell" | group == "8cell") %>% arrange( group )
-#   
-#   return(paternal_ratios)
-# }
-colorRampPalette(c("navy", "white", "red"))(3)
+
+experiment_snp_counts_of_gene_helper = function( gene, df, exp_group, allele_type, ymax  ){
+  gene_data = df %>% filter(transcript == gene & group == exp_group ) %>% arrange( position  )
+  
+  barplot_colors = colorRampPalette(c("navy", "yellow", "red"))( length( unique(gene_data$position  ) ) )
+  
+  if(allele_type == "paternal") { 
+    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
+                aes(x    = experiment, 
+                    y    = paternal_per_k, 
+                    fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  else{
+    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
+                aes(x    = experiment, 
+                    y    = maternal_per_k, 
+                    fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  
+  
+  this_plot = p +
+    geom_bar(stat="identity" ) +
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      plot.margin      = margin(0, 0, 0, 0, "cm"),
+      # axis.title.y     = element_blank(),
+      # axis.text.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      # axis.ticks.y=element_blank()
+    ) +
+    #scale_fill_brewer(palette = "Blues")
+    scale_fill_manual(values = barplot_colors) + 
+    ylim(c(0, ymax))
+  
+  return(this_plot)
+}
+
+################################################################################
+################################################################################
+################################################################################
+
+experiment_snp_counts_of_gene = function(gene, exp_group, df){
+  
+  this_gene      = gene
+  this_exp_group = exp_group
+  
+  max_paternal = max(
+    ( df %>% 
+        filter(transcript == this_gene & group == this_exp_group)  %>%
+        group_by(experiment) %>%
+        mutate(paternal_sum = sum(paternal_per_k))
+    )$paternal_sum 
+  )
+  
+  max_maternal = max(
+    ( df %>% 
+        filter(transcript == this_gene & group == this_exp_group)  %>%
+        group_by(experiment) %>%
+        mutate(maternal_sum = sum(maternal_per_k))
+    )$maternal_sum 
+  )
+  
+  this_ymax = max( max_maternal, max_paternal )
+  
+  df = df %>% filter(transcript == this_gene & group == this_exp_group) %>% arrange( position )
+  
+  
+  p1 = experiment_snp_counts_of_gene_helper(gene        = this_gene, 
+                                         df          = df, 
+                                         exp_group   = this_exp_group, 
+                                         allele_type = "paternal",
+                                         ymax        = this_ymax) 
+  
+  p2 = experiment_snp_counts_of_gene_helper(gene        = this_gene, 
+                                         df          = df, 
+                                         exp_group   = this_exp_group, 
+                                         allele_type = "maternal",
+                                         ymax        = this_ymax)
+  p2 = p2 + scale_y_reverse(limits = (c(this_ymax, 0)))
+  
+  result_p = plot_grid( p1, p2, ncol = 1   )
+  
+  return(result_p)
+}
+
+################################################################################
+
+#combined_snp_counts_of_gene = function(gene, ribo_df, rnaseq_df ){
+#  
+#}
+
+
+
+p2_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_riboseq_table)
+p2_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_rnaseq_table)
+
+p4_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_riboseq_table)
+p4_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_rnaseq_table)
+
+p8_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_riboseq_table)
+p8_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_rnaseq_table)
+
+
+p4_ribo
+
+pdf("scale_problem.pdf")
+plot_grid( p2_ribo, p2_rna,
+           p4_ribo, p4_rna,
+           p8_ribo, p8_rna,
+           nrow = 1   )
+dev.off()
+
+View(
+  detailed_rnaseq_table %>% 
+  filter(group == "4cell") %>%
+  filter(transcript == "Wtap")
+)
+
+
+raw_p2_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_riboseq_table)
+raw_p2_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_rnaseq_table)
+
+raw_p4_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_riboseq_table)
+raw_p4_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_rnaseq_table)
+
+raw_p8_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_riboseq_table)
+raw_p8_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_rnaseq_table)
+
+plot_grid( raw_p2_ribo, raw_p2_rna,
+           raw_p4_ribo, raw_p4_rna,
+           raw_p8_ribo,raw_p8_rna,
+           nrow = 1   )
+
+
+##################################################################################
+##################################################################################
+##################################################################################
+##################################################################################
+##################################################################################
+
+generate_blank_plot = function(bg = "white"){
+  
+  this_background = element_blank()
+    
+  if(bg != "white"){
+    this_background = element_rect(fill = bg)
+  }  
+  
+  df <- data.frame()
+  p = ggplot(df) + geom_point() + 
+    xlim(0, 4) + ylim(0, 100) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = this_background,
+      axis.title.x     = element_blank(),
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.x=element_blank(),
+      plot.background = element_blank(),
+      axis.ticks.y=element_blank()
+    ) 
+  return(p)
+}
+
+format_y_axis = function(x){
+  return( sprintf("%.0f", x) )
+}
+
+make_y_axis = function(ymax){
+  this_multiplier    = floor(ymax / 5)
+  
+  if( (ymax %% 5) >= 1 ) {
+    this_multiplier = this_multiplier + 1
+  } 
+  
+  yticks = seq(0, 5*this_multiplier, 5)
+  
+  return(yticks)
+  
+}
+
+adjust_ymax = function( y ){
+  this_multiplier    = floor(y / 5)
+  
+  if(y == 0){
+    return(5)
+  }
+  
+  if( (y %% 5) > 0 ) {
+    this_multiplier = this_multiplier + 1
+  } 
+  
+  return( 5*this_multiplier)
+}
+
+################################################################################
+
+
+generate_legend_unit = function(experiment_type){
+  
+  bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
+  title_colors = list( ribo = "orange", rna = "blue"  )
+  title_texts  = list( ribo = "ribo", rna = "rna"  )
+  
+  N = 9
+  
+  barplot_colors = colorRampPalette(brewer.pal(N,bar_palettes[[experiment_type]]))( N ) 
+  
+  
+  df = data.frame( x = rep(1,N), y = rep(1,N), position = seq(1,N))
+  
+  p = ggplot(data=df, 
+             aes(x    = x, 
+                 y    = y, 
+                 fill = factor(position, levels = sort(unique( df$position  ) )  )  )  )  + 
+    geom_bar(stat="identity", width= 0.8, color = "black") + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      #axis.title.x     = element_text(family = "helvetica", face = "plain", size = 10),
+      legend.position  = "none",
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      #axis.text.x = element_text(family = "helvetica", face = "plain", size = 10),
+      axis.ticks.x=element_blank(),
+      axis.ticks.y=element_blank(),
+      plot.background = element_blank(),
+      axis.text.y = element_blank(),
+      plot.title = element_text(color = title_colors[[experiment_type]], size=12, face="bold", hjust = 0.5),
+      # axis.ticks.y=element_blank()
+    ) + 
+    scale_fill_manual(values = barplot_colors)  + 
+    ggtitle(title_texts[[experiment_type]])
+  
+  if(experiment_type == "rna"){
+    p = p + scale_y_reverse()
+  }
+  
+  return(p)
+}
+
+generate_legend = function(){
+  p_ribo = generate_legend_unit(experiment_type = "ribo")
+  p_rna  = generate_legend_unit(experiment_type = "rna")
+  
+  this_blank_pad = generate_blank_plot()
+  this_legend = plot_grid( this_blank_pad, p_ribo, this_blank_pad, p_rna, this_blank_pad, 
+                           ncol = 1,
+                           rel_heights = c(0.8, 1 , 0.8, 1 ,0.8) )
+  
+  return(this_legend)
+}
+
+snp_detailed_legend = generate_legend()
+
+
+
+
+################################################################################
+
+################################################################################
+### U N I T     P L O T 
+
+unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax){
+  
+  bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
+  
+  y_scale_expand = c(0,0)
+  
+  ymax = adjust_ymax(ymax)
+  
+  gene_data = 
+    detailed_table_with_dummies %>%
+    filter( transcript == gene & type == experiment_type ) %>%
+    filter( group == experiment_group)
+  
+  paternal_color_palette = colorRampPalette(brewer.pal(3,bar_palettes[[experiment_type]]))( length( unique(gene_data$position  ) ) ) 
+  barplot_colors         = paternal_color_palette
+  
+  yticks = make_y_axis(ymax)
+  
+  if(experiment_group == "4cell"){
+    background_canvas = element_rect(fill = FOURCELL_BACKGROUND_COLOR)
+  }
+  else{
+    background_canvas = element_rect(fill = "white")
+  }
+  
+  
+  if(allele_type == "paternal"){
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = paternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  ) 
+  }else{
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = maternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  
+  this_plot = 
+    plot_base + 
+    geom_bar(stat="identity", width= 1) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      # plot.margin      = margin(5.5, 5.5, 0, 5.5),
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      plot.background = background_canvas,
+      axis.text.y = element_text(family = "helvetica", face = "plain", size = 10),
+      # axis.ticks.y=element_blank()
+    ) +
+    scale_fill_manual(values = barplot_colors) 
+  
+  if(experiment_type == "ribo"){
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(position = "right", 
+                                              labels   = format_y_axis, 
+                                              breaks   = yticks,
+                                              limits   = c(ymax, 0) , 
+                                              expand   = y_scale_expand ) 
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous(position = "right", 
+                                                 labels   = format_y_axis, 
+                                                 breaks   = yticks,
+                                                 limits   = c(0, ymax) , 
+                                                 expand   = y_scale_expand )
+    }
+  } 
+  else{
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(labels = format_y_axis, 
+                                              limits = c(ymax, 0), 
+                                              breaks   = yticks,
+                                              expand = y_scale_expand )
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous( labels = format_y_axis, 
+                                                  limits = c(0, ymax),
+                                                  breaks   = yticks,
+                                                  expand = y_scale_expand  )
+    }
+  }
+  
+  return(this_plot)
+}
+
+
+paternal_maternal_unit_plot = function( gene, experiment_group, experiment_type ){
+  
+  gene_sums = 
+    detailed_table_with_dummies %>%
+    filter( transcript == gene & type == experiment_type ) %>%
+    filter( group == experiment_group) %>%
+    group_by(experiment) %>%
+    mutate(paternal_sum = sum(paternal_per_k), maternal_sum = sum(maternal_per_k))
+
+  ymax = max( max(gene_sums$paternal_sum), max( gene_sums$maternal_sum ) )
+  
+  paternal_plot= unit_plot(gene = gene, experiment_type = experiment_type, experiment_group = experiment_group, allele_type = "paternal", ymax = ymax)
+  maternal_plot= unit_plot(gene = gene, experiment_type = experiment_type, experiment_group = experiment_group, allele_type = "maternal", ymax = ymax)
+  
+  this_plot = plot_grid(paternal_plot, maternal_plot, ncol = 1)
+  
+  return(this_plot)
+}
+
+paternal_maternal_unit_plot(gene = "Nin", experiment_group = "8cell", experiment_type = "rna")
+
+
+plot_experiment_group = function(gene, experiment_group){
+  ribo_plot = paternal_maternal_unit_plot(gene = gene, experiment_group = experiment_group, experiment_type = "ribo")
+  rna_plot  = paternal_maternal_unit_plot(gene = gene, experiment_group = experiment_group, experiment_type = "rna")
+  
+  this_plot = plot_grid(  rna_plot, ribo_plot, ncol = 2 , align = "h", axis = "b" )
+  
+  return(this_plot)
+}
+
+plot_experiment_group(gene = "Nin", experiment_group = "8cell")
+
+
+################################################################################
+
+plot_snp_gene_detailed = function(gene){
+  
+
+  
+  plot_2cell_raw = plot_experiment_group(gene = gene, experiment_group = "2cell")
+  
+  title_2cell = ggdraw() + 
+    draw_label(
+      "2cell",
+      fontfamily = 'helvetica',
+      size = 10
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  plot_2cell = plot_grid(
+    title_2cell, plot_2cell_raw,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.05, 2)
+  )
+  
+  
+  plot_4cell_raw =  plot_experiment_group(gene = gene, experiment_group = "4cell")  
+
+  title_4cell = ggdraw() + 
+    draw_label(
+      "4cell",
+      fontfamily = 'helvetica',
+      size = 10
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  plot_4cell = plot_grid(
+    title_4cell, plot_4cell_raw,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.05, 2)
+  )  
+  
+  plot_8cell_raw = plot_experiment_group(gene = gene, experiment_group = "8cell")
+
+  title_8cell = ggdraw() + 
+    draw_label(
+      "8cell",
+      fontfamily = 'helvetica',
+      size = 10
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  plot_8cell = plot_grid(
+    title_8cell, plot_8cell_raw,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.05, 2)
+  )  
+    
+  separator_1 = generate_blank_plot()
+  
+  raw_plot = plot_grid( plot_2cell, separator_1, plot_4cell, separator_1, plot_8cell, separator_1, snp_detailed_legend,
+                        rel_widths = c(1, 0.2, 1, 0.2, 1, 0.1, 0.2)  , 
+                        rel_heights =  c(1, 1, 1, 1, 1, 1, 0.1),
+                        ncol       = 7  )
+  
+  title_main = ggdraw() + 
+    draw_label(
+      gene,
+      fontface = 'bold',
+      fontfamily = 'helvetica',
+    ) +
+    theme(
+      # add margin on the left of the drawing canvas,
+      # so title is aligned with left edge of first plot
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  this_plot = plot_grid(
+    title_main, raw_plot,
+    ncol = 1,
+    # rel_heights values control vertical title margins
+    rel_heights = c(0.05, 1)
+  )
+  
+  return(this_plot)
+}
+
+p = plot_snp_gene_detailed(gene = "Ccnh")  
+p
+
+
