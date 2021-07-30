@@ -43,6 +43,10 @@ FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
 
 COUNT_NORMALIZATION_FACTOR = 10000
 
+RATIO_RIBO_COLOUR = "orange"
+RATIO_RNA_COLOUR  = "blue"
+
+
 ################################################################################
 ##### Experiments
 
@@ -740,18 +744,22 @@ adjust_ymax = function( y ){
 ################################################################################
 
 
-generate_legend_unit = function(experiment_type){
+generate_legend_unit = function(gene, experiment_type){
+  
+  gene_data = 
+    detailed_table_with_dummies %>%
+    filter( transcript == gene & type == experiment_type ) %>%
+    filter( group == "2cell" | group == "4cell" | group == "8cell")
+  
+  number_of_snps = length( unique(gene_data$position  ) )
   
   bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
   title_colors = list( ribo = "orange", rna = "blue"  )
   title_texts  = list( ribo = "ribo", rna = "rna"  )
   
-  N = 9
+  barplot_colors = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps + 5 )[-seq(1,5)] 
   
-  barplot_colors = colorRampPalette(brewer.pal(N,bar_palettes[[experiment_type]]))( N ) 
-  
-  
-  df = data.frame( x = rep(1,N), y = rep(1,N), position = seq(1,N))
+  df = data.frame( x = rep(1,number_of_snps), y = rep(1,number_of_snps), position = seq(1,number_of_snps))
   
   p = ggplot(data=df, 
              aes(x    = x, 
@@ -772,35 +780,36 @@ generate_legend_unit = function(experiment_type){
       axis.ticks.y=element_blank(),
       plot.background = element_blank(),
       axis.text.y = element_blank(),
-      plot.title = element_text(color = title_colors[[experiment_type]], size=12, face="bold", hjust = 0.5),
-      # axis.ticks.y=element_blank()
+      plot.title = element_text(color = title_colors[[experiment_type]], size=10, face="bold", hjust = 0.5),
     ) + 
     scale_fill_manual(values = barplot_colors)  + 
     ggtitle(title_texts[[experiment_type]])
   
-  if(experiment_type == "rna"){
-    p = p + scale_y_reverse()
-  }
+  #if(experiment_type == "rna"){
+  #  p = p + scale_y_reverse()
+  #}
   
   return(p)
 }
 
-generate_legend = function(){
-  p_ribo = generate_legend_unit(experiment_type = "ribo")
-  p_rna  = generate_legend_unit(experiment_type = "rna")
+generate_legend = function(gene){
+  p_ribo = generate_legend_unit(gene, experiment_type = "ribo")
+  p_rna  = generate_legend_unit(gene, experiment_type = "rna")
   
-  this_blank_pad = generate_blank_plot()
-  this_legend = plot_grid( this_blank_pad, p_ribo, this_blank_pad, p_rna, this_blank_pad, 
-                           ncol = 1,
-                           rel_heights = c(0.8, 1 , 0.8, 1 ,0.8) )
+  this_blank_pad  = generate_blank_plot()
+  this_legend_pre = plot_grid( this_blank_pad, p_ribo, this_blank_pad, p_rna, 
+                           nrow = 1,
+                           rel_widths = c(0.2, 1 , 0.2, 1 ) )
+  this_legend     = plot_grid(this_blank_pad, this_legend_pre, this_blank_pad,
+                              ncol = 1, rel_heights = c(1, 0.6, 1)) 
   
   return(this_legend)
 }
 
-snp_detailed_legend = generate_legend()
+snp_detailed_legend = generate_legend("Nin")
 
-
-
+snp_detailed_legend
+generate_legend("Nin")
 
 ################################################################################
 
@@ -820,7 +829,10 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
     filter( transcript == gene & type == experiment_type ) %>%
     filter( group == experiment_group)
   
-  paternal_color_palette = colorRampPalette(brewer.pal(3,bar_palettes[[experiment_type]]))( length( unique(gene_data$position  ) ) ) 
+  number_of_snps = length( unique(gene_data$position  ) )
+  
+  paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps + 5 )[-seq( 1,  5) ]
+  #paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps  ) 
   barplot_colors         = paternal_color_palette
   
   yticks = make_y_axis(ymax)
@@ -936,7 +948,7 @@ plot_experiment_group(gene = "Nin", experiment_group = "8cell")
 ################################################################################
 
 plot_snp_gene_detailed = function(gene){
-  
+# This is the main function that plots the snps in detail  
 
   
   plot_2cell_raw = plot_experiment_group(gene = gene, experiment_group = "2cell")
@@ -1005,9 +1017,11 @@ plot_snp_gene_detailed = function(gene){
     
   separator_1 = generate_blank_plot()
   
+  snp_detailed_legend = generate_legend(gene)
+  
   raw_plot = plot_grid( plot_2cell, separator_1, plot_4cell, separator_1, plot_8cell, separator_1, snp_detailed_legend,
-                        rel_widths = c(1, 0.2, 1, 0.2, 1, 0.1, 0.2)  , 
-                        rel_heights =  c(1, 1, 1, 1, 1, 1, 0.1),
+                        rel_widths = c(1, 0.2, 1, 0.2, 1, 0.1, 0.4)  , 
+                        rel_heights =  c(1, 1, 1, 1, 1, 1, 0.01),
                         ncol       = 7  )
   
   title_main = ggdraw() + 
@@ -1032,7 +1046,133 @@ plot_snp_gene_detailed = function(gene){
   return(this_plot)
 }
 
-p = plot_snp_gene_detailed(gene = "Ccnh")  
-p
+plot_snp_gene_detailed(gene = "Rpl38")  
+
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+
+compute_sd_of_ratios = function(paternal_counts, total_counts){
+  paternal_mean = mean(paternal_counts)
+  total_mean    = mean(total_counts)
+  
+  f = (paternal_mean / total_mean)
+  
+  this_cov = cov( paternal_counts, total_counts )
+  
+  paternal_sd = sd(paternal_counts)
+  total_sd    = sd(total_counts)
+  
+  this_sd =  f * sqrt(  (paternal_sd / paternal_mean)**2 + 
+                         (total_sd/ total_mean)**2 - 
+                         2*(this_cov/ (paternal_mean* total_mean) )  )
+  
+  return(this_sd)
+}
+
+
+determine_propogated_sd = function(df){
+  pre_data = df %>%  group_by(group, experiment) %>%
+    summarise(experiment_total = sum(paternal_per_k + maternal_per_k) , experiment_paternal_total = sum(paternal_per_k))
+  
+  prop_sd = pre_data %>% group_by(group) %>%
+    summarise( group_sd =  compute_sd_of_ratios( experiment_paternal_total, experiment_total )  ) %>%
+    arrange(group)
+  
+  return(prop_sd$group_sd)
+}
+
+
+
+################################################################################
+
+find_paternal_ratios = function(df){
+ 
+  ratios = 
+    df %>%
+    group_by( group ) %>%
+    summarise( paternal_total = sum(paternal), 
+               maternal_total = sum(maternal), 
+               overall_total  = paternal_total + maternal_total, 
+               paternal_ratio = paternal_total / overall_total ) 
+  
+  return( ratios$paternal_ratio )
+}
+
+
+
+
+find_paternal_per_k_ratios = function(df){
+  
+  ratios = 
+    df %>%
+    group_by( group ) %>%
+    summarise( paternal_total = sum(paternal_per_k), 
+               maternal_total = sum(maternal_per_k), 
+               overall_total  = paternal_total + maternal_total, 
+               paternal_ratio = paternal_total / overall_total ) %>%
+    arrange(group)
+  
+  return( ratios$paternal_ratio )
+}
+
+################################################################################
+
+plot_snp_ratios = function(gene, ymax = 0){
+  gene_data_main = 
+    detailed_table %>% 
+    filter( transcript == gene ) %>%
+    filter ( group == "2cell" | group == "4cell" | group == "8cell"  )
+  
+  gene_data_ribo = 
+    gene_data_main %>%
+    filter( type == "ribo")
+  
+  gene_data_rna = 
+    gene_data_main %>%
+    filter( type == "rna")
+  
+  ribo_ratios = find_paternal_per_k_ratios( gene_data_ribo )
+  rna_ratios  = find_paternal_per_k_ratios( gene_data_rna )
+  
+  ribo_sd = determine_propogated_sd( gene_data_ribo  )
+  rna_sd  = determine_propogated_sd(  gene_data_rna )
+  
+  plot_df = data.frame(  paternal_ratios = c(ribo_ratios, rna_ratios), 
+                         stage           = rep( c("2cell", "4cell", "8cell") , 2), 
+                         sd              = c(ribo_sd, rna_sd), 
+                         type =  c( rep("ribo", 3), rep("rna", 3)  )  )
+  
+  p = ggplot(data=plot_df, 
+             aes(x    = stage, y = paternal_ratios, group = type )  )  +
+    geom_point( aes(colour = type, shape = type), position = position_dodge(width = 0.1), size = 4 ) +
+    geom_line(aes(linetype=type, colour = type), position = position_dodge(width = 0.1) ) + 
+    scale_linetype_manual(values=c("solid", "dashed")) + 
+    geom_errorbar(aes(ymin=paternal_ratios-sd, ymax=paternal_ratios+sd, color = type), position = position_dodge(width = 0.1), width = 0.1 ) + 
+    scale_colour_manual(values = c(RATIO_RIBO_COLOUR, RATIO_RNA_COLOUR)   ) + 
+    theme(
+      panel.border      = element_blank(),
+      panel.grid        = element_blank(),
+      plot.title        = element_text(hjust = 0.5, family = "helvetica", face = "bold", size = 12),
+      panel.background  = element_blank(),
+      axis.text.y       = element_text(family = "helvetica", face = "plain", size = 8),
+      axis.text.x       = element_text(family = "helvetica", face = "plain", size = 8),
+      axis.title.y      = element_text(family = "helvetica", face = "plain", size = 8),
+      axis.title.x      = element_text(family = "helvetica", face = "plain", size = 8),
+      legend.title      = element_blank(),
+      legend.text        = element_text(family = "helvetica", face = "plain", size = 8)
+    ) +
+    labs(title = gene, y = "paternal ratio") 
+  
+  if(ymax > 0){
+    p = p + ylim(c(0, ymax))
+  }
+  
+  return(p)
+}
+
+plot_snp_ratios("Rpl38")
 
 
