@@ -35,6 +35,9 @@ library(pheatmap)
 ################################################################################
 #########                  C O L O R I N G                             #########
 
+BURNT_ORANGE = "#bf5700"
+UT_BLUE      = "#005f86"
+
 PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#71d19c"
 PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#ab5b8f"
 PERCENTAGE_BARPLOT_OTHER_COLOR    = "#999999"
@@ -48,16 +51,22 @@ PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_OTHER_COLOR,
                               PERCENTAGE_BARPLOT_PATERNAL_COLOR
                               )
 
-MAIN_PERCENTAGE_RNASEQ_FILL_COLOR     = "skyblue"
-MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
-MAIN_PERCENTAGE_ERRORBAR_COLOR = "#413bb8"
+
+
+
+#MAIN_PERCENTAGE_RNASEQ_FILL_COLOR     = "skyblue"
+#MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
+#MAIN_PERCENTAGE_ERRORBAR_COLOR = "#413bb8"
 
 FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
 
 COUNT_NORMALIZATION_FACTOR = 10000
 
-RATIO_RIBO_COLOUR = "orange"
-RATIO_RNA_COLOUR  = "blue"
+#RATIO_RIBO_COLOUR = "orange"
+#RATIO_RNA_COLOUR  = "blue"
+
+RATIO_RIBO_COLOUR = BURNT_ORANGE
+RATIO_RNA_COLOUR  = "navy"
 
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
@@ -429,7 +438,10 @@ heatmap_binary                 = t(heatmap_binary_raw[-1,])
   
 # Adapted from https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
 paletteLength = 100
-myColor       = colorRampPalette(c("navy", "white", "red"))(paletteLength)
+
+#myColor       = colorRampPalette(c("navy", "white", "orange"))(paletteLength)
+myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+#myColor       = colorRampPalette(c("navy", "white", "#f8971f"))(paletteLength)
 # length(breaks) == length(paletteLength) + 1
 # use floor and ceiling to deal with even/odd length pallettelengths
 #myBreaks <- c(seq(min(heatmap_df_raw, na.rm = TRUE), 0, length.out=ceiling(paletteLength/2) + 1), 
@@ -1029,9 +1041,16 @@ plot_snp_gene_detailed = function(gene){
 plot_snp_gene_detailed(gene = "Ncoa3")  
 
 
+plot_snp_gene_detailed(gene = "Pla2g4c")  
+
+plot_snp_gene_detailed(gene = "Fbxo15")
+
+plot_snp_gene_detailed(gene = "Top1")
+
+plot_snp_gene_detailed(gene = "Top2a")
 
 
-
+plot_snp_gene_detailed(gene = "Cacna1b")
 
 ################################################################################
 ################################################################################
@@ -1159,6 +1178,229 @@ plot_snp_ratios = function(gene, ymax = 0){
 
 plot_snp_ratios("Ncoa3")
 
+plot_snp_ratios("Top1")
+
+plot_snp_ratios("Top2a")
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+########            A N A L Y S I S    o f    T O P   S N P S         ##########
+
+top_snp_pick_count = 50
+
+snp_totals_2cell = 
+detailed_riboseq_table %>%
+  filter(group == '2cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+
+snp_totals_4cell = 
+  detailed_riboseq_table %>%
+  filter(group == '4cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+snp_totals_8cell = 
+  detailed_riboseq_table %>%
+  filter(group == '8cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+transcripts_with_at_least_10_reads = intersect(snp_totals_8cell$transcript, snp_totals_4cell$transcript)
+transcripts_with_at_least_10_reads = intersect(transcripts_with_at_least_10_reads, snp_totals_2cell$transcript)
+
+
+# Now we need to remove the transcripts the same way we did for prop.test
+mii_0_paternal_transcripts = 
+  unique(
+      (
+        detailed_table %>% filter(group == "MII") %>%
+        filter(type == "ribo") %>%  
+      group_by(transcript, group) %>%
+      mutate(paternal_ratio = sum(paternal) /  sum(paternal + maternal) ) %>%
+      filter( paternal_ratio < 0.05 )
+      ) $transcript )
+
+
+#top_transcripts_combined = intersect(transcripts_with_at_least_10_reads, mii_0_paternal_transcripts)
+top_transcripts_combined = transcripts_with_at_least_10_reads
+#top_transcripts_combined = intersect(top_transcripts_combined, threshold_transcripts)
+
+top_snps_df_ribo = detailed_riboseq_table %>%
+  filter( group %in% c('1cell', '2cell', '4cell', '8cell') ) %>%
+  filter(transcript %in% top_transcripts_combined) %>%
+  group_by( group, transcript ) %>%
+  mutate( paternal_ratio = sum(paternal) / sum( paternal + maternal) )
+
+top_snps_df_rna = detailed_rnaseq_table %>%
+  filter( group %in% c('1cell', '2cell', '4cell', '8cell') ) %>%
+  filter(transcript %in% top_transcripts_combined) %>%
+  group_by( group, transcript ) %>%
+  mutate( paternal_ratio = sum(paternal) / sum( paternal + maternal) )
+
+
+top_snps_paternal_ratios_ribo = 
+  top_snps_df_ribo %>%
+    group_by(group, transcript, paternal_ratio) %>%
+    summarise() %>% 
+    group_by(group) %>% arrange(transcript)
+
+top_snps_paternal_ratios_rna = 
+  top_snps_df_rna %>%
+  group_by(group, transcript, paternal_ratio) %>%
+  summarise() %>% 
+  group_by(group) %>% arrange(transcript)
+
+top_snps_paternal_ratio_difference = data.frame( 
+  group                     = top_snps_paternal_ratios_ribo$group,
+  transcript                = top_snps_paternal_ratios_ribo$transcript,
+  paternal_ratio_difference = top_snps_paternal_ratios_ribo$paternal_ratio - top_snps_paternal_ratios_rna$paternal_ratio )
+
+
+
+
+#### Difference Dataframe for Heatmap
+top_snps_paternal_ratio_difference_wide            = dcast( top_snps_paternal_ratio_difference,  
+                                                            transcript ~ group ,
+                                                            value.var = "paternal_ratio_difference" )
+
+row.names(top_snps_paternal_ratio_difference_wide) = top_snps_paternal_ratio_difference_wide$transcript
+
+top_snps_paternal_ratio_difference_wide            = subset(top_snps_paternal_ratio_difference_wide, 
+                                                            select = c("2cell","4cell","8cell"))
+
+
+
+top_snps_paternal_ratios_ribo_wide = dcast( top_snps_paternal_ratios_ribo,  transcript ~ group ,value.var = "paternal_ratio" )
+
+row.names(top_snps_paternal_ratios_ribo_wide) = top_snps_paternal_ratios_ribo_wide$transcript
+
+top_snps_paternal_ratios_ribo_wide = subset( top_snps_paternal_ratios_ribo_wide,
+                                            select = c("2cell","4cell","8cell") )
+
+
+top_snps_paternal_ratios_rna_wide = dcast( top_snps_paternal_ratios_rna,  transcript ~ group ,value.var = "paternal_ratio" )
+
+row.names(top_snps_paternal_ratios_rna_wide) = top_snps_paternal_ratios_rna_wide$transcript
+
+top_snps_paternal_ratios_rna_wide = subset( top_snps_paternal_ratios_rna_wide,
+                                            select = c("2cell","4cell","8cell") )
+
+
+top_snps_paternal_ratios_rna_wide[is.na(top_snps_paternal_ratios_rna_wide) ] = 0
+
+
+
+difference_heatmap_color = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+ribo_heatmap_color       = colorRampPalette(c("white", RATIO_RIBO_COLOUR))(paletteLength)
+rna_heatmap_color        = colorRampPalette(c("white", RATIO_RNA_COLOUR))(paletteLength)
+
+difference_heatmap_breaks = c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 1), 
+              seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
+
+ribo_breaks = c(seq(0, 1, length.out = paletteLength ))
+
+top_snps_paternal_ratio_difference_plot = 
+pheatmap( top_snps_paternal_ratio_difference_wide , 
+          #clustering_method = "median",
+          #clustering_distance_rows = "correlation",
+          #clustering_method = "centroid",
+          #clustering_method = "complete",
+          #clustering_method = "ward.D",
+          show_rownames     = TRUE,
+          #cutree_rows       = 4,
+          
+          cellwidth         = 40,
+          treeheight_row    = 0,
+          treeheight_col    = 0,
+          cluster_cols      = FALSE, 
+          cluster_rows      = FALSE, 
+          color             = difference_heatmap_color,
+          breaks            = difference_heatmap_breaks,
+          na_col            = "white",
+          angle_col         = 0,
+          labels_col        = c( "2cell", "4cell", "8cell"),
+          main              = "Paternal Ratio Difference",
+          fontsize          = 10,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 8,
+          fontsize_number   = FONT_LABEL_SIZE
+)
+
+top_snps_paternal_ratio_ribo_plot = 
+pheatmap( top_snps_paternal_ratios_ribo_wide , 
+          #clustering_method = "median",
+          #clustering_distance_rows = "correlation",
+          #clustering_method = "centroid",
+          #clustering_method = "complete",
+          clustering_method = "ward.D",
+          show_rownames     = TRUE,
+          #cutree_rows       = 4,
+          
+          cellwidth         = 40,
+          treeheight_row    = 50,
+          treeheight_col    = 0,
+          cluster_cols      = FALSE, 
+          cluster_rows      = TRUE, 
+          color             = ribo_heatmap_color,
+          breaks            = ribo_breaks,
+          na_col            = "white",
+          angle_col         = 0,
+          labels_col        = c( "2cell", "4cell", "8cell"),
+          main              = "Paternal Ratio Ribo",
+          fontsize          = 10,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 8,
+          fontsize_number   = FONT_LABEL_SIZE
+)
+
+top_snps_paternal_ratio_rna_plot = 
+pheatmap( top_snps_paternal_ratios_rna_wide , 
+          #clustering_method = "median",
+          #clustering_distance_rows = "correlation",
+          #clustering_method = "centroid",
+          #clustering_method = "complete",
+          clustering_method = "ward.D",
+          show_rownames     = TRUE,
+          #cutree_rows       = 4,
+          
+          cellwidth         = 40,
+          treeheight_row    = 50,
+          treeheight_col    = 0,
+          cluster_cols      = FALSE, 
+          cluster_rows      = TRUE, 
+          color             = rna_heatmap_color,
+          breaks            = ribo_breaks,
+          na_col            = "white",
+          angle_col         = 0,
+          labels_col        = c( "2cell", "4cell", "8cell"),
+          main              = "Paternal Ratio RNA",
+          fontsize          = 10,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 8,
+          fontsize_number   = FONT_LABEL_SIZE
+)
+
+plot_grid(top_snps_paternal_ratio_ribo_plot[[4]], top_snps_paternal_ratio_rna_plot[[4]] ,
+          top_snps_paternal_ratio_difference_plot[[4]],
+          top_snps_paternal_ratio_difference_plot[[4]],
+          ncol = 2)
+
+plot_grid(top_snps_paternal_ratio_ribo_plot[[4]])
+
+View(
+  detailed_riboseq_table %>% filter( transcript == "Pla2g4c" & group == '8cell' )
+)
 
 ################################################################################
 ################################################################################
@@ -1195,4 +1437,11 @@ save_plot_pdf("main_paternal_percentage_figure.pdf", main_paternal_percentage_fi
 save_plot_pdf("main_heatmap_figure.pdf", main_heatmap_figure)
 
 save_plot_pdf("supplementary_heatmap_figure.pdf", supplementary_heatmap_figure)
+
+################################################################################
+
+
+
+
+
 
