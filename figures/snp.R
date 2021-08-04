@@ -20,20 +20,33 @@ library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(reshape2)
-library(pheatmap)
 library(cowplot)
 library(RColorBrewer)
+
+library(Cairo)
+
+#Heatmap related packages
+library(pheatmap)
+
+# We don't need the following two libraries.
+#library(seriation)
+#library(dendextend)
 
 ################################################################################
 #########                  C O L O R I N G                             #########
 
-PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#999999"
-PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#E69F00"
-PERCENTAGE_BARPLOT_OTHER_COLOR    = "#56B4E9"
+PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#71d19c"
+PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#ab5b8f"
+PERCENTAGE_BARPLOT_OTHER_COLOR    = "#999999"
 
-PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_PATERNAL_COLOR, 
+#PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#999999"
+#PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#E69F00"
+#PERCENTAGE_BARPLOT_OTHER_COLOR    = "#56B4E9"
+
+PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_OTHER_COLOR,
                               PERCENTAGE_BARPLOT_MATERNAL_COLOR,
-                              PERCENTAGE_BARPLOT_OTHER_COLOR)
+                              PERCENTAGE_BARPLOT_PATERNAL_COLOR
+                              )
 
 MAIN_PERCENTAGE_RNASEQ_FILL_COLOR     = "skyblue"
 MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
@@ -46,6 +59,14 @@ COUNT_NORMALIZATION_FACTOR = 10000
 RATIO_RIBO_COLOUR = "orange"
 RATIO_RNA_COLOUR  = "blue"
 
+################################################################################
+#########                 F O N T   S I Z E S                          #########
+
+FONT_LABEL_SIZE = 8
+FONT_TITLE_SIZE = 10
+
+PDF_resolution = 600
+FIGURE_FONT = "helvetica"
 
 ################################################################################
 ##### Experiments
@@ -189,35 +210,54 @@ rnaseq_overall_percentages$Experiment =
 
 # Ribosome Profiling
 
+supplementary_allele_percentages_ribo = 
 ggplot(data=riboseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = factor(variable, levels = c("Other", "Maternal", "Paternal")  ) ) )  +
   geom_bar(stat="identity" ) +
   coord_flip() + 
   guides(fill=guide_legend(title="Type")) + 
-  theme(plot.title       = element_text(hjust = 0.5),
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
         panel.border     = element_blank(),
         panel.grid       = element_blank(),
-        panel.background = element_blank())  + 
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        )  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
              color = "brown", size=0.6) + 
-  labs(title = "Allele Percentages")
+  labs(title = "Allele Percentages of Ribosome Footprints")
 
+
+supplementary_allele_percentages_ribo
 
 # RNA-Seq
 
+supplementary_allele_percentages_rnaseq = 
 ggplot(data=rnaseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = factor(variable, levels = c("Other", "Maternal", "Paternal")  ) ) )  +
   geom_bar(stat="identity" ) +
   coord_flip() + 
   guides(fill=guide_legend(title="Type")) + 
-  theme(plot.title       = element_text(hjust = 0.5),
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
         panel.border     = element_blank(),
         panel.grid       = element_blank(),
-        panel.background = element_blank())  + 
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = "helveticassss", face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE))  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
              color = "brown", size=0.6) + 
   labs(title = "Allele Percentages")
 
+
+supplementary_allele_percentages_rnaseq
 
 ################################################################################
 #####       M A I N    F I G U R E   P E R C E N T A G E S      ################
@@ -237,13 +277,15 @@ get_percentage_averages = function( input_df, label ){
   return(result)
 }
 
-rnaseq_percentage_averages  = get_percentage_averages(rnaseq_overall_percentages, "RNA")
-riboseq_percentage_averages = get_percentage_averages(riboseq_overall_percentages, "RIBO")    
+rnaseq_percentage_averages  = get_percentage_averages(rnaseq_overall_percentages, "rna")
+riboseq_percentage_averages = get_percentage_averages(riboseq_overall_percentages, "ribo")    
 
 percentage_averages = bind_rows( riboseq_percentage_averages, rnaseq_percentage_averages  )
 
 percentage_averages$stage = factor( percentage_averages$stage, levels = c("MII", "1cell", "2cell", "4cell", "8cell") )
 
+### We won't use this plot!!!!
+### See the corrected version below
 ggplot(data=percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
   geom_bar(position = "dodge", stat="identity", alpha = 0.7 ) +
   geom_errorbar( aes(  x    = stage, 
@@ -255,24 +297,125 @@ ggplot(data=percentage_averages, aes(x=stage, y=average_percentage, fill = exper
                  size     = 1.3,
                  position = position_dodge(width = 0.8)) + 
   
-  theme(plot.title       = element_text(hjust = 0.5),
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
         panel.border     = element_blank(),
         panel.grid       = element_blank(),
-        panel.background = element_blank()) + 
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
   
   scale_fill_manual( values = c(MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR,
                                 MAIN_PERCENTAGE_RNASEQ_FILL_COLOR) ) + 
   
   guides(fill=guide_legend(title="")) + 
   
-  labs(title = "Percentages of paternal alleles", 
+  labs(title = "Percentage of paternal alleles", 
        x     = "Stage", 
        y     = "Percentage")
-
 
 ################################################################################
 
 
+
+
+get_stage_percentages = function( group, type ){
+  if(type == "ribo"){
+    this_df = riboseq_overall_percentages
+  }
+  else{
+    this_df = rnaseq_overall_percentages
+  }
+  
+  raw_percentages = this_df %>%
+    filter(variable == "Paternal") %>%
+    select(Experiment, variable, Percentage) %>%
+    group_by( stage = unlist(lapply ( strsplit(  as.vector(Experiment), split = "-" ), "[[", 1) )  ) %>%
+    filter(stage == group)
+  
+  return(raw_percentages$Percentage)
+}
+
+
+
+
+
+
+
+
+p_observed_to_p_real = function(p_observed, error){
+  #All values must be percentages
+  
+  p_real = ( (300 * p_observed) - (error * 100) ) / (300 - 4*error)
+  
+  return(p_real)
+}
+
+
+## The actual error is 3 times the paternal ratio
+## Because there are 2 other nucleotides 
+## that the maternal SNP nucleotide can accidentally go to
+ribo_percentage_error = mean(get_stage_percentages( group = "MII", type = "ribo" ) ) * 3
+rna_percentage_error  = mean(get_stage_percentages( group = "MII", type = "rna" ) ) *3
+
+corrected_ribo_percentages = 
+  riboseq_overall_percentages %>% filter(variable == "Paternal") %>%
+  mutate( Percentage = p_observed_to_p_real(Percentage, ribo_percentage_error) )
+
+corrected_rna_percentages = 
+  rnaseq_overall_percentages %>% filter(variable == "Paternal") %>%
+  mutate( Percentage = p_observed_to_p_real(Percentage, rna_percentage_error) )
+
+
+corrected_rnaseq_percentage_averages  = get_percentage_averages(corrected_rna_percentages, "rna")
+corrected_riboseq_percentage_averages = get_percentage_averages(corrected_ribo_percentages, "ribo")    
+
+corrected_percentage_averages = bind_rows( corrected_riboseq_percentage_averages, corrected_rnaseq_percentage_averages  )
+
+corrected_percentage_averages$stage = factor( corrected_percentage_averages$stage, levels = c("MII", "1cell", "2cell", "4cell", "8cell") )
+
+
+main_paternal_percentage_figure = 
+ggplot(data=corrected_percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
+  geom_bar(position = "dodge", stat="identity", alpha = 0.6 ) +
+  geom_errorbar( aes(  x    = stage, 
+                       ymin = average_percentage - sd_percentage, 
+                       ymax = average_percentage + sd_percentage,
+                       color = (experiment_type)), 
+                 width    = 0.4, 
+                 alpha    = 1, 
+                 size     = 1.3,
+                 position = position_dodge(width = 0.8)) + 
+  
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+        panel.border     = element_blank(),
+        panel.grid       = element_blank(),
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
+  
+  scale_fill_manual( name = "experiment_type", values = c(RATIO_RIBO_COLOUR,
+                                RATIO_RNA_COLOUR) ) + 
+  scale_color_manual(name = "experiment_type",  values = c(RATIO_RIBO_COLOUR,
+                                RATIO_RNA_COLOUR) ) + 
+  labs(title = "Percentages of paternal alleles", 
+       x     = "Stage", 
+       y     = "Percentage")
+
+main_paternal_percentage_figure
+
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
 ################################################################################
 #####################      H E A T M A P      ##################################
 
@@ -285,66 +428,82 @@ colnames( heatmap_binary_raw ) = rename_genes(colnames( heatmap_binary_raw ) )
 heatmap_binary                 = t(heatmap_binary_raw[-1,])
   
 # Adapted from https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
-paletteLength <- 100
-myColor <- colorRampPalette(c("navy", "white", "red"))(paletteLength)
+paletteLength = 100
+myColor       = colorRampPalette(c("navy", "white", "red"))(paletteLength)
 # length(breaks) == length(paletteLength) + 1
 # use floor and ceiling to deal with even/odd length pallettelengths
 #myBreaks <- c(seq(min(heatmap_df_raw, na.rm = TRUE), 0, length.out=ceiling(paletteLength/2) + 1), 
 #              seq(max(heatmap_df_raw, na.rm = TRUE)/paletteLength, max(heatmap_df_raw, na.rm = TRUE), length.out=floor(paletteLength/2)))
 
-myBreaks <- c(seq( -1 , 0, length.out=ceiling(paletteLength/2) + 1), 
-              seq( 1 /paletteLength, 1, length.out=floor(paletteLength/2)))
+myBreaks <- c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 1), 
+              seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
 
 
 ### Trimmed down
 ### For the main figure
+main_heatmap_figure = 
 pheatmap( heatmap_df , 
-          #clustering_distance_rows = "correlation",
-          #clustering_method = "centroid",
-          #clustering_method = "complete",
-          #clustering_method = "ward.D",
-          show_rownames = FALSE,
-          clustering_method = "median",
-          cellwidth = 40,
-          treeheight_row = 0,
-          treeheight_col = 0,
-          cluster_cols = FALSE, 
-          color= myColor,
-          breaks = myBreaks,
-          na_col = "white",
-          angle_col = 0,
-          labels_col = c("1cell", "2cell", "4cell", "8cell"),
-          main = "Paternal Ratio Difference",
-          )
+        # clustering_method = "median",
+        #clustering_distance_rows = "correlation",
+        #clustering_method = "centroid",
+        #clustering_method = "complete",
+        clustering_method = "ward.D",
+        show_rownames     = FALSE,
+        cutree_rows       = 4,
 
+        cellwidth         = 40,
+        treeheight_row    = 0,
+        treeheight_col    = 0,
+        cluster_cols      = FALSE, 
+        color             = myColor,
+        breaks            = myBreaks,
+        na_col            = "white",
+        angle_col         = 0,
+        labels_col        = c("1cell", "2cell", "4cell", "8cell"),
+        main              = "Paternal Ratio Difference",
+        fontsize          = 10,
+        fontsize_col      = FONT_LABEL_SIZE,
+        fontsize_row      = 8,
+        fontsize_number   = FONT_LABEL_SIZE
+        )
+
+main_heatmap_figure
 
 #### Detailed with row names
 #### For the supplementary Figure
+supplementary_heatmap_figure = 
 pheatmap( heatmap_df , 
-          #clustering_distance_rows = "correlation",
           #clustering_method = "centroid",
+          #clustering_method = "median",
           #clustering_method = "complete",
-          #clustering_method = "ward.D",
-          legend_breaks = c(-1,  -0.5, 0, 0.5, 1),
-          legend = T,
-          show_rownames = TRUE,
-          clustering_method = "median",
-          cellwidth = 40,
-          treeheight_row = 60,
-          cluster_cols = FALSE, 
-          color= myColor,
-          breaks = myBreaks,
-          na_col = "white",
-          angle_col = 0,
-          labels_col = c("1cell", "2cell", "4cell", "8cell"),
-          main = "Paternal Ratio Difference",
-          display_numbers = heatmap_binary,
-          fontsize_number = 11
+          clustering_method = "ward.D",
+          legend_breaks     = c(-1,  -0.5, 0, 0.5, 1),
+          legend            = T,
+          show_rownames     = TRUE,
+          cellwidth         = 40,
+          cutree_rows       = 4,
+          treeheight_row    = 0,
+          cluster_cols      = FALSE, 
+          color             = myColor,
+          breaks            = myBreaks,
+          na_col            = "white",
+          angle_col         = 0,
+          labels_col        = c("1cell", "2cell", "4cell", "8cell"),
+          main              = "Paternal Ratio Difference",
+          display_numbers   = heatmap_binary,
+          fontsize          = 10,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 8,
+          fontsize_number   = FONT_LABEL_SIZE
           )
 
-################################################################################
+supplementary_heatmap_figure
 
-#### GENE SPECIFIC PLOTS
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+########        G E N E  S P E C I F I C    P L O T S                   ########
 
 detailed_riboseq_table_raw = read.csv(detailed_riboseq_count_file)
 detailed_rnaseq_table_raw  = read.csv(detailed_rnaseq_count_file)
@@ -441,241 +600,17 @@ get_gene_percentages = function(this_df, this_gene){
 
 ##############################################################
 
-gene_percentage_ribo_data = get_gene_percentages( detailed_riboseq_table_raw, "Wtap" ) 
-
-### To be deleted
-barplot_snp_counts_of_gene_helper = function( gene, df, exp_group, allele_type, ymax  ){
-  gene_data = df %>% filter(transcript == gene & group == exp_group ) %>% arrange( position  )
-  
-  barplot_colors = colorRampPalette(c("navy", "yellow", "red"))( length( unique(gene_data$position  ) ) )
-  
-  if(allele_type == "paternal") { 
-    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
-           aes(x    = experiment, 
-               y    = paternal, 
-               fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
-  }
-  else{
-    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
-                aes(x    = experiment, 
-                    y    = maternal, 
-                    fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
-  }
-
-  
-  this_plot = p +
-    geom_bar(stat="identity" ) +
-    theme(
-      panel.border     = element_blank(),
-      panel.grid       = element_blank(),
-      panel.background = element_blank(),
-      axis.title.x     = element_blank(),
-      legend.position  = "none",
-      plot.margin      = margin(0, 0, 0, 0, "cm"),
-      # axis.title.y     = element_blank(),
-      # axis.text.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.ticks.x=element_blank(),
-      # axis.ticks.y=element_blank()
-    ) +
-    #scale_fill_brewer(palette = "Blues")
-    scale_fill_manual(values = barplot_colors) + 
-    ylim(c(0, ymax))
-  
-   
-  return(this_plot)
-}
-
-################################################################################
-### TO be deleted 
-barplot_snp_counts_of_gene = function(gene, exp_group, df){
-  
-  this_gene      = gene
-  this_exp_group = exp_group
-  
-  max_paternal = max(
-                 ( df %>% 
-                     filter(transcript == this_gene & group == this_exp_group)  %>%
-                     group_by(experiment) %>%
-                     mutate(paternal_sum = sum(paternal))
-                    )$paternal_sum 
-                 )
-  
-  max_maternal = max(
-    ( df %>% 
-        filter(transcript == this_gene & group == this_exp_group)  %>%
-        group_by(experiment) %>%
-        mutate(maternal_sum = sum(maternal))
-    )$maternal_sum 
-  )
-  
-  this_ymax = max( max_maternal, max_paternal )
-  
-  df = df %>% filter(transcript == this_gene & group == this_exp_group) %>% arrange( position )
-  
-  
-  p1 = barplot_snp_counts_of_gene_helper(gene        = this_gene, 
-                                         df          = df, 
-                                         exp_group   = this_exp_group, 
-                                         allele_type = "paternal",
-                                         ymax        = this_ymax) 
-  
-  p2 = barplot_snp_counts_of_gene_helper(gene        = this_gene, 
-                                         df          = df, 
-                                         exp_group   = this_exp_group, 
-                                         allele_type = "maternal",
-                                         ymax        = this_ymax)
-  p2 = p2 + scale_y_reverse(limits = (c(this_ymax, 0)))
-  
-  result_p = plot_grid( p1, p2, ncol = 1   )
-  
-  return(result_p)
-}
- 
-
-barplot_snp_counts_of_gene(gene = "Nin", exp_group = "8cell", df = detailed_riboseq_table_raw)
-
 ##############################################################
 ##############################################################
 ##############################################################
 
 
-experiment_snp_counts_of_gene_helper = function( gene, df, exp_group, allele_type, ymax  ){
-  gene_data = df %>% filter(transcript == gene & group == exp_group ) %>% arrange( position  )
-  
-  barplot_colors = colorRampPalette(c("navy", "yellow", "red"))( length( unique(gene_data$position  ) ) )
-  
-  if(allele_type == "paternal") { 
-    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
-                aes(x    = experiment, 
-                    y    = paternal_per_k, 
-                    fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
-  }
-  else{
-    p =  ggplot(data=gene_data %>% filter(group==exp_group), 
-                aes(x    = experiment, 
-                    y    = maternal_per_k, 
-                    fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
-  }
-  
-  
-  this_plot = p +
-    geom_bar(stat="identity" ) +
-    theme(
-      panel.border     = element_blank(),
-      panel.grid       = element_blank(),
-      panel.background = element_blank(),
-      axis.title.x     = element_blank(),
-      legend.position  = "none",
-      plot.margin      = margin(0, 0, 0, 0, "cm"),
-      # axis.title.y     = element_blank(),
-      # axis.text.y = element_blank(),
-      axis.text.x = element_blank(),
-      axis.ticks.x=element_blank(),
-      # axis.ticks.y=element_blank()
-    ) +
-    #scale_fill_brewer(palette = "Blues")
-    scale_fill_manual(values = barplot_colors) + 
-    ylim(c(0, ymax))
-  
-  return(this_plot)
-}
 
 ################################################################################
 ################################################################################
 ################################################################################
 
-experiment_snp_counts_of_gene = function(gene, exp_group, df){
-  
-  this_gene      = gene
-  this_exp_group = exp_group
-  
-  max_paternal = max(
-    ( df %>% 
-        filter(transcript == this_gene & group == this_exp_group)  %>%
-        group_by(experiment) %>%
-        mutate(paternal_sum = sum(paternal_per_k))
-    )$paternal_sum 
-  )
-  
-  max_maternal = max(
-    ( df %>% 
-        filter(transcript == this_gene & group == this_exp_group)  %>%
-        group_by(experiment) %>%
-        mutate(maternal_sum = sum(maternal_per_k))
-    )$maternal_sum 
-  )
-  
-  this_ymax = max( max_maternal, max_paternal )
-  
-  df = df %>% filter(transcript == this_gene & group == this_exp_group) %>% arrange( position )
-  
-  
-  p1 = experiment_snp_counts_of_gene_helper(gene        = this_gene, 
-                                         df          = df, 
-                                         exp_group   = this_exp_group, 
-                                         allele_type = "paternal",
-                                         ymax        = this_ymax) 
-  
-  p2 = experiment_snp_counts_of_gene_helper(gene        = this_gene, 
-                                         df          = df, 
-                                         exp_group   = this_exp_group, 
-                                         allele_type = "maternal",
-                                         ymax        = this_ymax)
-  p2 = p2 + scale_y_reverse(limits = (c(this_ymax, 0)))
-  
-  result_p = plot_grid( p1, p2, ncol = 1   )
-  
-  return(result_p)
-}
 
-################################################################################
-
-#combined_snp_counts_of_gene = function(gene, ribo_df, rnaseq_df ){
-#  
-#}
-
-
-
-p2_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_riboseq_table)
-p2_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_rnaseq_table)
-
-p4_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_riboseq_table)
-p4_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_rnaseq_table)
-
-p8_ribo = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_riboseq_table)
-p8_rna  = experiment_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_rnaseq_table)
-
-
-p4_ribo
-
-pdf("scale_problem.pdf")
-plot_grid( p2_ribo, p2_rna,
-           p4_ribo, p4_rna,
-           p8_ribo, p8_rna,
-           nrow = 1   )
-dev.off()
-
-View(
-  detailed_rnaseq_table %>% 
-  filter(group == "4cell") %>%
-  filter(transcript == "Wtap")
-)
-
-
-raw_p2_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_riboseq_table)
-raw_p2_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "2cell", df = detailed_rnaseq_table)
-
-raw_p4_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_riboseq_table)
-raw_p4_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "4cell", df = detailed_rnaseq_table)
-
-raw_p8_ribo = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_riboseq_table)
-raw_p8_rna = barplot_snp_counts_of_gene(gene = "Mysm1", exp_group = "8cell", df = detailed_rnaseq_table)
-
-plot_grid( raw_p2_ribo, raw_p2_rna,
-           raw_p4_ribo, raw_p4_rna,
-           raw_p8_ribo,raw_p8_rna,
-           nrow = 1   )
 
 
 ##################################################################################
@@ -701,11 +636,11 @@ generate_blank_plot = function(bg = "white"){
       panel.background = this_background,
       axis.title.x     = element_blank(),
       axis.title.y     = element_blank(),
-      axis.text.x = element_blank(),
-      axis.text.y = element_blank(),
-      axis.ticks.x=element_blank(),
-      plot.background = element_blank(),
-      axis.ticks.y=element_blank()
+      axis.text.x      = element_blank(),
+      axis.text.y      = element_blank(),
+      axis.ticks.x     = element_blank(),
+      plot.background  = element_blank(),
+      axis.ticks.y     = element_blank()
     ) 
   return(p)
 }
@@ -771,11 +706,11 @@ generate_legend_unit = function(gene, experiment_type){
       panel.grid       = element_blank(),
       panel.background = element_blank(),
       axis.title.x     = element_blank(),
-      #axis.title.x     = element_text(family = "helvetica", face = "plain", size = 10),
+      #axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = 10),
       legend.position  = "none",
       axis.title.y     = element_blank(),
       axis.text.x = element_blank(),
-      #axis.text.x = element_text(family = "helvetica", face = "plain", size = 10),
+      #axis.text.x = element_text(family = FIGURE_FONT, face = "plain", size = 10),
       axis.ticks.x=element_blank(),
       axis.ticks.y=element_blank(),
       plot.background = element_blank(),
@@ -813,6 +748,17 @@ generate_legend("Nin")
 
 ################################################################################
 
+this_gene = "Ncoa3"
+
+a = 
+detailed_table_with_dummies %>%
+  filter(group == "2cell" | group == "4cell" | group == "8cell") %>%
+  filter(transcript == this_gene) %>% 
+  group_by(position) %>%
+  filter( sum(paternal_per_k + maternal_per_k) > 0  )
+
+
+
 ################################################################################
 ### U N I T     P L O T 
 
@@ -826,7 +772,11 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
   
   gene_data = 
     detailed_table_with_dummies %>%
-    filter( transcript == gene & type == experiment_type ) %>%
+    filter(group == "2cell" | group == "4cell" | group == "8cell") %>%
+    filter(transcript == gene) %>% 
+    group_by(position) %>%
+    filter( sum(paternal_per_k + maternal_per_k) > 0  ) %>%
+    filter( type == experiment_type ) %>%
     filter( group == experiment_group)
   
   number_of_snps = length( unique(gene_data$position  ) )
@@ -871,7 +821,7 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
       axis.text.x = element_blank(),
       axis.ticks.x=element_blank(),
       plot.background = background_canvas,
-      axis.text.y = element_text(family = "helvetica", face = "plain", size = 10),
+      axis.text.y = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
       # axis.ticks.y=element_blank()
     ) +
     scale_fill_manual(values = barplot_colors) 
@@ -957,7 +907,7 @@ plot_snp_gene_detailed = function(gene){
     draw_label(
       "2cell",
       fontfamily = 'helvetica',
-      size = 10
+      size = FONT_LABEL_SIZE
     ) +
     theme(
       # add margin on the left of the drawing canvas,
@@ -979,7 +929,7 @@ plot_snp_gene_detailed = function(gene){
     draw_label(
       "4cell",
       fontfamily = 'helvetica',
-      size = 10
+      size = FONT_LABEL_SIZE
     ) +
     theme(
       # add margin on the left of the drawing canvas,
@@ -1000,7 +950,7 @@ plot_snp_gene_detailed = function(gene){
     draw_label(
       "8cell",
       fontfamily = 'helvetica',
-      size = 10
+      size = FONT_LABEL_SIZE
     ) +
     theme(
       # add margin on the left of the drawing canvas,
@@ -1014,20 +964,50 @@ plot_snp_gene_detailed = function(gene){
     # rel_heights values control vertical title margins
     rel_heights = c(0.05, 2)
   )  
+  
+  
+  paternal_label = ggdraw() + 
+    draw_label(
+      "paternal count",
+      fontface   = 'plain',
+      fontfamily = 'helvetica',
+      size       = FONT_LABEL_SIZE,
+      angle      = 90
+    ) +
+    theme(
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  maternal_label = ggdraw() + 
+    draw_label(
+      "maternal count",
+      fontface   = 'plain',
+      fontfamily = 'helvetica',
+      size       = FONT_LABEL_SIZE,
+      angle      = 90
+    ) +
+    theme(
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  x_label = plot_grid(paternal_label, maternal_label, ncol = 1)
     
-  separator_1 = generate_blank_plot()
+  separator_1         = generate_blank_plot()
   
   snp_detailed_legend = generate_legend(gene)
   
-  raw_plot = plot_grid( plot_2cell, separator_1, plot_4cell, separator_1, plot_8cell, separator_1, snp_detailed_legend,
-                        rel_widths = c(1, 0.2, 1, 0.2, 1, 0.1, 0.4)  , 
-                        rel_heights =  c(1, 1, 1, 1, 1, 1, 0.01),
-                        ncol       = 7  )
+  raw_plot = plot_grid( x_label,    plot_2cell,  separator_1, 
+                        plot_4cell, separator_1, 
+                        plot_8cell, separator_1, snp_detailed_legend,
+                        rel_widths  = c(0.2, 1, 0.2, 1, 0.2, 1, 0.1, 0.4)  , 
+                        rel_heights =  c(0.8, 1, 1, 1, 1, 1, 1, 0.01),
+                        ncol        = 8  )
   
   title_main = ggdraw() + 
     draw_label(
       gene,
-      fontface = 'bold',
+      fontface   = 'plain',
+      size       = FONT_TITLE_SIZE ,
       fontfamily = 'helvetica',
     ) +
     theme(
@@ -1046,7 +1026,11 @@ plot_snp_gene_detailed = function(gene){
   return(this_plot)
 }
 
-plot_snp_gene_detailed(gene = "Rpl38")  
+plot_snp_gene_detailed(gene = "Ncoa3")  
+
+
+
+
 
 
 ################################################################################
@@ -1155,14 +1139,14 @@ plot_snp_ratios = function(gene, ymax = 0){
     theme(
       panel.border      = element_blank(),
       panel.grid        = element_blank(),
-      plot.title        = element_text(hjust = 0.5, family = "helvetica", face = "bold", size = 12),
+      plot.title        = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
       panel.background  = element_blank(),
-      axis.text.y       = element_text(family = "helvetica", face = "plain", size = 8),
-      axis.text.x       = element_text(family = "helvetica", face = "plain", size = 8),
-      axis.title.y      = element_text(family = "helvetica", face = "plain", size = 8),
-      axis.title.x      = element_text(family = "helvetica", face = "plain", size = 8),
+      axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
       legend.title      = element_blank(),
-      legend.text        = element_text(family = "helvetica", face = "plain", size = 8)
+      legend.text        = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)
     ) +
     labs(title = gene, y = "paternal ratio") 
   
@@ -1173,6 +1157,42 @@ plot_snp_ratios = function(gene, ymax = 0){
   return(p)
 }
 
-plot_snp_ratios("Rpl38")
+plot_snp_ratios("Ncoa3")
 
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+#########            P D F    P R O D U C T I O N                      #########
+
+get_output_file_path = function(file_name, folder = output_folder){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
+
+
+save_plot_pdf = function(filename, this_plot){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+           plot   = this_plot, 
+           device = cairo_pdf, 
+           dpi    = PDF_resolution )
+  
+}
+
+################################################################################
+
+save_plot_pdf("supplementary_allele_percentages_ribo.pdf", supplementary_allele_percentages_ribo)
+
+save_plot_pdf("supplementary_allele_percentages_rnaseq.pdf", supplementary_allele_percentages_rnaseq)
+
+main_paternal_percentage_figure
+
+save_plot_pdf("main_paternal_percentage_figure.pdf", main_paternal_percentage_figure)
+
+save_plot_pdf("main_heatmap_figure.pdf", main_heatmap_figure)
+
+save_plot_pdf("supplementary_heatmap_figure.pdf", supplementary_heatmap_figure)
 
