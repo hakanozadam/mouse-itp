@@ -38,9 +38,9 @@ library(pheatmap)
 BURNT_ORANGE = "#bf5700"
 UT_BLUE      = "#005f86"
 
-PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#71d19c"
-PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#ab5b8f"
-PERCENTAGE_BARPLOT_OTHER_COLOR    = "#999999"
+PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#f0756e"
+PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#7ccba2"
+PERCENTAGE_BARPLOT_OTHER_COLOR    = "#045175"
 
 #PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#999999"
 #PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#E69F00"
@@ -67,6 +67,8 @@ COUNT_NORMALIZATION_FACTOR = 10000
 
 RATIO_RIBO_COLOUR = BURNT_ORANGE
 RATIO_RNA_COLOUR  = "navy"
+
+PERCENTAGE_DASHED_COLOR = "#088f99"
 
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
@@ -237,7 +239,7 @@ ggplot(data=riboseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = 
         )  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
-             color = "brown", size=0.6) + 
+             color = PERCENTAGE_DASHED_COLOR, size=0.6) + 
   labs(title = "Allele Percentages of Ribosome Footprints")
 
 
@@ -262,7 +264,7 @@ ggplot(data=rnaseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = f
         legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE))  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
-             color = "brown", size=0.6) + 
+             color = PERCENTAGE_DASHED_COLOR, size=0.6) + 
   labs(title = "Allele Percentages")
 
 
@@ -1220,21 +1222,21 @@ transcripts_with_at_least_10_reads = intersect(snp_totals_8cell$transcript, snp_
 transcripts_with_at_least_10_reads = intersect(transcripts_with_at_least_10_reads, snp_totals_2cell$transcript)
 
 
-# Now we need to remove the transcripts the same way we did for prop.test
-mii_0_paternal_transcripts = 
-  unique(
-      (
-        detailed_table %>% filter(group == "MII") %>%
-        filter(type == "ribo") %>%  
-      group_by(transcript, group) %>%
-      mutate(paternal_ratio = sum(paternal) /  sum(paternal + maternal) ) %>%
-      filter( paternal_ratio < 0.05 )
-      ) $transcript )
+# We decided not to exclude those transcripts
+# mii_0_paternal_transcripts = 
+#   unique(
+#       (
+#         detailed_table %>% filter(group == "MII") %>%
+#         filter(type == "ribo") %>%  
+#       group_by(transcript, group) %>%
+#       mutate(paternal_ratio = sum(paternal) /  sum(paternal + maternal) ) %>%
+#       filter( paternal_ratio < 0.05 )
+#       ) $transcript )
 
 
 #top_transcripts_combined = intersect(transcripts_with_at_least_10_reads, mii_0_paternal_transcripts)
 top_transcripts_combined = transcripts_with_at_least_10_reads
-#top_transcripts_combined = intersect(top_transcripts_combined, threshold_transcripts)
+
 
 top_snps_df_ribo = detailed_riboseq_table %>%
   filter( group %in% c('1cell', '2cell', '4cell', '8cell') ) %>%
@@ -1310,33 +1312,22 @@ difference_heatmap_breaks = c(seq( -1 ,              0, length.out = ceiling(pal
 
 ribo_breaks = c(seq(0, 1, length.out = paletteLength ))
 
-top_snps_paternal_ratio_difference_plot = 
-pheatmap( top_snps_paternal_ratio_difference_wide , 
-          #clustering_method = "median",
-          #clustering_distance_rows = "correlation",
-          #clustering_method = "centroid",
-          #clustering_method = "complete",
-          #clustering_method = "ward.D",
-          show_rownames     = TRUE,
-          #cutree_rows       = 4,
-          
-          cellwidth         = 40,
-          treeheight_row    = 0,
-          treeheight_col    = 0,
-          cluster_cols      = FALSE, 
-          cluster_rows      = FALSE, 
-          color             = difference_heatmap_color,
-          breaks            = difference_heatmap_breaks,
-          na_col            = "white",
-          angle_col         = 0,
-          labels_col        = c( "2cell", "4cell", "8cell"),
-          main              = "Paternal Ratio Difference",
-          fontsize          = 10,
-          fontsize_col      = FONT_LABEL_SIZE,
-          fontsize_row      = 8,
-          fontsize_number   = FONT_LABEL_SIZE
-)
 
+prop_test_significant_genes  = row.names(heatmap_binary)
+prop_test_intersect_top_snps = intersect(top_transcripts_combined, prop_test_significant_genes)
+
+
+
+top_snp_markers            = matrix("", nrow = dim(top_snps_paternal_ratios_ribo_wide)[1], ncol = dim(top_snps_paternal_ratios_ribo_wide)[2] )
+row.names(top_snp_markers) = row.names(top_snps_paternal_ratios_ribo_wide)
+col.names(top_snp_markers) = col.names(top_snps_paternal_ratios_ribo_wide)
+
+for(g in prop_test_intersect_top_snps){
+  top_snp_markers[g,] = heatmap_binary[g,c(2,3,4)]
+}
+
+
+### ribo_paternal_percentage
 top_snps_paternal_ratio_ribo_plot = 
 pheatmap( top_snps_paternal_ratios_ribo_wide , 
           #clustering_method = "median",
@@ -1345,10 +1336,9 @@ pheatmap( top_snps_paternal_ratios_ribo_wide ,
           #clustering_method = "complete",
           clustering_method = "ward.D",
           show_rownames     = TRUE,
-          #cutree_rows       = 4,
-          
+          display_numbers   = top_snp_markers,
           cellwidth         = 40,
-          treeheight_row    = 50,
+          #treeheight_row    = 100,
           treeheight_col    = 0,
           cluster_cols      = FALSE, 
           cluster_rows      = TRUE, 
@@ -1364,21 +1354,24 @@ pheatmap( top_snps_paternal_ratios_ribo_wide ,
           fontsize_number   = FONT_LABEL_SIZE
 )
 
+ribo_heatmap_row_order = top_snps_paternal_ratio_ribo_plot$tree_row$order
+
+# rna_paternal_percentage
 top_snps_paternal_ratio_rna_plot = 
-pheatmap( top_snps_paternal_ratios_rna_wide , 
+pheatmap( top_snps_paternal_ratios_rna_wide[ribo_heatmap_row_order, ] , 
           #clustering_method = "median",
           #clustering_distance_rows = "correlation",
           #clustering_method = "centroid",
           #clustering_method = "complete",
-          clustering_method = "ward.D",
+          #clustering_method = "ward.D",
           show_rownames     = TRUE,
+          display_numbers   = top_snp_markers[ribo_heatmap_row_order, ],
           #cutree_rows       = 4,
-          
           cellwidth         = 40,
           treeheight_row    = 50,
           treeheight_col    = 0,
           cluster_cols      = FALSE, 
-          cluster_rows      = TRUE, 
+          cluster_rows      = FALSE, 
           color             = rna_heatmap_color,
           breaks            = ribo_breaks,
           na_col            = "white",
@@ -1388,19 +1381,54 @@ pheatmap( top_snps_paternal_ratios_rna_wide ,
           fontsize          = 10,
           fontsize_col      = FONT_LABEL_SIZE,
           fontsize_row      = 8,
-          fontsize_number   = FONT_LABEL_SIZE
+          fontsize_number   = FONT_LABEL_SIZE,
+          number_color      = RATIO_RIBO_COLOUR 
+          
 )
 
-plot_grid(top_snps_paternal_ratio_ribo_plot[[4]], top_snps_paternal_ratio_rna_plot[[4]] ,
-          top_snps_paternal_ratio_difference_plot[[4]],
-          top_snps_paternal_ratio_difference_plot[[4]],
-          ncol = 2)
 
-plot_grid(top_snps_paternal_ratio_ribo_plot[[4]])
+### Difference between ribo and rna ratios
+### ribo_paternal_percentage - rna_paternal_ercentage
+top_snps_paternal_ratio_difference_plot = 
+  pheatmap( top_snps_paternal_ratio_difference_wide[ribo_heatmap_row_order,] , 
+            #clustering_method = "median",
+            #clustering_distance_rows = "correlation",
+            #clustering_method = "centroid",
+            #clustering_method = "complete",
+            #clustering_method = "ward.D",
+            show_rownames     = TRUE,
+            #cutree_rows       = 4,
+            display_numbers   = top_snp_markers[ribo_heatmap_row_order, ],
+            cellwidth         = 40,
+            treeheight_row    = 0,
+            treeheight_col    = 0,
+            cluster_cols      = FALSE, 
+            cluster_rows      = FALSE, 
+            color             = difference_heatmap_color,
+            breaks            = difference_heatmap_breaks,
+            na_col            = "white",
+            angle_col         = 0,
+            labels_col        = c( "2cell", "4cell", "8cell"),
+            main              = "Paternal Ratio Difference",
+            fontsize          = 10,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 8,
+            fontsize_number   = FONT_LABEL_SIZE
+  )
 
-View(
-  detailed_riboseq_table %>% filter( transcript == "Pla2g4c" & group == '8cell' )
-)
+
+
+
+supplementary_heatmap_grid_plot = 
+  plot_grid(top_snps_paternal_ratio_ribo_plot[[4]], 
+            top_snps_paternal_ratio_rna_plot[[4]] ,
+            top_snps_paternal_ratio_difference_plot[[4]],
+            ncol  = 3, 
+            align = 'hv')
+
+supplementary_heatmap_grid_plot
+
+
 
 ################################################################################
 ################################################################################
@@ -1414,15 +1442,33 @@ get_output_file_path = function(file_name, folder = output_folder){
 }
 
 
-save_plot_pdf = function(filename, this_plot){
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
   this_file = get_output_file_path(filename)
   print(this_file)
   ggsave(this_file, 
            plot   = this_plot, 
            device = cairo_pdf, 
+           width  = width,
+           height = height,
            dpi    = PDF_resolution )
   
 }
+
+combine_gene_detail_and_ratio_plots = function(gene){
+  line_plot     = plot_snp_ratios(gene)
+  detailed_plot = plot_snp_gene_detailed(gene)
+  
+  row_spacer = generate_blank_plot()
+  
+  this_plot = plot_grid(line_plot, row_spacer, detailed_plot, 
+                        rel_heights = c(1,0.05,1),
+                        ncol = 1,
+                        align = "h")
+  
+  return(this_plot)
+}
+
+combine_gene_detail_and_ratio_plots("Ncoa3")
 
 ################################################################################
 
@@ -1430,18 +1476,73 @@ save_plot_pdf("supplementary_allele_percentages_ribo.pdf", supplementary_allele_
 
 save_plot_pdf("supplementary_allele_percentages_rnaseq.pdf", supplementary_allele_percentages_rnaseq)
 
-main_paternal_percentage_figure
-
 save_plot_pdf("main_paternal_percentage_figure.pdf", main_paternal_percentage_figure)
 
 save_plot_pdf("main_heatmap_figure.pdf", main_heatmap_figure)
 
-save_plot_pdf("supplementary_heatmap_figure.pdf", supplementary_heatmap_figure)
+save_plot_pdf("supplementary_heatmap_figure.pdf", supplementary_heatmap_figure, width = 5, height = 12)
+
+save_plot_pdf("supplementary_heatmap_grid_plot.pdf", supplementary_heatmap_grid_plot, width = 15, height = 12)
 
 ################################################################################
 
 
+combine_gene_detail_and_ratio_plots("Cdt1")
 
+#################################################
+
+interesting_genes = c(
+  "Ncoa3", # !!! High paternal ratio at 4cell stage, good reproducibility
+  "Rpl38", #-> Small effect size; large counts
+  "Tsr1",  #  -> rRNA accumulation associated; strange behavior that doesn’t follow the clear patterns
+  "Rps6",  # -> Lagging translation with large counts; paternal activation by 2-cell stage; paternal translation slowly starts at 4-cell and matches by 8-cell stage
+  "Eef1b2",  #-> Same story of translation lagging the RNA expression. 
+  "Polr1e",
+  "Eif3d", # -> Lagged translation
+  "Rpl21", #-> Not super interesting but maybe lower translation of the paternal copy
+  "Eif3g", #-> RNA degraded in the GV to MII transition; both copies activated by 2-cell stage; translation of maternal copy looks higher in 4-cell stage but likely not a great one to highlight. 
+  "Ltv1", # -> Lagged; ribosome biogenesis factor
+  "Rpl28", # -> Much stronger translation of the paternal copy
+  "Eif4b", # -> Lagging
+  "Ddx21", # -> Lagging translation
+  "Rpl28", # ->Lagging translation
+  "Znhit3", # -> Lagging translation; implicated in pre-ribosomal RNA processing
+  "Eprs", # !!!-> Paternal copy seems to be lowly tranlsated consistently at both 4- and 8- cell stage
+  "Lyar", # -> Nucleolar gene
+
+  "Tpx2", # - Maternal gene with lagging translation of paternal copy; involved in cell cycle
+  "Pa2g4", #  - Not maternal; involved in proliferation; interesting asymmetric transcription activation at 2cell stage which reaches 50:50 in RNA by 4-cell but translation lags
+  "Nin", # - Maternal gene; decent read counts; member of pericentriolar matrix
+  "Cdc42", # -> lagging translation
+  "Mcm7", # !!! Paternal is consistently high at 4 and 8 cell stages
+  "Cdk1", # Higher paternal reads at 4 cell stage
+  "Ccnb1",
+  "Ccnh", # Very high paternal ratio at 8 cell stage
+  "Brca2", # -> Might be more interesting in a stage-specific manner
+  "Cct6a", #-> Consistently high translation of the paternal copy starting at 2-cell (Note: paternal ratios are almost equal at cell)
+  "Dnmt1", #!!! -> Maternal transcript but small expression from paternal copy with exclusive translation of the paternal copy
+  "Pgd", # Not much known about in the context of development but has robust counts: Maybe not super interesting, high var.
+  "Ppat", # Seems like there are a number of metabolic enzymes in the list but nothing super obvious in terms of known biology
+  "Pemt",
+  "Folr1", # -> Good counts but there is a fetal version Folr2. Shouldn’t that be more abundant?
+  "Zfp296",
+  "Lclat1", # Paternal ratio decreases at 8cell
+  "Stip1",
+  "Gpd1l", ## Almost same ratios on all cases
+  "Top1", # Almost same ratios
+  "Rsl1d1", #Almost same ratios, decent counts
+  "Pttg1", # Almost same ratios, large counts
+  "Kdm5b", # goes flat in both cases. High variation though
+  "Slc16a6",  # goes flat in both cases. High variation though
+  "Cdt1" # Same behavior in both cases
+)
+
+### Save gene plots into pdf files
+
+for(g in interesting_genes){
+  this_file = paste( "gene_", g, ".pdf", sep = ""  )
+  save_plot_pdf(this_file, combine_gene_detail_and_ratio_plots(g), width = 12, height = 12)
+}
 
 
 
