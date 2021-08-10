@@ -219,7 +219,7 @@ plot_2cell = plot_stage_length_distribution(mouse_stage_length_dist, "2cell", BU
 plot_4cell = plot_stage_length_distribution(mouse_stage_length_dist, "4cell", BURNT_ORANGE)
 plot_8cell = plot_stage_length_distribution(mouse_stage_length_dist, "8cell", BURNT_ORANGE)
 plot_MII   = plot_stage_length_distribution(mouse_stage_length_dist, "MII", BURNT_ORANGE)
-plot_GV    = plot_stage_length_distribution(mouse_stage_length_dist, "GV", BURNT_ORANGE)
+plot_GV    = plot_stage_length_distribution(mouse_stage_length_dist, "GV", BURNT_ORANGE, ymax = 11)
 
 
 title_main = ggdraw() + 
@@ -311,3 +311,14 @@ human_stage_length_dist =
 
 plot_100 = plot_stage_length_distribution(human_stage_length_dist, "100", BURNT_ORANGE, ymax = 12)
 plot_10M = plot_stage_length_distribution(human_stage_length_dist, "10M", BURNT_ORANGE, ymax = 12)
+
+save_plot_pdf("length_distribution_100.pdf", plot_100, width = plot_length, height = plot_length)
+save_plot_pdf("length_distribution_10M.pdf", plot_10M, width = plot_length, height = plot_length)
+
+human_length_distribution_combined = 
+  plot_grid(  plot_100, plot_10M, nrow = 1 )
+
+human_length_distribution_combined
+save_plot_pdf("length_distribution_human_combined.pdf", 
+              human_length_distribution_combined, 
+              width = 2*plot_length, height = plot_length)

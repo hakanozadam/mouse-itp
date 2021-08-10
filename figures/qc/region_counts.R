@@ -1,6 +1,7 @@
-#SNP Figure
+#REGION COUNTS
 
-mouse_ribo_file = "../../../mouse-itp_v3.ribo"
+mouse_ribo_file = "../../../mouse-itp_v4.ribo"
+human_ribo_file = "../../../../itp/human-itp_v4.ribo"
 
 
 ################################################################################
@@ -27,6 +28,7 @@ library(pheatmap)
 ################################################################################
 
 mouse_ribo = Ribo(mouse_ribo_file, rename = rename_default)
+human_ribo = Ribo(human_ribo_file, rename = rename_default)
 
 ################################################################################
 
@@ -73,6 +75,10 @@ RATIO_RNA_COLOUR  = "navy"
 
 PERCENTAGE_DASHED_COLOR = "#088f99"
 
+CDS_GREEN  = "#00BA38"
+UTR5_BLUE  = "#619CFF"
+UTR3_GREEN = "619CFF"
+
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
 
@@ -85,6 +91,7 @@ FIGURE_FONT = "helvetica"
 
 ################################################################################
 #######                   E X P E R I M E N T S                      ###########
+
 
 make_name_mapper = function(experiment_names){
   exp_names        = sort( experiment_names )
@@ -119,11 +126,11 @@ make_name_mapper = function(experiment_names){
   return(experiment_name_mapper)
 }
 
-temp_riboseq_df = read.csv(riboseq_overall_percentage_file, row.names = 1)
-temp_rnaseq_df  = read.csv(rnaseq_overall_percentage_file, row.names = 1)
+
 
 
 mouse_exp_name_mapper = make_name_mapper( mouse_ribo@experiments  )
+
 
 experiment_name_mapper = mouse_exp_name_mapper
 
@@ -134,6 +141,13 @@ rename_experiments = function(experiment_name){
 rename_experiments = Vectorize(rename_experiments, USE.NAMES = FALSE)
 
 
+human_exp_name_mapper = make_name_mapper( human_ribo@experiments  )
+
+human_rename_experiments = function(experiment_name){
+  return(human_exp_name_mapper[[experiment_name]])
+}
+
+human_rename_experiments = Vectorize(human_rename_experiments, USE.NAMES = FALSE)
 ################################################################################
 ################################################################################
 ################################################################################
@@ -141,18 +155,115 @@ rename_experiments = Vectorize(rename_experiments, USE.NAMES = FALSE)
 
 
 ################################################################################
-###########      L E N G T H      D I S T R I B U T I O N       ################      
+###########               R E G I O N     C O U N T S           ################
 
-mouse_length_distribution = 
-  get_length_distribution(ribo.object = mouse_ribo,
-                          region      = "CDS",
-                          compact     = FALSE
-  )
+mouse_region_counts = get_region_counts(ribo.object = mouse_ribo,
+                                        region      = c("UTR5", "CDS", "UTR3"),
+                                        range.lower = MOUSE_MIN_LENGTH,
+                                        range.upper = MOUSE_MAX_LENGTH,
+                                        compact     = FALSE)
 
-# Rename the experiments
-mouse_length_distribution$experiment = rename_experiments( mouse_length_distribution$experiment  )
+human_region_counts = get_region_counts(ribo.object = human_ribo,
+                                        region      = c("UTR5", "CDS", "UTR3"),
+                                        range.lower = MOUSE_MIN_LENGTH,
+                                        range.upper = MOUSE_MAX_LENGTH,
+                                        compact     = FALSE)
 
-# Add experiment group column "stage"
-mouse_length_distribution = 
-  mouse_length_distribution %>%
-  mutate( stage = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) 
+mouse_region_counts$experiment = rename_experiments(mouse_region_counts$experiment)
+
+human_region_counts$experiment = human_rename_experiments(human_region_counts$experiment)
+
+plot_region_counts(x           = human_ribo,
+                   range.lower = MOUSE_MIN_LENGTH,
+                   range.upper = MOUSE_MAX_LENGTH)
+
+
+###############################################################################
+
+compute_region_percentages = function(df){
+  this_df =
+    df %>% 
+    group_by(experiment) %>%
+    mutate(experiment_total = sum(count))
+  
+  this_df =
+    this_df %>%
+    mutate( percentage = round(100 * (count / experiment_total), 1 )  ) %>%
+    mutate(region = factor(region, levels = c("UTR3", "CDS", "UTR5") ))
+    
+  
+  
+  return(this_df)
+}
+
+################################################################################
+
+customized_plot_region_counts = function(df){
+  
+  percentages <- replace(df$percentage, 
+                         df$region != "CDS", "")
+  
+  this_df = df
+  
+  this_plot = 
+    ggplot(this_df, 
+           aes(x=experiment, y=percentage, fill=region)) +
+    geom_col() +
+    coord_flip() + 
+    theme_bw() +
+    theme(plot.title   = element_text(hjust = 0.5),
+          panel.border = element_blank(),
+          panel.grid   = element_blank(),
+          axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+          axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+          axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+          axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) +
+    scale_fill_discrete(breaks = c("UTR5", "CDS", "UTR3"), labels = c("5' UTR", "CDS", "3' UTR")) +
+    geom_text(aes(x=.data$experiment, y=50, label=percentages), size=3) +
+    scale_x_discrete(limits = rev) + 
+    labs(title="Ribosome Occupancy", fill="Region", x="Experiment", y="Percentage")
+  
+  return(this_plot)
+}
+
+################################################################################
+
+get_output_file_path = function(file_name, output_folder = "pdf"){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
+
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+         plot   = this_plot, 
+         device = cairo_pdf, 
+         width  = width,
+         height = height,
+         dpi    = PDF_resolution )
+  
+}
+
+################################################################################
+#####           S U P P L E M E N T A R Y     F I G U R E S             ########    
+
+mouse_region_percentages = compute_region_percentages(mouse_region_counts)
+
+human_region_percentages = compute_region_percentages(human_region_counts)
+
+mouse_supplementary_plot = 
+  customized_plot_region_counts(mouse_region_percentages)
+
+human_supplementary_plot = 
+  customized_plot_region_counts(human_region_percentages)
+
+save_plot_pdf("mouse_region_counts_supp.pdf", mouse_supplementary_plot, width = 5, height = 10)
+
+save_plot_pdf("human_region_counts_supp.pdf", human_supplementary_plot, width = 5, height = 3)
+
+################################################################################
+
+
+
+
