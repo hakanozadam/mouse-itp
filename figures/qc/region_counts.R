@@ -1,6 +1,6 @@
 #REGION COUNTS
 
-mouse_ribo_file = "../../../mouse-itp_v4.ribo"
+mouse_ribo_file = "../../../mouse-itp_v5.ribo"
 human_ribo_file = "../../../../itp/human-itp_v4.ribo"
 
 
@@ -177,6 +177,10 @@ plot_region_counts(x           = human_ribo,
                    range.lower = MOUSE_MIN_LENGTH,
                    range.upper = MOUSE_MAX_LENGTH)
 
+
+plot_region_counts(x           = mouse_ribo,
+                   range.lower = MOUSE_MIN_LENGTH,
+                   range.upper = MOUSE_MAX_LENGTH)
 
 ###############################################################################
 
