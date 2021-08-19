@@ -602,7 +602,7 @@ this_plot = ggplot(data = this_df, aes(x = position ,
 this_plot
 
 
-plot_metagene_unit = function(this_df, experiment, site, offsets = rep(15, 7 ) ){
+plot_metagene_unit = function(this_df, experiment, site, plot_title = "", offsets = rep(15, 7 ) ){
   
   this_coverage   = shift_by_offsets(this_df, experiment, offsets )
   this_df         = data.frame(position = -35:35, count = this_coverage[c( -1:-15, -86:-100  )  ])
@@ -629,8 +629,8 @@ plot_metagene_unit = function(this_df, experiment, site, offsets = rep(15, 7 ) )
   this_plot = ggplot(data = this_df, aes(x = position ,
                                          y = count)) + 
     geom_line( color = this_color , size = 1) + 
-    labs(title = "", x = "", y = "") +  
-    theme(plot.title        =  element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+    labs(title = plot_title, x = "", y = "") +  
+    theme(plot.title        =  element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE, color = this_color),
           panel.border      = element_blank(),
           panel.background  = element_blank(),
           panel.grid        = element_blank(),
@@ -716,7 +716,7 @@ combine_plots_main = function(plot_upper, plot_lower){
   
   plot_title =  ggdraw() + 
     draw_label(
-      "Start & Stop Site Coverage",
+      "Metagene Coverage",
       fontface = 'bold',
       fontfamily = FIGURE_FONT,
       size = FONT_TITLE_SIZE
@@ -731,6 +731,8 @@ combine_plots_main = function(plot_upper, plot_lower){
       angle = 90
     ) 
   
+  
+  
   base_plot = plot_grid(plot_title , plot_upper, plot_lower, x_label, ncol = 1, rel_heights = c(0.05, 1, 1, 0.05), align = "h")
   
   this_plot = plot_grid(y_label, base_plot, nrow = 1, rel_widths = c(0.02, 1)  )
@@ -739,8 +741,8 @@ combine_plots_main = function(plot_upper, plot_lower){
 }
 
 
-hundred_cell_start_plot = plot_metagene_unit(this_df= human_metagene_start, experiment = "100-1", site = "start" )
-hundred_cell_stop_plot  = plot_metagene_unit(this_df= human_metagene_stop, experiment = "100-1", site = "stop" )
+hundred_cell_start_plot = plot_metagene_unit(this_df= human_metagene_start, experiment = "100-1", site = "start", plot_title = "Start Site" )
+hundred_cell_stop_plot  = plot_metagene_unit(this_df= human_metagene_stop, experiment = "100-1", site = "stop", plot_title = "Stop Site" )
 hundred_cell_plot       = combine_start_and_stop(hundred_cell_start_plot, hundred_cell_stop_plot, "100-1")
 hundred_cell_plot
 
@@ -749,11 +751,12 @@ million_cell_stop_plot  = plot_metagene_unit(this_df= human_metagene_stop, exper
 million_cell_plot       = combine_start_and_stop( million_cell_start_plot, million_cell_stop_plot, "10M-3" ) 
 million_cell_plot
 
-combine_plots_main(hundred_cell_plot, million_cell_plot)
+human_metagene_plot = combine_plots_main(hundred_cell_plot, million_cell_plot)
 
 
-one_cell_start_plot = plot_metagene_unit(this_df= mouse_metagene_start, experiment = "1cell-3", site = "start" )
-one_cell_stop_plot  = plot_metagene_unit(this_df= mouse_metagene_stop, experiment = "1cell-3", site = "stop" )
+
+one_cell_start_plot = plot_metagene_unit(this_df= mouse_metagene_start, experiment = "1cell-3", site = "start", plot_title = "Start Site" )
+one_cell_stop_plot  = plot_metagene_unit(this_df= mouse_metagene_stop, experiment = "1cell-3", site = "stop", plot_title = "Stop Site" )
 one_cell_plot       = combine_start_and_stop( one_cell_start_plot, one_cell_stop_plot, "1cell-3"  ) 
 
 
@@ -761,6 +764,31 @@ eight_cell_start_plot = plot_metagene_unit(this_df= mouse_metagene_start, experi
 eight_cell_stop_plot  = plot_metagene_unit(this_df= mouse_metagene_stop, experiment = "8cell-1", site = "stop" )
 eight_cell_plot       = combine_start_and_stop(eight_cell_start_plot, eight_cell_stop_plot, "8cell-1")
 
+mouse_metagene_plot = combine_plots_main(one_cell_plot, eight_cell_plot)
+
+################################################################################
+
+get_output_file_path = function(file_name, output_folder = "pdf"){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
+
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+         plot   = this_plot, 
+         device = cairo_pdf, 
+         width  = width,
+         height = height,
+         dpi    = PDF_resolution )
+  
+}
+
+################################################################################
+#####           S U P P L E M E N T A R Y     F I G U R E S             ########  
 
 
-combine_plots_main(one_cell_plot, eight_cell_plot)
+save_plot_pdf("mouse_metagene.pdf", mouse_metagene_plot , width = 8, height = 8)
+
+save_plot_pdf("human_metagene.pdf", human_metagene_plot , width = 8, height = 8)

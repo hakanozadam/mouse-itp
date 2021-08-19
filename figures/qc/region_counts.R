@@ -75,9 +75,13 @@ RATIO_RNA_COLOUR  = "navy"
 
 PERCENTAGE_DASHED_COLOR = "#088f99"
 
-CDS_GREEN  = "#00BA38"
-UTR5_BLUE  = "#619CFF"
-UTR3_GREEN = "619CFF"
+#CDS_GREEN  = "#00BA38"
+#UTR5_BLUE  = "#619CFF"
+#UTR3_GREEN = "619CFF"
+
+CDS_GREEN  = rgb(124, 203, 162, maxColorValue = 255)
+UTR5_BLUE  = rgb(4,   82,  117, maxColorValue = 255)
+UTR3_GREEN = rgb(240, 116, 110,maxColorValue = 255)
 
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
@@ -269,5 +273,72 @@ save_plot_pdf("human_region_counts_supp.pdf", human_supplementary_plot, width = 
 ################################################################################
 
 
+################################################################################
+########           A G G R E G A T E D     F I G U R E S             ########### 
+
+mouse_region_percentages = 
+  mouse_region_percentages %>%
+    mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
+    group_by(group) %>%
+    mutate( replicate_count = length( unique( experiment )  ) ) 
+
+mouse_region_percentages$group = factor(mouse_region_percentages$group , levels = c("GV", "MII", "1cell", "2cell", "4cell", "8cell")) 
+
+mouse_region_percentages =
+  mouse_region_percentages %>%
+  group_by(group, region) %>%
+  mutate(average_percentage = mean(percentage) ) %>%
+  mutate(standard_error = sd(percentage) / sqrt(replicate_count) )
+  
+
+human_region_percentages = 
+  human_region_percentages %>%
+  mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) 
+
+human_region_percentages =
+  human_region_percentages %>% 
+  group_by(group, region) %>%
+  mutate(average_percentage = mean(percentage) ) %>%
+  mutate(standard_error = sd(percentage) / sqrt(replicate_count) )
+
+plot_bar_with_error_bars = function(df){
+  this_df = df
+  this_df$region = factor(this_df$region, levels = c("UTR5", "CDS", "UTR3"))
+  
+  this_plot = 
+    ggplot(data=this_df, aes(x= group, y=average_percentage, fill = region )  )  + 
+      geom_bar(position = "dodge", stat="identity", alpha = 1 ) + 
+      geom_errorbar( aes(  x        = group, 
+                           ymin     = average_percentage - standard_error, 
+                           ymax     = average_percentage + standard_error), 
+                           width    = 0.4, 
+                           alpha    = 0.4, 
+                           size     = 0.7,
+                           position = position_dodge(width = 0.9)) +
+      theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            panel.border     = element_blank(),
+            panel.grid       = element_blank(),
+            panel.background = element_blank(),
+            axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            legend.title     = element_blank(),
+            legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
+      labs(title="Distribution of RPFs by transcript regions", fill="Region", x="Stage", y="Average percentage") + 
+      scale_y_continuous(limits = c(0, 100), expand = c(0,0)) + 
+      scale_fill_manual("legend", 
+                        values = c("UTR5" = UTR5_BLUE, "UTR3" = UTR3_GREEN, "CDS" = CDS_GREEN), 
+                        breaks = c("UTR5", "CDS", "UTR3"), 
+                        labels = c("5' UTR", "CDS", "3' UTR")) 
+  
+  return(this_plot)
+}
+
+mouse_region_counts_with_error_bars = 
+    plot_bar_with_error_bars(mouse_region_percentages)
 
 
+plot_bar_with_error_bars(human_region_percentages)
