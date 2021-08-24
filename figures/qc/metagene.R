@@ -3,6 +3,8 @@
 mouse_ribo_file = "../../../mouse-itp_v5.ribo"
 human_ribo_file = "../../../../itp/human-itp_v4.ribo"
 
+GSE101018_file = "../../../external_data/GSE101018.ribo"
+GSE78634_file = "../../../external_data/GSE78634.ribo"
 
 ################################################################################
 ########                    L I B R A R I E S                          #########
@@ -29,6 +31,9 @@ library(pheatmap)
 
 mouse_ribo = Ribo(mouse_ribo_file, rename = rename_default)
 human_ribo = Ribo(human_ribo_file, rename = rename_default)
+
+GSE101018_ribo = Ribo(GSE101018_file, rename = rename_default)
+GSE78634_ribo  = Ribo(GSE78634_file,  rename = rename_default)
 
 ################################################################################
 
@@ -222,29 +227,6 @@ get_experiment_coverage_at_given_len = function(df, this_exp, len){
   return(result_df)
 }
 
-a = get_experiment_coverage_at_given_len(mouse_metagene_stop, "1cell-2", 29)
-
-b = t(a[-c(1,2)] )
-c = data.frame("position" = as.integer(row.names(b) ), "count" = as.vector(b[,1] ))
-
-
-
-ggplot(data = c, aes(x = position ,
-                     y = count )) + 
-  geom_line(  )
-
-
-
-a = get_experiment_coverage_at_given_len(human_metagene_stop, "100-2", 33)
-
-b = t(a[-c(1,2)] )
-c = data.frame("position" = as.integer(row.names(b) ), "count" = as.vector(b[,1] ))
-
-
-
-ggplot(data = c, aes(x = position ,
-                     y = count )) + 
-  geom_line(  )
 
 
 plot_individual_len = function(df, experiment){
@@ -268,6 +250,7 @@ plot_individual_len = function(df, experiment){
   return(offsets)
 }
 
+################################################################################
 
 plot_individual_len(mouse_metagene_stop, "8cell-1")
 plot_individual_len(mouse_metagene_stop, "8cell-2")
@@ -601,11 +584,30 @@ this_plot = ggplot(data = this_df, aes(x = position ,
 
 this_plot
 
+##################################################################################################
 
-plot_metagene_unit = function(this_df, experiment, site, plot_title = "", offsets = rep(15, 7 ) ){
+plot_metagene_unit = function(this_df, 
+                              experiment, 
+                              site, 
+                              plot_title = "", 
+                              offsets    = rep(15, 7 ),
+                              y_upper    = 0 ){
   
-  this_coverage   = shift_by_offsets(this_df, experiment, offsets )
-  this_df         = data.frame(position = -35:35, count = this_coverage[c( -1:-15, -86:-100  )  ])
+  if(is.null(offsets) ){
+    # This is for the external data
+    this_coverage = get_experiment_coverage_at_given_len(
+                                             df       = this_df, 
+                                             this_exp = experiment, 
+                                             len      = EXTERNAL_MIN_LENGTH)[c(-1, -2)] 
+    this_coverage = as.integer( this_coverage )
+    
+    this_df = data.frame(position = -35:35, count = this_coverage)
+  }
+  else{
+    this_coverage   = shift_by_offsets(this_df, experiment, offsets )
+    this_df         = data.frame(position = -35:35, count = this_coverage[c( -1:-15, -86:-100  )  ])
+  }
+  
   
   if(site == "start"){
     this_color = START_SITE_COLOR
@@ -614,8 +616,10 @@ plot_metagene_unit = function(this_df, experiment, site, plot_title = "", offset
     this_color = STOP_SITE_COLOR
   }
   
-  y_upper = max(this_df$count)
-  
+  if(y_upper == 0){
+    y_upper = max(this_df$count)
+  }
+    
   if(y_upper > 75 & y_upper < 100){
     y_upper = 100
   }
@@ -651,7 +655,7 @@ plot_metagene_unit = function(this_df, experiment, site, plot_title = "", offset
   
 }
 
-
+##################################################################################################
 
 
 combine_start_and_stop = function(start_plot, stop_plot, title){
@@ -675,30 +679,20 @@ combine_start_and_stop = function(start_plot, stop_plot, title){
 
 
 
-combine_start_and_stop = function(start_plot, stop_plot, title){
+combine_start_and_stop = function(start_plot, stop_plot, plot_title = ""){
   
   
   plot_title =  ggdraw() + 
     draw_label(
-      title,
-      fontface = 'plain',
+      plot_title,
+      fontface = 'bold',
       fontfamily = FIGURE_FONT,
-      size = FONT_TITLE_SIZE, 
-      angle = 90
+      size = FONT_TITLE_SIZE
     ) 
   
   base_plot = plot_grid( start_plot, stop_plot, nrow = 1   )
   
-  this_plot = 
-    ggdraw(base_plot) + 
-      geom_text(
-        data = data.frame(x = 0.5, y = 0.5, label = title),
-        aes(x, y, label = label),
-        hjust = 0.5, vjust = 0.5, size = FONT_TITLE_SIZE/.pt,
-        inherit.aes = TRUE
-      )
-  
-  #this_plot = plot_grid(plot_title, base_plot, nrow = 3, rel_widths = c(1, 1, 0.02))
+  this_plot = plot_grid(plot_title, base_plot, ncol = 1, rel_heights =  c(0.1, 1))
   
   return(this_plot)
 } 
@@ -733,38 +727,275 @@ combine_plots_main = function(plot_upper, plot_lower){
   
   
   
-  base_plot = plot_grid(plot_title , plot_upper, plot_lower, x_label, ncol = 1, rel_heights = c(0.05, 1, 1, 0.05), align = "h")
+  base_plot = plot_grid( plot_upper, plot_lower, x_label, ncol = 1, rel_heights = c( 1, 1, 0.1), align = "h")
   
-  this_plot = plot_grid(y_label, base_plot, nrow = 1, rel_widths = c(0.02, 1)  )
+  this_plot = plot_grid(y_label, base_plot, nrow = 1, rel_widths = c(0.05, 1)  )
   
   return(this_plot)
 }
 
 
-hundred_cell_start_plot = plot_metagene_unit(this_df= human_metagene_start, experiment = "100-1", site = "start", plot_title = "Start Site" )
-hundred_cell_stop_plot  = plot_metagene_unit(this_df= human_metagene_stop, experiment = "100-1", site = "stop", plot_title = "Stop Site" )
+hundred_cell_start_plot = plot_metagene_unit(this_df    = human_metagene_start, 
+                                             experiment = "100-1", 
+                                             site       = "start", 
+                                             plot_title = "Start Site",
+                                             y_upper    = 1500 )
+
+hundred_cell_stop_plot  = plot_metagene_unit(this_df    = human_metagene_stop, 
+                                             experiment = "100-1", 
+                                             site       = "stop", 
+                                             plot_title = "Stop Site",
+                                             y_upper = 4000)
+
 hundred_cell_plot       = combine_start_and_stop(hundred_cell_start_plot, hundred_cell_stop_plot, "100-1")
 hundred_cell_plot
 
-million_cell_start_plot = plot_metagene_unit(this_df= human_metagene_start, experiment = "10M-3", site = "start" )
-million_cell_stop_plot  = plot_metagene_unit(this_df= human_metagene_stop, experiment = "10M-3", site = "stop" )
-million_cell_plot       = combine_start_and_stop( million_cell_start_plot, million_cell_stop_plot, "10M-3" ) 
+million_cell_start_plot = plot_metagene_unit(this_df    = human_metagene_start, 
+                                             experiment = "10M-3", 
+                                             site       = "start" )
+
+million_cell_stop_plot  = plot_metagene_unit(this_df    = human_metagene_stop, 
+                                             experiment = "10M-3", 
+                                             site = "stop" )
+
+million_cell_plot       = combine_start_and_stop( million_cell_start_plot, 
+                                                  million_cell_stop_plot, 
+                                                  "10M-3" ) 
 million_cell_plot
 
 human_metagene_plot = combine_plots_main(hundred_cell_plot, million_cell_plot)
+human_metagene_plot
 
 
+one_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                         experiment = "1cell-3", 
+                                         site       = "start", 
+                                         plot_title = "Start Site" )
 
-one_cell_start_plot = plot_metagene_unit(this_df= mouse_metagene_start, experiment = "1cell-3", site = "start", plot_title = "Start Site" )
-one_cell_stop_plot  = plot_metagene_unit(this_df= mouse_metagene_stop, experiment = "1cell-3", site = "stop", plot_title = "Stop Site" )
-one_cell_plot       = combine_start_and_stop( one_cell_start_plot, one_cell_stop_plot, "1cell-3"  ) 
+one_cell_stop_plot  = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                         experiment = "1cell-3", 
+                                         site       = "stop", 
+                                         plot_title = "Stop Site",
+                                         y_upper    = 600 )
 
+one_cell_plot       = combine_start_and_stop( one_cell_start_plot, 
+                                              one_cell_stop_plot, 
+                                              "1cell-3"  ) 
+one_cell_plot
 
-eight_cell_start_plot = plot_metagene_unit(this_df= mouse_metagene_start, experiment = "8cell-1", site = "start" )
-eight_cell_stop_plot  = plot_metagene_unit(this_df= mouse_metagene_stop, experiment = "8cell-1", site = "stop" )
-eight_cell_plot       = combine_start_and_stop(eight_cell_start_plot, eight_cell_stop_plot, "8cell-1")
+eight_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                           experiment = "8cell-1", 
+                                           site       = "start",
+                                           y_upper    = 200)
+
+eight_cell_stop_plot  = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                           experiment = "8cell-1", 
+                                           site       = "stop" )
+
+eight_cell_plot       = combine_start_and_stop(eight_cell_start_plot, 
+                                               eight_cell_stop_plot, "8cell-1")
 
 mouse_metagene_plot = combine_plots_main(one_cell_plot, eight_cell_plot)
+
+mouse_metagene_plot
+
+
+
+two_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                         experiment = "2cell-3", 
+                                         site       = "start", 
+                                         plot_title = "Start Site",
+                                         y_upper    = 200 )
+
+two_cell_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                         experiment = "2cell-3", 
+                                         site       = "stop", 
+                                         plot_title = "Stop Site" )
+
+two_cell_plot = combine_start_and_stop(two_cell_start_plot,
+                                       two_cell_stop_plot,
+                                       "2cell-3")
+
+four_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                         experiment = "4cell-3", 
+                                         site       = "start", 
+                                         plot_title = "Start Site",
+                                         y_upper    = 200 )
+
+four_cell_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                        experiment = "4cell-3", 
+                                        site       = "stop", 
+                                        plot_title = "Stop Site",
+                                        y_upper    = 500 )
+
+four_cell_plot = combine_start_and_stop(four_cell_start_plot,
+                                        four_cell_stop_plot,
+                                        "4cell-3")
+
+four_cell_plot
+
+mouse_metagene_plot_2_4_cells = combine_plots_main(two_cell_plot, four_cell_plot)
+
+mouse_metagene_plot_2_4_cells
+
+################################################################################
+######## E X T E R N A L    R N A - S E Q    D A T A         ###################
+
+EXTERNAL_MIN_LENGTH = 35
+EXTERNAL_MAX_LENGTH = 35
+
+GSE101018_ribo_metagene_start = 
+  get_metagene(GSE101018_ribo, 
+               site        = "start",
+               range.lower = EXTERNAL_MIN_LENGTH,
+               range.upper = EXTERNAL_MAX_LENGTH,
+               length      = FALSE,
+               transcript  = TRUE,
+               alias       = TRUE,
+               compact     = FALSE,
+               experiment  = GSE101018_ribo@experiments)
+
+GSE101018_ribo_metagene_stop = 
+  get_metagene(GSE101018_ribo, 
+               site        = "stop",
+               range.lower = EXTERNAL_MIN_LENGTH,
+               range.upper = EXTERNAL_MAX_LENGTH,
+               length      = FALSE,
+               transcript  = TRUE,
+               alias       = TRUE,
+               compact     = FALSE,
+               experiment  = GSE101018_ribo@experiments)
+
+
+GSE78634_ribo_metagene_start = 
+  get_metagene(GSE78634_ribo, 
+               site        = "start",
+               range.lower = EXTERNAL_MIN_LENGTH,
+               range.upper = EXTERNAL_MAX_LENGTH,
+               length      = FALSE,
+               transcript  = TRUE,
+               alias       = TRUE,
+               compact     = FALSE,
+               experiment  = GSE78634_ribo@experiments)
+
+GSE78634_ribo_metagene_stop = 
+  get_metagene(GSE78634_ribo, 
+               site        = "stop",
+               range.lower = EXTERNAL_MIN_LENGTH,
+               range.upper = EXTERNAL_MAX_LENGTH,
+               length      = FALSE,
+               transcript  = TRUE,
+               alias       = TRUE,
+               compact     = FALSE,
+               experiment  = GSE78634_ribo@experiments)
+
+
+
+
+GSE101018_1_start_plot = plot_metagene_unit(this_df    = GSE101018_ribo_metagene_start, 
+                                            experiment = GSE101018_ribo@experiments[1], 
+                                            site       = "start", 
+                                            plot_title = "Start Site",
+                                            offsets    = c(),
+                                            y_upper    = 60000)
+
+
+
+GSE101018_1_stop_plot = plot_metagene_unit(this_df    = GSE101018_ribo_metagene_stop, 
+                                            experiment = GSE101018_ribo@experiments[1], 
+                                            site       = "stop", 
+                                            plot_title = "Stop Site",
+                                            offsets    = c(),
+                                            y_upper    = 25000)
+
+
+
+
+GSE101018_1_metagene_plot = combine_start_and_stop(GSE101018_1_start_plot, 
+                                                   GSE101018_1_stop_plot, 
+                                                   GSE101018_ribo@experiments[1])
+
+
+#GSE101018_1_metagene_plot
+
+GSE101018_2_start_plot = plot_metagene_unit(this_df    = GSE101018_ribo_metagene_start, 
+                                            experiment = GSE101018_ribo@experiments[2], 
+                                            site       = "start", 
+                                            plot_title = "",
+                                            offsets    = c(),
+                                            y_upper    = 30000)
+
+
+
+GSE101018_2_stop_plot = plot_metagene_unit(this_df    = GSE101018_ribo_metagene_stop, 
+                                           experiment = GSE101018_ribo@experiments[2], 
+                                           site       = "stop", 
+                                           plot_title = "",
+                                           offsets    = c(),
+                                           y_upper    = 10000)
+
+
+GSE101018_2_metagene_plot = combine_start_and_stop(GSE101018_2_start_plot, 
+                                                   GSE101018_2_stop_plot, 
+                                                   GSE101018_ribo@experiments[2])
+
+#GSE101018_2_metagene_plot
+
+
+GSE101018_metagene_combined_plot = 
+  combine_plots_main(GSE101018_1_metagene_plot, GSE101018_2_metagene_plot)
+
+GSE101018_metagene_combined_plot
+
+
+GSE78634_1_start_plot = plot_metagene_unit(this_df    = GSE78634_ribo_metagene_start, 
+                                            experiment = GSE78634_ribo@experiments[1], 
+                                            site       = "start", 
+                                            plot_title = "Start Site",
+                                            offsets    = c(),
+                                            y_upper    = 30000)
+
+GSE78634_1_stop_plot = plot_metagene_unit(this_df    = GSE78634_ribo_metagene_stop, 
+                                           experiment = GSE78634_ribo@experiments[1], 
+                                           site       = "stop", 
+                                           plot_title = "Stop Site",
+                                           offsets    = c(),
+                                           y_upper    = 10000)
+
+GSE78634_1_metagene_plot = combine_start_and_stop(GSE78634_1_start_plot,
+                                                  GSE78634_1_stop_plot,
+                                                  GSE78634_ribo@experiments[1])
+
+#GSE78634_1_metagene_plot
+
+
+GSE78634_2_start_plot = plot_metagene_unit(this_df    = GSE78634_ribo_metagene_start, 
+                                           experiment = GSE78634_ribo@experiments[2], 
+                                           site       = "start", 
+                                           plot_title = "",
+                                           offsets    = c(),
+                                           y_upper    = 0)
+
+GSE78634_2_stop_plot = plot_metagene_unit(this_df    = GSE78634_ribo_metagene_stop, 
+                                          experiment = GSE78634_ribo@experiments[2], 
+                                          site       = "stop", 
+                                          plot_title = "",
+                                          offsets    = c(),
+                                          y_upper    = 4000)
+
+GSE78634_2_metagene_plot = combine_start_and_stop(GSE78634_2_start_plot,
+                                                  GSE78634_2_stop_plot,
+                                                  GSE78634_ribo@experiments[2])
+
+#GSE78634_2_metagene_plot
+
+GSE78634_combined_metagene_plot = combine_plots_main(GSE78634_1_metagene_plot,
+                                                     GSE78634_2_metagene_plot)
+
+GSE78634_combined_metagene_plot
+
+################################################################################
+
 
 ################################################################################
 
@@ -788,6 +1019,15 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 ################################################################################
 #####           S U P P L E M E N T A R Y     F I G U R E S             ########  
 
+## Also see https://www.sciencemag.org/sites/default/files/Figure_prep_guide.pdf
+##
+## Science articles are 3 columns
+## One column figure width is 2.25.  So 2 inches would be safe
+## Two column is 4.75 so 4.5 inches would be safe
+
+# Figure and legend should fit in  frame of 7.25 x 8.9 inches
+# If we consider the page divided into two columns, then, half of it is 3.54 inches
+# Two columns together is 7.25 inches (there is some space between the columns)
 
 save_plot_pdf("mouse_metagene.pdf", mouse_metagene_plot , width = 8, height = 8)
 

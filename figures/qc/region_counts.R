@@ -225,11 +225,18 @@ customized_plot_region_counts = function(df){
           axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
           axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
           axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-          axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) +
-    scale_fill_discrete(breaks = c("UTR5", "CDS", "UTR3"), labels = c("5' UTR", "CDS", "3' UTR")) +
+          axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+          legend.title     = element_blank(),) +
+    scale_fill_manual("legend", 
+                      values = c("UTR5" = UTR5_BLUE, "UTR3" = UTR3_GREEN, "CDS" = CDS_GREEN), 
+                      breaks = c("UTR5", "CDS", "UTR3"), 
+                      labels = c("5' UTR", "CDS", "3' UTR")) +
     geom_text(aes(x=.data$experiment, y=50, label=percentages), size=3) +
     scale_x_discrete(limits = rev) + 
-    labs(title="Ribosome Occupancy", fill="Region", x="Experiment", y="Percentage")
+    labs(title = "Distribution of RPFs by transcript regions", 
+         fill  = "Region", 
+         x     = "Experiment", 
+         y     = "Percentage")
   
   return(this_plot)
 }
@@ -256,7 +263,21 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 ################################################################################
 #####           S U P P L E M E N T A R Y     F I G U R E S             ########    
 
-mouse_region_percentages = compute_region_percentages(mouse_region_counts)
+mouse_region_percentages       = compute_region_percentages(mouse_region_counts)
+
+mouse_region_percentages$group = 
+  factor(mouse_region_percentages$group , 
+         levels = c("GV", "MII", "1cell", "2cell", "4cell", "8cell"))
+
+mouse_region_percentages$experiment = 
+  factor( mouse_region_percentages$experiment, 
+          levels =  
+            c( unique( (mouse_region_percentages %>% filter( group == "GV" ) )$experiment ),
+               unique( (mouse_region_percentages %>% filter( group == "MII" ) )$experiment ),
+               unique( (mouse_region_percentages %>% filter( group == "1cell" ) )$experiment ),
+               unique( (mouse_region_percentages %>% filter( group == "2cell" ) )$experiment ),
+               unique( (mouse_region_percentages %>% filter( group == "4cell" ) )$experiment ),
+               unique( (mouse_region_percentages %>% filter( group == "8cell" ) )$experiment )) )
 
 human_region_percentages = compute_region_percentages(human_region_counts)
 
@@ -282,7 +303,7 @@ mouse_region_percentages =
     group_by(group) %>%
     mutate( replicate_count = length( unique( experiment )  ) ) 
 
-mouse_region_percentages$group = factor(mouse_region_percentages$group , levels = c("GV", "MII", "1cell", "2cell", "4cell", "8cell")) 
+ 
 
 mouse_region_percentages =
   mouse_region_percentages %>%
