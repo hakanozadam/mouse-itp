@@ -93,11 +93,15 @@ STOP_SITE_COLOR  = rgb(8,144,153, max = 255)
 #########                 F O N T   S I Z E S                          #########
 
 FONT_LABEL_SIZE = 8
-FONT_TITLE_SIZE = 10
+FONT_TITLE_SIZE = 9
 
 PDF_resolution = 600
 FIGURE_FONT = "helvetica"
 
+################################################################################
+#########                 OTHER FIGURE SETTINGS                         ########
+
+LINE_THICKNESS = 0.5
 
 ################################################################################
 #######                   E X P E R I M E N T S                      ###########
@@ -585,6 +589,8 @@ this_plot = ggplot(data = this_df, aes(x = position ,
 this_plot
 
 ##################################################################################################
+##################################################################################################
+
 
 plot_metagene_unit = function(this_df, 
                               experiment, 
@@ -632,7 +638,7 @@ plot_metagene_unit = function(this_df,
   
   this_plot = ggplot(data = this_df, aes(x = position ,
                                          y = count)) + 
-    geom_line( color = this_color , size = 1) + 
+    geom_line( color = this_color , size = LINE_THICKNESS) + 
     labs(title = plot_title, x = "", y = "") +  
     theme(plot.title        =  element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE, color = this_color),
           panel.border      = element_blank(),
@@ -747,7 +753,7 @@ hundred_cell_stop_plot  = plot_metagene_unit(this_df    = human_metagene_stop,
                                              plot_title = "Stop Site",
                                              y_upper = 4000)
 
-hundred_cell_plot       = combine_start_and_stop(hundred_cell_start_plot, hundred_cell_stop_plot, "100-1")
+hundred_cell_plot       = combine_start_and_stop(hundred_cell_start_plot, hundred_cell_stop_plot, "100 Cells")
 hundred_cell_plot
 
 million_cell_start_plot = plot_metagene_unit(this_df    = human_metagene_start, 
@@ -756,11 +762,12 @@ million_cell_start_plot = plot_metagene_unit(this_df    = human_metagene_start,
 
 million_cell_stop_plot  = plot_metagene_unit(this_df    = human_metagene_stop, 
                                              experiment = "10M-3", 
-                                             site = "stop" )
+                                             site       = "stop",
+                                             y_upper    = 2500)
 
 million_cell_plot       = combine_start_and_stop( million_cell_start_plot, 
                                                   million_cell_stop_plot, 
-                                                  "10M-3" ) 
+                                                  "10M Cells" ) 
 million_cell_plot
 
 human_metagene_plot = combine_plots_main(hundred_cell_plot, million_cell_plot)
@@ -780,7 +787,7 @@ one_cell_stop_plot  = plot_metagene_unit(this_df    = mouse_metagene_stop,
 
 one_cell_plot       = combine_start_and_stop( one_cell_start_plot, 
                                               one_cell_stop_plot, 
-                                              "1cell-3"  ) 
+                                              "1cell"  ) 
 one_cell_plot
 
 eight_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
@@ -793,7 +800,7 @@ eight_cell_stop_plot  = plot_metagene_unit(this_df    = mouse_metagene_stop,
                                            site       = "stop" )
 
 eight_cell_plot       = combine_start_and_stop(eight_cell_start_plot, 
-                                               eight_cell_stop_plot, "8cell-1")
+                                               eight_cell_stop_plot, "8cell")
 
 mouse_metagene_plot = combine_plots_main(one_cell_plot, eight_cell_plot)
 
@@ -814,7 +821,7 @@ two_cell_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop,
 
 two_cell_plot = combine_start_and_stop(two_cell_start_plot,
                                        two_cell_stop_plot,
-                                       "2cell-3")
+                                       "2cell")
 
 four_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
                                          experiment = "4cell-3", 
@@ -830,7 +837,7 @@ four_cell_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop,
 
 four_cell_plot = combine_start_and_stop(four_cell_start_plot,
                                         four_cell_stop_plot,
-                                        "4cell-3")
+                                        "4cell")
 
 four_cell_plot
 
@@ -1029,6 +1036,26 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 # If we consider the page divided into two columns, then, half of it is 3.54 inches
 # Two columns together is 7.25 inches (there is some space between the columns)
 
-save_plot_pdf("mouse_metagene.pdf", mouse_metagene_plot , width = 8, height = 8)
+PDF_WIDTH  = 3.54
+PDF_HEIGHT = PDF_WIDTH
 
-save_plot_pdf("human_metagene.pdf", human_metagene_plot , width = 8, height = 8)
+save_plot_pdf("mouse_metagene.pdf", mouse_metagene_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
+
+save_plot_pdf("mouse_metagene_2_4_cells.pdf", mouse_metagene_plot_2_4_cells , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
+
+save_plot_pdf("GSE78634_metagene.pdf", GSE78634_combined_metagene_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
+
+save_plot_pdf("GSE101018_metagene.pdf", GSE101018_metagene_combined_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
+
+
+save_plot_pdf("human_metagene.pdf", human_metagene_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
