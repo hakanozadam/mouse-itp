@@ -1,6 +1,6 @@
 #SNP Figure
 
-mouse_ribo_file = "../../../mouse-itp_v3.ribo"
+mouse_ribo_file = "../../../mouse-itp_v5.ribo"
 human_ribo_file = "../../../../itp/human-itp_v4.ribo"
 
 
@@ -79,7 +79,7 @@ PERCENTAGE_DASHED_COLOR = "#088f99"
 #########                 F O N T   S I Z E S                          #########
 
 FONT_LABEL_SIZE = 8
-FONT_TITLE_SIZE = 10
+FONT_TITLE_SIZE = 9
 
 PDF_resolution = 600
 FIGURE_FONT = "helvetica"
@@ -174,23 +174,32 @@ mouse_stage_length_dist =
   mutate( experiment_sum = sum(count) ) %>%
   mutate( experiment_percentage = (count / experiment_sum) * 100 ) 
 
+# Add number of replicates
+mouse_stage_length_dist = 
+  mouse_stage_length_dist %>%
+    group_by(stage) %>%
+    mutate(replicate_count = length(unique(experiment)) )
+
+
 # Add sd after grouping by stage and length
 mouse_stage_length_dist =
   mouse_stage_length_dist%>%
   group_by(stage, length) %>%
   summarise( average_percentage = mean(experiment_percentage) , 
-             experiment_sd_high = average_percentage + sd(experiment_percentage),
-             experiment_sd_low = average_percentage - sd(experiment_percentage))
+             experiment_se_high = average_percentage + 
+                                  ( sd(experiment_percentage) / sqrt(replicate_count) ),
+             experiment_se_low = average_percentage - 
+                                  (sd(experiment_percentage) / sqrt(replicate_count) ) )
 
 
 
-plot_stage_length_distribution = function(df, this_stage, color, ymax = 10){
+plot_stage_length_distribution = function(df, this_stage, color, plot_title, ymax = 10){
   this_plot = 
     ggplot(data=
              df %>% filter(stage == this_stage) , 
            aes(x=length, y=average_percentage )  )  +
       geom_line(aes(color = stage)) + 
-      geom_ribbon(aes(ymin = experiment_sd_low, ymax = experiment_sd_high, fill = stage), alpha = 0.15) + 
+      geom_ribbon(aes(ymin = experiment_se_low, ymax = experiment_se_high, fill = stage), alpha = 0.15) + 
       theme(
         panel.border      = element_blank(),
         panel.grid        = element_blank(),
@@ -204,46 +213,52 @@ plot_stage_length_distribution = function(df, this_stage, color, ymax = 10){
         legend.position   = "none"
       ) + 
       scale_colour_manual(values = c(color), name = "stage"   ) +
-      scale_y_continuous(limits = c(0,ymax), breaks = seq(0,10,5), expand = c(0, 0.2)) +
+      scale_y_continuous(limits = c(0,ymax), breaks = seq(0,ymax,5), expand = c(0, 0.2)) +
       scale_x_continuous(expand = c(0,0), limits = c(21,40), breaks = c(21,25,30,35,40)) +
       scale_fill_manual(values=c(color) ) + 
       #ylim(c(0, 10)) + 
-      labs(title = this_stage, y = "percentage", x= "length")
+      labs(title = plot_title, y = "percentage", x= "length")
   
   return(this_plot)
 }
 
 
-plot_1cell = plot_stage_length_distribution(mouse_stage_length_dist, "1cell", BURNT_ORANGE)
-plot_2cell = plot_stage_length_distribution(mouse_stage_length_dist, "2cell", BURNT_ORANGE)
-plot_4cell = plot_stage_length_distribution(mouse_stage_length_dist, "4cell", BURNT_ORANGE)
-plot_8cell = plot_stage_length_distribution(mouse_stage_length_dist, "8cell", BURNT_ORANGE)
-plot_MII   = plot_stage_length_distribution(mouse_stage_length_dist, "MII", BURNT_ORANGE)
-plot_GV    = plot_stage_length_distribution(mouse_stage_length_dist, "GV", BURNT_ORANGE, ymax = 11)
+plot_1cell = plot_stage_length_distribution(mouse_stage_length_dist, "1cell", BURNT_ORANGE, plot_title = "1cell")
+plot_2cell = plot_stage_length_distribution(mouse_stage_length_dist, "2cell", BURNT_ORANGE, plot_title = "2cell")
+plot_4cell = plot_stage_length_distribution(mouse_stage_length_dist, "4cell", BURNT_ORANGE, plot_title = "4cell")
+plot_8cell = plot_stage_length_distribution(mouse_stage_length_dist, "8cell", BURNT_ORANGE, plot_title = "8cell")
+plot_MII   = plot_stage_length_distribution(mouse_stage_length_dist, "MII", BURNT_ORANGE, plot_title   = "MII")
+plot_GV    = plot_stage_length_distribution(mouse_stage_length_dist, "GV", BURNT_ORANGE, plot_title = "GV")
 
 
-title_main = ggdraw() + 
-  draw_label(
-    "Length distribution of ribosoe protected footprints",
-    fontface   = 'plain',
-    size       = FONT_TITLE_SIZE ,
-    fontfamily = 'helvetica',
-  ) +
-  theme(
-    # add margin on the left of the drawing canvas,
-    # so title is aligned with left edge of first plot
-    plot.margin = margin(0, 0, 0, 0)
-  )
+# title_main = ggdraw() + 
+#   draw_label(
+#     "Length distribution of ribosoe protected footprints",
+#     fontface   = 'plain',
+#     size       = FONT_TITLE_SIZE ,
+#     fontfamily = 'helvetica',
+#   ) +
+#   theme(
+#     # add margin on the left of the drawing canvas,
+#     # so title is aligned with left edge of first plot
+#     plot.margin = margin(0, 0, 0, 0)
+#   )
 
 raw_plot = plot_grid(plot_1cell, plot_2cell, plot_4cell, plot_8cell,
                      ncol = 2)
 
 
-main_plot = plot_grid(title_main, raw_plot,
-                      ncol = 1,
-                      rel_heights = c(0.1, 1))
+# main_plot = plot_grid(title_main, raw_plot,
+#                       ncol = 1,
+#                       rel_heights = c(0.1, 1))
 
-main_plot
+main_plot_mouse = raw_plot
+
+main_plot_mouse
+
+
+mouse_mii_gv = plot_grid(plot_MII, plot_GV, nrow = 1)
+mouse_mii_gv
 
 #######################################################################################
 
@@ -265,9 +280,10 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 }
 
 
-save_plot_pdf("length_distribution_main.pdf", main_plot)
+save_plot_pdf("length_distribution_mouse_main.pdf", main_plot, width = 3.54, height = 3.54)
+save_plot_pdf("length_distribution_mouse_mii_gv.pdf", mouse_mii_gv, width = 3.54, height = 3.54/2)
 
-plot_length = 5
+plot_length = 2.25
 
 save_plot_pdf("length_distribution_1cell.pdf", plot_1cell, width = plot_length, height = plot_length)
 save_plot_pdf("length_distribution_2cell.pdf", plot_2cell, width = plot_length, height = plot_length)
@@ -277,7 +293,6 @@ save_plot_pdf("length_distribution_MII.pdf", plot_MII, width = plot_length, heig
 save_plot_pdf("length_distribution_GV.pdf", plot_GV, width = plot_length, height = plot_length)
 
 ################################################################################
-
 
 human_length_distribution = 
   get_length_distribution(ribo.object = human_ribo,
@@ -301,16 +316,27 @@ human_stage_length_dist =
   mutate( experiment_sum = sum(count) ) %>%
   mutate( experiment_percentage = (count / experiment_sum) * 100 ) 
 
+## Add replicate number
+human_stage_length_dist = 
+  human_stage_length_dist %>%
+  group_by(stage) %>%
+    mutate(replicate_count = length(unique(experiment)) )
+
 human_stage_length_dist =
   human_stage_length_dist%>%
   group_by(stage, length) %>%
   summarise( average_percentage = mean(experiment_percentage) , 
-             experiment_sd_high = average_percentage + sd(experiment_percentage),
-             experiment_sd_low = average_percentage - sd(experiment_percentage))
+             experiment_se_high = average_percentage + 
+                                  (  sd(experiment_percentage) / sqrt(replicate_count)  ) ,
+             experiment_se_low = average_percentage - 
+                                 ( sd(experiment_percentage) /sqrt(replicate_count)  )  )
 
 
-plot_100 = plot_stage_length_distribution(human_stage_length_dist, "100", BURNT_ORANGE, ymax = 12)
-plot_10M = plot_stage_length_distribution(human_stage_length_dist, "10M", BURNT_ORANGE, ymax = 12)
+plot_100 = plot_stage_length_distribution(human_stage_length_dist, "100", BURNT_ORANGE, ymax = 12, plot_title = "100 cells" ) +
+              scale_y_continuous(breaks = c(0, 6 ,12), limits = c(0,12), expand = c(0,0.2) )
+plot_10M = plot_stage_length_distribution(human_stage_length_dist, "10M", BURNT_ORANGE, ymax = 12, plot_title = "10M cells"  ) + 
+             scale_y_continuous(breaks = c(0, 6 ,12), limits = c(0,12), expand = c(0,0.2) )
+
 
 save_plot_pdf("length_distribution_100.pdf", plot_100, width = plot_length, height = plot_length)
 save_plot_pdf("length_distribution_10M.pdf", plot_10M, width = plot_length, height = plot_length)
@@ -321,4 +347,4 @@ human_length_distribution_combined =
 human_length_distribution_combined
 save_plot_pdf("length_distribution_human_combined.pdf", 
               human_length_distribution_combined, 
-              width = 2*plot_length, height = plot_length)
+              width = 3.54, height = 3.54 / 2)

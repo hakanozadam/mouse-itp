@@ -87,7 +87,7 @@ UTR3_GREEN = rgb(240, 116, 110,maxColorValue = 255)
 #########                 F O N T   S I Z E S                          #########
 
 FONT_LABEL_SIZE = 8
-FONT_TITLE_SIZE = 10
+FONT_TITLE_SIZE = 9
 
 PDF_resolution = 600
 FIGURE_FONT = "helvetica"
@@ -219,14 +219,15 @@ customized_plot_region_counts = function(df){
     geom_col() +
     coord_flip() + 
     theme_bw() +
-    theme(plot.title   = element_text(hjust = 0.5),
+    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
           panel.border = element_blank(),
           panel.grid   = element_blank(),
           axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
           axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
           axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
           axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-          legend.title     = element_blank(),) +
+          legend.title      = element_blank(),
+          legend.key.size   = unit(0.15, 'inches')) +
     scale_fill_manual("legend", 
                       values = c("UTR5" = UTR5_BLUE, "UTR3" = UTR3_GREEN, "CDS" = CDS_GREEN), 
                       breaks = c("UTR5", "CDS", "UTR3"), 
@@ -265,6 +266,12 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 
 mouse_region_percentages       = compute_region_percentages(mouse_region_counts)
 
+mouse_region_percentages = 
+  mouse_region_percentages %>%
+  mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) 
+
 mouse_region_percentages$group = 
   factor(mouse_region_percentages$group , 
          levels = c("GV", "MII", "1cell", "2cell", "4cell", "8cell"))
@@ -287,9 +294,9 @@ mouse_supplementary_plot =
 human_supplementary_plot = 
   customized_plot_region_counts(human_region_percentages)
 
-save_plot_pdf("mouse_region_counts_supp.pdf", mouse_supplementary_plot, width = 5, height = 10)
+save_plot_pdf("mouse_region_counts_supp.pdf", mouse_supplementary_plot, width = 3.54, height = 3.54*1.5)
 
-save_plot_pdf("human_region_counts_supp.pdf", human_supplementary_plot, width = 5, height = 3)
+save_plot_pdf("human_region_counts_supp.pdf", human_supplementary_plot, width = 3.54, height = 1.9)
 
 ################################################################################
 
@@ -297,11 +304,7 @@ save_plot_pdf("human_region_counts_supp.pdf", human_supplementary_plot, width = 
 ################################################################################
 ########           A G G R E G A T E D     F I G U R E S             ########### 
 
-mouse_region_percentages = 
-  mouse_region_percentages %>%
-    mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
-    group_by(group) %>%
-    mutate( replicate_count = length( unique( experiment )  ) ) 
+
 
  
 
@@ -324,7 +327,8 @@ human_region_percentages =
   mutate(average_percentage = mean(percentage) ) %>%
   mutate(standard_error = sd(percentage) / sqrt(replicate_count) )
 
-plot_bar_with_error_bars = function(df){
+plot_bar_with_error_bars = function(df, 
+                                    plot_title = "Distribution of RPFs by transcript regions"){
   this_df = df
   this_df$region = factor(this_df$region, levels = c("UTR5", "CDS", "UTR3"))
   
@@ -336,7 +340,7 @@ plot_bar_with_error_bars = function(df){
                            ymax     = average_percentage + standard_error), 
                            width    = 0.4, 
                            alpha    = 0.4, 
-                           size     = 0.7,
+                           size     = 0.4,
                            position = position_dodge(width = 0.9)) +
       theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
             panel.border     = element_blank(),
@@ -347,8 +351,9 @@ plot_bar_with_error_bars = function(df){
             axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
             axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
             legend.title     = element_blank(),
-            legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
-      labs(title="Distribution of RPFs by transcript regions", fill="Region", x="Stage", y="Average percentage") + 
+            legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            legend.key.size  = unit(0.12, 'inches')) + 
+      labs(title= plot_title, fill="Region", x="Stage", y="Average percentage") + 
       scale_y_continuous(limits = c(0, 100), expand = c(0,0)) + 
       scale_fill_manual("legend", 
                         values = c("UTR5" = UTR5_BLUE, "UTR3" = UTR3_GREEN, "CDS" = CDS_GREEN), 
@@ -361,5 +366,183 @@ plot_bar_with_error_bars = function(df){
 mouse_region_counts_with_error_bars = 
     plot_bar_with_error_bars(mouse_region_percentages)
 
+save_plot_pdf("mouse_region_counts_with_error_bars.pdf", 
+              mouse_region_counts_with_error_bars, 
+              width = 3.54, height = 2.6)
 
-plot_bar_with_error_bars(human_region_percentages)
+human_region_counts_with_error_bars = 
+    plot_bar_with_error_bars(human_region_percentages, plot_title = "")
+
+save_plot_pdf("human_region_counts_with_error_bars.pdf", 
+              human_region_counts_with_error_bars, 
+              width = 2.1, height = 2.6)
+
+################################################################################
+
+# Distribution of translated gene region lengths
+################################################################################
+### M O U S E 
+
+mouse_region_counts_per_gene = 
+  get_region_counts(ribo.object = mouse_ribo,
+                    region      = c("UTR5", "CDS", "UTR3"),
+                    range.lower = MOUSE_MIN_LENGTH,
+                    range.upper = MOUSE_MAX_LENGTH,
+                    transcript  = FALSE,
+                    compact     = FALSE)
+
+mouse_region_total_counts = 
+  mouse_region_counts_per_gene %>%
+  group_by(experiment, transcript) %>%
+  summarise(total_count = sum(count))
+
+mouse_region_lengths = get_region_lengths(mouse_ribo)
+
+mouse_region_lengths = mouse_region_lengths %>% select(transcript, UTR5, CDS, UTR3)
+
+
+
+mouse_region_total_counts_and_lengths = merge(mouse_region_total_counts, mouse_region_lengths)
+
+
+
+mouse_region_total_counts_and_lengths = 
+  mouse_region_total_counts_and_lengths %>% 
+    mutate(total_length = sum(UTR5 + CDS + UTR3)) %>%
+    mutate( UTR5_w_ratio = (UTR5 / total_length) * total_count,
+            CDS_w_ratio  = (CDS / total_length) * total_count,
+            UTR3_w_ratio = (UTR3 / total_length) * total_count )
+
+
+mouse_region_total_counts_and_lengths$experiment = rename_experiments(mouse_region_total_counts_and_lengths$experiment)
+
+mouse_region_total_counts_and_lengths = 
+  mouse_region_total_counts_and_lengths %>%
+  mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) 
+
+
+
+
+  
+mouse_region_len_percentages_pre = 
+  mouse_region_total_counts_and_lengths %>%
+  group_by(experiment, group) %>%
+  mutate(UTR5_w_ratio_total = sum(UTR5_w_ratio),
+         CDS_w_ratio_total  = sum(CDS_w_ratio),
+         UTR3_w_ratio_total = sum(UTR3_w_ratio),
+         all_total = UTR5_w_ratio_total + CDS_w_ratio_total + UTR3_w_ratio_total) %>%
+  summarise( UTR5_percentage =  round( median((UTR5_w_ratio_total / all_total) * 100) , 1) ,
+             CDS_percentage  =  round( median((CDS_w_ratio_total / all_total) * 100) , 1),
+             UTR3_percentage =  round( median((UTR3_w_ratio_total / all_total) * 100 ), 1)  )%>%
+  rename_at( "UTR5_percentage", ~"UTR5" ) %>%
+  rename_at( "CDS_percentage", ~"CDS" ) %>%
+  rename_at( "UTR3_percentage", ~"UTR3" )
+
+
+mouse_region_len_percentages  = 
+  melt(mouse_region_len_percentages_pre, value.name = "percentage") %>% 
+  rename_at("variable", ~"region") %>%
+  mutate(region = factor(region, levels = c("UTR3", "CDS", "UTR5") ))
+
+
+mouse_region_len_percentages$group = 
+  factor(mouse_region_len_percentages$group , 
+         levels = c("GV", "MII", "1cell", "2cell", "4cell", "8cell"))
+
+mouse_region_len_percentages$experiment = 
+  factor( mouse_region_len_percentages$experiment, 
+          levels =  
+            c( unique( (mouse_region_len_percentages %>% filter( group == "GV" ) )$experiment ),
+               unique( (mouse_region_len_percentages %>% filter( group == "MII" ) )$experiment ),
+               unique( (mouse_region_len_percentages %>% filter( group == "1cell" ) )$experiment ),
+               unique( (mouse_region_len_percentages %>% filter( group == "2cell" ) )$experiment ),
+               unique( (mouse_region_len_percentages %>% filter( group == "4cell" ) )$experiment ),
+               unique( (mouse_region_len_percentages %>% filter( group == "8cell" ) )$experiment )) )
+
+
+# Our ultimate plot for mouse region lengths
+mouse_region_len_percentage_barplot = 
+  customized_plot_region_counts(mouse_region_len_percentages) + 
+  ggtitle("Distribution of Region Lengths")
+
+################################################################################
+### H U M A N
+
+
+
+
+
+human_region_counts_per_gene = 
+  get_region_counts(ribo.object = human_ribo,
+                    region      = c("UTR5", "CDS", "UTR3"),
+                    range.lower = MOUSE_MIN_LENGTH,
+                    range.upper = MOUSE_MAX_LENGTH,
+                    transcript  = FALSE,
+                    compact     = FALSE)
+
+human_region_total_counts = 
+  human_region_counts_per_gene %>%
+  group_by(experiment, transcript) %>%
+  summarise(total_count = sum(count))
+
+human_region_lengths = get_region_lengths(human_ribo)
+
+human_region_lengths = human_region_lengths %>% select(transcript, UTR5, CDS, UTR3)
+
+
+
+human_region_total_counts_and_lengths = merge(human_region_total_counts, human_region_lengths)
+
+
+
+human_region_total_counts_and_lengths = 
+  human_region_total_counts_and_lengths %>% 
+  mutate(total_length = sum(UTR5 + CDS + UTR3)) %>%
+  mutate( UTR5_w_ratio = (UTR5 / total_length) * total_count,
+          CDS_w_ratio  = (CDS / total_length) * total_count,
+          UTR3_w_ratio = (UTR3 / total_length) * total_count )
+
+
+human_region_total_counts_and_lengths$experiment = human_rename_experiments(human_region_total_counts_and_lengths$experiment)
+
+human_region_total_counts_and_lengths = 
+  human_region_total_counts_and_lengths %>%
+  mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) 
+
+
+
+
+
+human_region_len_percentages_pre = 
+  human_region_total_counts_and_lengths %>%
+  group_by(experiment, group) %>%
+  mutate(UTR5_w_ratio_total = sum(UTR5_w_ratio),
+         CDS_w_ratio_total  = sum(CDS_w_ratio),
+         UTR3_w_ratio_total = sum(UTR3_w_ratio),
+         all_total = UTR5_w_ratio_total + CDS_w_ratio_total + UTR3_w_ratio_total) %>%
+  summarise( UTR5_percentage =  round( median((UTR5_w_ratio_total / all_total) * 100) , 1) ,
+             CDS_percentage  =  round( median((CDS_w_ratio_total / all_total) * 100) , 1),
+             UTR3_percentage =  round( median((UTR3_w_ratio_total / all_total) * 100 ), 1)  )%>%
+  rename_at( "UTR5_percentage", ~"UTR5" ) %>%
+  rename_at( "CDS_percentage", ~"CDS" ) %>%
+  rename_at( "UTR3_percentage", ~"UTR3" )
+
+
+human_region_len_percentages  = 
+  melt(human_region_len_percentages_pre, value.name = "percentage") %>% 
+  rename_at("variable", ~"region") %>%
+  mutate(region = factor(region, levels = c("UTR3", "CDS", "UTR5") ))
+
+# Our ultimate plot for mouse region lengths
+human_region_len_percentage_barplot = 
+  customized_plot_region_counts(human_region_len_percentages) + 
+  ggtitle("Distribution of Region Lengths")
+
+
+save_plot_pdf("mouse_region_len_percentage_barplot_supp.pdf", mouse_region_len_percentage_barplot, width = 3.54, height = 3.54*1.5)
+
+save_plot_pdf("human_region_len_percentage_barplot_supp.pdf", human_region_len_percentage_barplot, width = 3.54, height = 1.9)
