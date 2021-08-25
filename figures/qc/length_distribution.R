@@ -244,7 +244,9 @@ plot_GV    = plot_stage_length_distribution(mouse_stage_length_dist, "GV", BURNT
 #     plot.margin = margin(0, 0, 0, 0)
 #   )
 
-raw_plot = plot_grid(plot_1cell, plot_2cell, plot_4cell, plot_8cell,
+raw_plot = plot_grid(plot_GV, plot_MII,
+                     plot_1cell, plot_2cell, 
+                     plot_4cell, plot_8cell,
                      ncol = 2)
 
 
@@ -257,8 +259,8 @@ main_plot_mouse = raw_plot
 main_plot_mouse
 
 
-mouse_mii_gv = plot_grid(plot_MII, plot_GV, nrow = 1)
-mouse_mii_gv
+mouse_gv_mii = plot_grid( plot_GV, plot_MII, nrow = 1)
+mouse_gv_mii
 
 #######################################################################################
 
@@ -280,8 +282,8 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 }
 
 
-save_plot_pdf("length_distribution_mouse_main.pdf", main_plot, width = 3.54, height = 3.54)
-save_plot_pdf("length_distribution_mouse_mii_gv.pdf", mouse_mii_gv, width = 3.54, height = 3.54/2)
+save_plot_pdf("length_distribution_mouse_main.pdf", main_plot_mouse, width = 3.54, height = 3.54 * 1.5)
+#save_plot_pdf("length_distribution_mouse_mii_gv.pdf", mouse_mii_gv, width = 3.54, height = 3.54/2)
 
 plot_length = 2.25
 
