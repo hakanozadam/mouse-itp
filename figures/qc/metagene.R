@@ -610,7 +610,15 @@ plot_metagene_unit = function(this_df,
     this_df = data.frame(position = -35:35, count = this_coverage)
   }
   else{
-    this_coverage   = shift_by_offsets(this_df, experiment, offsets )
+    this_coverage   = shift_by_offsets(this_df, experiment[1], offsets )
+
+    if(length(experiment) >1){
+      for(i in seq(2, length(experiment))){
+        this_coverage = this_coverage + shift_by_offsets(this_df, experiment[i], offsets )
+      }
+    }
+
+    
     this_df         = data.frame(position = -35:35, count = this_coverage[c( -1:-15, -86:-100  )  ])
   }
   
@@ -773,6 +781,113 @@ million_cell_plot
 human_metagene_plot = combine_plots_main(hundred_cell_plot, million_cell_plot)
 human_metagene_plot
 
+all_mouse_experiments       = unique(mouse_metagene_start$experiment)
+one_cell_experiment_indices = grep("1cell", all_mouse_experiments )
+one_cell_experiments        = all_mouse_experiments[one_cell_experiment_indices]
+
+two_cell_experiment_indices = grep("2cell", all_mouse_experiments )
+two_cell_experiments        = all_mouse_experiments[two_cell_experiment_indices]
+
+four_cell_experiment_indices = grep("4cell", all_mouse_experiments )
+four_cell_experiments        = all_mouse_experiments[four_cell_experiment_indices]
+
+eight_cell_experiment_indices = grep("8cell", all_mouse_experiments )
+eight_cell_experiments        = all_mouse_experiments[eight_cell_experiment_indices]
+
+
+one_cell_combined_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                         experiment = one_cell_experiments, 
+                                         site       = "start", 
+                                         plot_title = "Start Site",
+                                         y_upper    = 600)
+
+one_cell_combined_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                                  experiment = one_cell_experiments, 
+                                                  site       = "stop", 
+                                                  plot_title = "Stop Site",
+                                                  y_upper    = 4000 )
+
+
+one_cell_combined_plot       = combine_start_and_stop( one_cell_combined_start_plot, 
+                                                       one_cell_combined_stop_plot, 
+                                              "1cell"  ) 
+
+one_cell_combined_plot
+
+
+two_cell_combined_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                                  experiment = two_cell_experiments, 
+                                                  site       = "start", 
+                                                  plot_title = "Start Site",
+                                                  y_upper    = 500)
+
+
+
+two_cell_combined_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                                 experiment = two_cell_experiments, 
+                                                 site       = "stop", 
+                                                 plot_title = "Stop Site",
+                                                 y_upper    = 1500 )
+
+two_cell_combined_plot       = combine_start_and_stop( two_cell_combined_start_plot, 
+                                                       two_cell_combined_stop_plot, 
+                                                       "2cell"  ) 
+
+two_cell_combined_plot
+
+
+
+four_cell_combined_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                                  experiment = four_cell_experiments, 
+                                                  site       = "start", 
+                                                  plot_title = "Start Site",
+                                                  y_upper    = 400)
+
+
+
+four_cell_combined_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                                 experiment = four_cell_experiments, 
+                                                 site       = "stop", 
+                                                 plot_title = "Stop Site",
+                                                 y_upper    = 1200 )
+
+four_cell_combined_plot       = combine_start_and_stop( four_cell_combined_start_plot, 
+                                                       four_cell_combined_stop_plot, 
+                                                       "4cell"  ) 
+
+four_cell_combined_plot
+
+
+
+eight_cell_combined_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
+                                                   experiment = eight_cell_experiments, 
+                                                   site       = "start", 
+                                                   plot_title = "Start Site",
+                                                   y_upper    = 1200)
+
+
+
+eight_cell_combined_stop_plot = plot_metagene_unit(this_df    = mouse_metagene_stop, 
+                                                  experiment = eight_cell_experiments, 
+                                                  site       = "stop", 
+                                                  plot_title = "Stop Site",
+                                                  y_upper    = 4000 )
+
+eight_cell_combined_plot       = combine_start_and_stop( eight_cell_combined_start_plot, 
+                                                        eight_cell_combined_stop_plot, 
+                                                        "8cell"  ) 
+
+eight_cell_combined_plot
+
+
+mouse_metagene_combined_plot = combine_plots_main(one_cell_combined_plot, eight_cell_combined_plot)
+mouse_metagene_combined_plot
+
+
+mouse_metagene_2_4_combined_plot = combine_plots_main(two_cell_combined_plot, four_cell_combined_plot)
+mouse_metagene_2_4_combined_plot
+
+################################################################################
 
 one_cell_start_plot = plot_metagene_unit(this_df    = mouse_metagene_start, 
                                          experiment = "1cell-3", 
@@ -1038,6 +1153,16 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 
 PDF_WIDTH  = 3.54
 PDF_HEIGHT = PDF_WIDTH
+
+
+
+save_plot_pdf("mouse_combined_metagene.pdf", mouse_metagene_combined_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
+
+save_plot_pdf("mouse_metagene_2_4_combined_plot.pdf", mouse_metagene_2_4_combined_plot , 
+              width  = PDF_WIDTH, 
+              height = PDF_HEIGHT)
 
 save_plot_pdf("mouse_metagene.pdf", mouse_metagene_plot , 
               width  = PDF_WIDTH, 
