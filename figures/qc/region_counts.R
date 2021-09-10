@@ -206,7 +206,7 @@ compute_region_percentages = function(df){
 
 ################################################################################
 
-customized_plot_region_counts = function(df){
+customized_plot_region_counts = function(df, plot_title = "Distribution of RPFs by transcript regions"){
   
   percentages <- replace(df$percentage, 
                          df$region != "CDS", "")
@@ -234,7 +234,7 @@ customized_plot_region_counts = function(df){
                       labels = c("5' UTR", "CDS", "3' UTR")) +
     geom_text(aes(x=.data$experiment, y=50, label=percentages), size=3) +
     scale_x_discrete(limits = rev) + 
-    labs(title = "Distribution of RPFs by transcript regions", 
+    labs(title = plot_title, 
          fill  = "Region", 
          x     = "Experiment", 
          y     = "Percentage")
@@ -462,10 +462,35 @@ mouse_region_len_percentages$experiment =
                unique( (mouse_region_len_percentages %>% filter( group == "8cell" ) )$experiment )) )
 
 
-# Our ultimate plot for mouse region lengths
+
 mouse_region_len_percentage_barplot = 
   customized_plot_region_counts(mouse_region_len_percentages) + 
   ggtitle("Distribution of Region Lengths")
+
+###
+
+mouse_region_len_percentages = 
+  mouse_region_len_percentages %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) 
+
+mouse_region_len_percentages_with_error = 
+  mouse_region_len_percentages %>%
+    group_by(group, region) %>%
+    mutate(average_percentage = mean(percentage) ) %>%
+    mutate(standard_error = sd(percentage) / sqrt(replicate_count) )
+
+mouse_region_len_percentages_with_error_bars = 
+  plot_bar_with_error_bars(mouse_region_len_percentages_with_error,
+                           "Region lengths weighted by ribosome occupancy")
+
+# EXPORT THIS FOR THE MAIN FIGURE
+mouse_region_counts_comperative_plot = 
+  plot_grid( mouse_region_counts_with_error_bars,
+             mouse_region_len_percentages_with_error_bars,
+             ncol = 1)
+
+
 
 ################################################################################
 ### H U M A N

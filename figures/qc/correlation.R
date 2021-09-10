@@ -13,6 +13,8 @@ source('./rename_experiments.R')
 
 human_ribo_file = '../../../../itp/human-itp_v4.ribo'
 mouse_ribo_file = '../../../mouse-itp_v5.ribo'
+
+mouse_rnaseq_count_file = '../../../cds_counts.csv.gz'
   
 human = Ribo(human_ribo_file, rename_default)
 mm    = Ribo(mouse_ribo_file, rename = rename_default)
@@ -332,8 +334,43 @@ means_sd_cpm = data.frame(Mean_log2CPM_100 = apply( log2(cpm(human_rcw[detected,
                           Sd_log2CPM_100 = apply( log2(cpm(human_rcw[detected,-1])[,4:6] + 0.5) , 1, sd),
                           Sd_log2CPM_Monosome = apply( log2(cpm(human_rcw[detected,-1])[,1:3] + 0.5 ), 1, sd)
 )
-plot(means_sd_cpm$Mean_log2CPM_100, sqrt(means_sd_cpm$Sd_log2CPM_100), pch=19, cex = 0.4)
-plot(means_sd_cpm$Mean_log2CPM_Monosome, sqrt(means_sd_cpm$Sd_log2CPM_Monosome), pch=19, cex = 0.4)
+
+means_sd_cpm_filtered = means_sd_cpm[ means_sd_cpm$Mean_log2CPM_100 > 2 & means_sd_cpm$Mean_log2CPM_Monosome > 2, ]
+
+mean_vs_var_100_color_point = rgb(124,203,162 , maxColorValue = 255 )
+mean_vs_var_100_color_line  = rgb(4,82,117 , maxColorValue = 255 )
+mean_vs_var_10M_color_point = rgb(240,116,110 , maxColorValue = 255 ) 
+mean_vs_var_10M_color_line = rgb(110,0,95 , maxColorValue = 255 )
+
+mean_vs_var_colors = c( "100_point" = mean_vs_var_100_color_point,
+                        "100_line" = mean_vs_var_100_color_line,
+                        "10M_point" = mean_vs_var_10M_color_point,
+                        "10M_line" = mean_vs_var_10M_color_line)
+
+mean_vs_variance_human_plot = 
+  ggplot( means_sd_cpm_filtered, 
+          aes(x= Mean_log2CPM_100, y = sqrt(Sd_log2CPM_100) )  ) +
+  
+  geom_smooth( method = "loess", se = FALSE , color = mean_vs_var_100_color_line) + 
+  geom_smooth(aes(x = Mean_log2CPM_Monosome, y = Sd_log2CPM_Monosome)  , method = "loess", se = FALSE , color = mean_vs_var_10M_color_line) + 
+  geom_point(aes(x = Mean_log2CPM_Monosome, y = Sd_log2CPM_Monosome ),size = 0.4, alpha =0.1, color = mean_vs_var_10M_color_point ) + 
+  geom_point(alpha =0.1, color = mean_vs_var_100_color_point, size = 0.4  ) + 
+  xlab("Mean") + ylab( "Sqrt(Standard Deviation)" ) + ggtitle("Log2(CPM)") + 
+  theme_bw() +
+  xlim( c(1,13.5) ) 
+  
+
+
+
+
+plot(means_sd_cpm$Mean_log2CPM_100, sqrt(means_sd_cpm$Sd_log2CPM_100), pch=19, cex = 0.2)
+points(means_sd_cpm$Mean_log2CPM_Monosome, sqrt(means_sd_cpm$Sd_log2CPM_Monosome), pch=19, cex = 0.2, col = "red")
+### To be continued with Can
+### We'll fir LOESS here
+itp_loess = loess( sqrt(means_sd_cpm$Sd_log2CPM_100) ~ means_sd_cpm$Mean_log2CPM_100 )
+predict (itp_loess, se = T )
+lines ( itp_loess)
+#####
 
 average_correlation = cor.test(means_sd_cpm$Mean_log2CPM_100, means_sd_cpm$Mean_log2CPM_Monosome, 
          method = "spearman")
@@ -392,7 +429,7 @@ ribo_rc <- get_region_counts(mm,
 ribo_rc$experiment = rename_experiments(ribo_rc$experiment)
 
 rcw = dcast(ribo_rc, transcript ~ experiment)  
-
+rcw_2 = dcast(ribo_rc, transcript ~ experiment)
 ################################################################################
 #########         M o u s e     S c a t t e r     P l o t s           ##########
 
@@ -479,9 +516,24 @@ genes_detected_df = data.frame(
   )
 
 ## Ggplot will be finalized
-ggplot(data=genes_detected_df, aes(x=sample_depth, y=genes_detected, group=sample_id) ) +
+umis_vs_genes_detected_plot = 
+ggplot(
+       data = genes_detected_df, 
+       aes(x = sample_depth, y = genes_detected, group=sample_id) ) +
   geom_line(linetype = "dashed", aes(col = sample_id) )  +  ylim(c( 0, 7000) ) +
-  geom_point() + xlab ("Number of CDS Mapping UMIs") + ylab("Genes Detected") + theme_bw()
+  geom_point(size = 0.7, aes(color = sample_id) ) + 
+  xlab("Number of CDS Mapping UMIs") + 
+  ylab("Genes Detected") + 
+  theme_bw() + 
+  theme(legend.title      = element_blank(),
+        axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.text       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
+  #scale_x_continuous( expand = c(0.05, 0.05) )
+  scale_x_continuous( expand = c(0.05, 0.05), minor_breaks = NULL, labels = scales::label_number_si()) +
+  scale_y_continuous( expand = c(0.05, 0.05), minor_breaks = NULL, labels = scales::label_number_si())
 
 
 
@@ -506,7 +558,7 @@ plot_pairwise_relationships(rcw,
 # my matrix subsampling gives very similar results
 set.seed(3)
 test_normalize = LogNormalize(as.matrix(rcw_columns_reordered[,-1]), scale.factor = 30000, verbose = TRUE)
-variables = FindVariableFeatures(test_normalize, selection.method = "vst")
+variables      = FindVariableFeatures(test_normalize, selection.method = "vst")
 rcw_columns_reordered[variables$vst.variance.standardized > 5,] 
 ## Spin1 is a great one.  -> https://journals.biologists.com/dev/article/124/2/493/39566/Spindlin-a-major-maternal-transcript-expressed-in
 #Rfpl4 seems very interesting as well
@@ -514,54 +566,151 @@ rcw_columns_reordered[variables$vst.variance.standardized > 5,]
 
 ## Zbed3 protein accumulates by 8-cell but translation is over by 4-cell stage
 # https://www.cell.com/cell-reports/fulltext/S2211-1247(17)31795-3
-variance_threshold = 4.5
+
+
+feature_color_palette = colorRampPalette(c("#3361A5", "#2884E7", "#1BA7FF", "#76CEFF", "#FFFFFF", "#FFE060", "#FA8E24", "#DA2828", "#A31D1D"), space="Lab")
+
+
+
+
+variance_threshold = 4.3
+distinct_genes_heatmap_from_normalization = 
 pheatmap(test_normalize[variables$vst.variance.standardized> variance_threshold, ], 
-         labels_row = strip_extension(rcw_columns_reordered[variables$vst.variance.standardized > variance_threshold,1]), 
-         cluster_cols = F, 
-         cutree_rows  = 6 )
+         labels_row     = strip_extension(rcw_columns_reordered[variables$vst.variance.standardized > variance_threshold,1]), 
+         cluster_cols   = FALSE, 
+         cutree_rows    = 8,
+         fontsize       = 8,
+         fontsize_col   = 7,
+         #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+         color        = feature_color_palette(100),
+         fontsize_row   = 7)
+
+features_from_normalization = rcw_columns_reordered[variables$vst.variance.standardized > variance_threshold,1]
+print(length(features_from_normalization))
+
+
+
+#  We decided not to use the following sampling. Instead we use "LogNormalize" above
+# which does the sampling (via scale.factor)
+#
+# set.seed(3)
+# sample_all_30k           = subsampleMatrix( rcw_columns_reordered[, -1], 30000)
+# sample_all_30k           = LogNormalize(as.matrix(sample_all_30k), scale.factor = 30000, verbose = TRUE)
+# subsample_variables      = FindVariableFeatures(sample_all_30k, selection.method = "vst")
+# variance_threshold_subsample = 3.86
+# 
+# 
+# feature_color_palette = colorRampPalette(brewer.pal(9,"YlGn")) 
+# feature_color_palette = colorRampPalette(c("#3362A5", "dodgerblue3", "dodgerblue2", "dodgerblue1", "deepskyblue", "lightblue", "lightgray", "gold", "orange","firebrick2"), space="Lab")
+# 
+# distinct_genes_heatmap_from_subsampling = 
+# pheatmap(sample_all_30k[subsample_variables$vst.variance.standardized> variance_threshold_subsample, ], 
+#          labels_row     = strip_extension( rcw_columns_reordered[subsample_variables$vst.variance.standardized > variance_threshold_subsample,1]), 
+#          cluster_cols   = FALSE, 
+#          cutree_rows    = 7,
+#          fontsize       = 8,
+#          fontsize_col   = 7,
+#          color        = feature_color_palette(100),
+#          fontsize_row   = 7)
+# 
+# features_from_subsampling = rcw_columns_reordered[subsample_variables$vst.variance.standardized > variance_threshold_subsample,1]
+# print(length(features_from_subsampling))
+# 
+# length(intersect(features_from_normalization, features_from_subsampling) )
+
 
 
 ################################################################################
-## Mouse RNA-Seq
-mouse_rna_cds = read.csv('./rnaseq/cds_counts.csv')
+########                    M O U S E     RNA-Seq                      #########
+mouse_rna_cds = read.csv(mouse_rnaseq_count_file)
+## Remove 20210607.RNAseq.4cell.cross.B
+mouse_rna_cds = mouse_rna_cds[,-11]
+
 colnames(mouse_rna_cds)  = gsub(colnames(mouse_rna_cds), pattern = ".", fixed = T, replacement = "-")
+
+mouse_rnaseq_old_names = colnames(mouse_rna_cds)[-1]
+
+mouse_rna_name_mapper = make_name_mapper(mouse_rnaseq_old_names)
+
+rename_rnaseq_experiments = function(experiment_name){
+  return( paste( mouse_rna_name_mapper[[experiment_name]], "RNAseq" , sep = "-") )
+}
+
+# rename_riboseq_experiments = function(experiment_name){
+#   return( paste( mouse_exp_name_mapper[[experiment_name]], "Ribo" , sep = "-") )
+# }
+# 
+# colnames(rcw_2) = c( colnames(rcw)[1], rename_riboseq_experiments( colnames(rcw)[-1]))  
+
+rename_rnaseq_experiments = Vectorize(rename_rnaseq_experiments, USE.NAMES = FALSE)
+# rename_ribo_experiments = Vectorize(rename_riboseq_experiments, USE.NAMES = FALSE)
+
+new_rnaseq_exp_names = rename_rnaseq_experiments( mouse_rnaseq_old_names )
+
+colnames(mouse_rna_cds) = c(colnames(mouse_rna_cds)[1], new_rnaseq_exp_names)
+
 
 for (id in 1:length(mouse_rna_cds$transcript)) { 
   mouse_rna_cds$transcript[id] = rename_default(mouse_rna_cds$transcript[id])
 }
-## Remove 20210607.RNAseq.4cell.cross.B
-mouse_rna_cds = mouse_rna_cds[,-11]
+
+## Reorder the experiments
+mouse_rna_cds = mouse_rna_cds[, c(1,16:23,2:15)]
+
 
 ## RNA-Seq correlation
-mouse_rna_cors = replicate_clustering_spearman( mouse_rna_cds, breaks_manual = seq(0,1,.01), filter = T)
+mouse_rna_cors = replicate_clustering_spearman( mouse_rna_cds, 
+                                                breaks_manual = seq(0,1,.01), 
+                                                filter        = T,
+                                                clustering    = F )
 
 ## RNA-Seq clustering by variable genes
 ## Based on the above we might want to change this as well
+set.seed(3)
 test_normalize_rna = LogNormalize(mouse_rna_cds[,-1], scale.factor = 250000, verbose = TRUE)
-variables = FindVariableFeatures(test_normalize_rna, selection.method = "vst")
+variables          = FindVariableFeatures(test_normalize_rna, selection.method = "vst")
 mouse_rna_cds[variables$vst.variance.standardized > 7, 1] 
 
+
 pheatmap(log10 (mouse_rna_cds[variables$vst.variance.standardized > 7,-1] + 1 ) , 
-         labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
+         #labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
+         cluster_cols   = FALSE, 
+         cutree_rows    = 5,
+         fontsize       = 8,
+         fontsize_col   = 7,
+         #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+         color        = feature_color_palette(100),
+         labels_row   = unlist( lapply(strsplit( mouse_rna_cds[variables$vst.variance.standardized > 7,1], split = "-" ) , "[[", 1 ) ),
+         fontsize_row   = 7
 )
 
 ## Combined data correlation
 all_counts = merge(mouse_rna_cds, rcw, by = "transcript")
+
+new_combined_ordered_indeces = c(39:43, 2:5, 
+                                 44:48, 6:9,
+                                 24:28, 10:13,
+                                 29:31, 14:17,
+                                 32:34, 18:19,
+                                 35:38, 20:23)
+
+all_counts_arranged = all_counts[, new_combined_ordered_indeces]
+
+###### LEFT HERE!!!!!!!!
+rownames( all_counts )
+
 ## Might want to think about which genes are included in the subsampling. 
 ## It might be good to filter based on expression before subsampling. 
-allcounts_cds_subsample = subsampleMatrix (all_counts[,-1], desiredDepth = 28000)
+set.seed(3)
+allcounts_cds_subsample = subsampleMatrix (all_counts_arranged[,-1], desiredDepth = 28000)
 
-combined_cors = replicate_clustering_spearman( allcounts_cds_subsample, breaks_manual = seq(0,1,.01), filter = T)
+combined_cors = 
+  replicate_clustering_spearman( 
+    allcounts_cds_subsample, 
+    breaks_manual = seq(0,1,.01), 
+    filter = T,
+    clustering = FALSE)
 
-plot_pairwise_relationships(allcounts_cds_subsample, "20210614-ITP-GV-50-C", 
-                            "20210614-ITP-GV-50-E", 
-                            xrange = 2000, yrange = 2000, num_bin = 50,
-                            xlab = "GV_RepC", ylab = "GV_RepE")
-
-plot_pairwise_relationships(allcounts_cds_subsample, "20210614-ITP-GV-50-C", 
-                            "X20210607-RNAseq-GV-B", 
-                            xrange = 2000, yrange = 2000, num_bin = 50,
-                            xlab = "MII_Ribo", ylab = "MII_RNASeq")
 
 ## A primitive plotting function for single genes. 
 ## HO: I think this does warrant some effort to make it prettier. 
@@ -569,38 +718,56 @@ plot_pairwise_relationships(allcounts_cds_subsample, "20210614-ITP-GV-50-C",
 plot_cpm_across_conditions = function(counts, gene, stages = c("all")) { 
   # counts is a numeric matrix of raw read counts + gene_ids
   # gene to be plotted. Formatted as "Obox2"
-  # Stages define which samples to group
+  # Stages are 1cell, 2cell, MII, GV, etc
+  set.seed(3)
+  colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
   if (stages[1] == "all" )  {  
-    cpms = cpm(counts[,-1])
+    normalizedcounts = LogNormalize(counts[,-1], scale = 30000)
   } else { 
     selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
-    cpms = cpm(counts[,selected_samples])
+    normalizedcounts = LogNormalize(counts[,selected_samples], scale = 30000)
   } 
-  tidy_cpm = melt(cpms[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
-  tidy_cpm$stage = sapply(strsplit(as.character(colnames(cpms)), split = "-"), "[[", 3) 
-  tidy_cpm$method = sapply(strsplit(as.character(colnames(cpms)), split = "-"), "[[", 2) 
+  tidy_norm = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+  tidy_norm$stage = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+  tidy_norm$stage = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+  tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
   
-  ggplot(tidy_cpm, 
+  ggplot(tidy_norm, 
          aes( x =  strip_extension(as.character(gene)), y = value) ) + 
     geom_jitter(aes(color = stage, shape = method),
-                position = position_jitterdodge(jitter.width = 0.05, dodge.width = 0.2),
-                size = 1 ) +
+                position = position_jitterdodge(jitter.width = 0.2, dodge.width = 1),
+                size = 2 ) +
     # stat_summary( aes(color = variable),
     #  geom="line", lwd=2, fun = mean, position = position_dodge(0.4) ) + 
     # scale_color_manual(values =  c('#089099', '#d12959')) + 
     theme_bw()+
-    ylab("CPM") + xlab("") 
+    ylab("Log Normalized Counts") + xlab("") 
 }
 
 ## I have a list with a large number of genes that might be useful to include. 
 ## Here is one example while we work on the aesthetics. 
 
-plot_cpm_across_conditions(all_counts, "Nfrkb", stages = c("RNAseq-1cell", "RNAseq-MII", "ITP-1cell", "ITP-MII", "RNAseq-2cell", "ITP-2cell") ) 
-plot_cpm_across_conditions(all_counts, "Ppig", stages = c("RNAseq-MII", "RNAseq-1cell", "RNAseq-2cell", "RNAseq-4cell", "ITP-MII", "ITP-1cell","ITP-2cell" , "ITP-4cell") ) 
-plot_cpm_across_conditions(all_counts, "Nop58", stages = c("RNAseq-1cell", "RNAseq-2cell", "RNAseq-4cell", "ITP-1cell","ITP-2cell" , "ITP-4cell") ) ## Proteomics
+nfkrb_stages_plot = 
+plot_cpm_across_conditions(all_counts, "Nfrkb", stages = c("1cell", "MII") ) 
+
+save_plot_pdf("nfkrb_stages_plot.pdf", nfkrb_stages_plot, 
+              width = unit(3, "in"), height = unit(2.5, "in") )
+
+ppig_stages_plot = 
+plot_cpm_across_conditions(all_counts, "Ppig", stages = c("1cell", "MII", "2cell", "4cell") ) 
+
+nop58_stages_plot = 
+plot_cpm_across_conditions(all_counts, "Nop58", stages = c("1cell", "MII", "2cell", "4cell") )  ## Proteomics
 
 
-## Still Need to Proportionality; Differential TE analysis; Proteomics from Can's main script. 
+selected_genes_accross_stages =
+                          plot_grid(  nfkrb_stages_plot + theme(legend.position = "none"), 
+                          ppig_stages_plot  + theme(legend.position = "none"), 
+                          nop58_stages_plot + theme(legend.position = "none"), 
+                          nfkrb_stages_plot + theme(legend.position = "none"), 
+                          bottom_legend,
+                          rel_widths = c(1, 1, 1, 1, 0.5),
+                          nrow = 1 )
 
 ################################################################################
 #######                P D F    P R O D U C T I O N                      #######
@@ -622,7 +789,10 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
   
 }
 
+################################################################################
+#######                   P A G E     L A Y O U T                         ######
 
+## Moved elsewhere
 ################################################################################
 
 save_plot_pdf("supp_pairwise_correlation.pdf", sp_grid, width = unit(7.05, "in"), height = unit(2.35, "in"))
@@ -630,5 +800,17 @@ save_plot_pdf("supp_pairwise_correlation.pdf", sp_grid, width = unit(7.05, "in")
 save_plot_pdf("mouse_correlation_map.pdf", mouse_cors$heatmap_correlation[[4]], width = unit(4.7, "in"), height = unit(4.7, "in"))
 
 save_plot_pdf("supp_mouse_pairwise_correlation.pdf", mouse_sp_grid, width = unit(7.05, "in"), height = unit(2.35, "in"))
+
+save_plot_pdf("distinct_genes_heatmap_from_normalization.pdf", distinct_genes_heatmap_from_normalization, 
+              width = unit(5, "in"), height = unit(8.5, "in") )
+
+save_plot_pdf("mean_vs_variance_human_plot_add_legend.pdf", mean_vs_variance_human_plot, 
+              width = unit(3, "in"), height = unit(3, "in") )
+
+save_plot_pdf("combined_cors.pdf", combined_cors$heatmap_correlation[[4]], 
+              width = unit(7.2, "in"), height = unit(7.2, "in") )
+
+save_plot_pdf("umis_vs_genes_detected.pdf", umis_vs_genes_detected_plot, 
+              width = unit(3.45, "in"), height = unit(2.7, "in") )
 
 

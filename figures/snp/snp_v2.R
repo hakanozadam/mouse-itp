@@ -20,10 +20,13 @@ library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(reshape2)
+library(ggpubr)
 library(cowplot)
 library(RColorBrewer)
 
 library(Cairo)
+
+
 
 #Heatmap related packages
 library(pheatmap)
@@ -70,6 +73,9 @@ RATIO_RIBO_COLOUR = BURNT_ORANGE
 RATIO_RNA_COLOUR  = "navy"
 
 PERCENTAGE_DASHED_COLOR = "#088f99"
+
+heatmap_ribo_orange = rgb(228,88,10 , maxColorValue = 255)
+heatmap_ribo_blue   = rgb(55,135,192, maxColorValue = 255)
 
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
@@ -378,10 +384,10 @@ ggplot(data=corrected_percentage_averages, aes(x=stage, y=average_percentage, fi
   
   scale_y_continuous( expand = c(0, 0
                                  ), limits = c(-0.5, 50) ) +
-  scale_fill_manual( name = "experiment_type", values = c(RATIO_RIBO_COLOUR,
-                                                          RATIO_RNA_COLOUR) ) + 
-  scale_color_manual(name = "experiment_type",  values = c(RATIO_RIBO_COLOUR,
-                                RATIO_RNA_COLOUR) ) + 
+  scale_fill_manual( name = "experiment_type", values = c(heatmap_ribo_orange,
+                                                          heatmap_ribo_blue) ) + 
+  scale_color_manual(name = "experiment_type",  values = c(heatmap_ribo_orange,
+                                                           heatmap_ribo_blue) ) + 
   labs(title = "", 
        x     = "Stage", 
        y     = "Percentage")
@@ -446,8 +452,11 @@ heatmap_binary                 = t(heatmap_binary_raw[-1,])
 # Adapted from https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
 paletteLength = 100
 
+
+
 #myColor       = colorRampPalette(c("navy", "white", "orange"))(paletteLength)
-myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+#myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+myColor       = colorRampPalette(c(heatmap_ribo_blue, "white", heatmap_ribo_orange  ))(paletteLength)
 #myColor       = colorRampPalette(c("navy", "white", "#f8971f"))(paletteLength)
 # length(breaks) == length(paletteLength) + 1
 # use floor and ceiling to deal with even/odd length pallettelengths
@@ -457,11 +466,42 @@ myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR)
 myBreaks <- c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 1), 
               seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
 
-NUMBER_OF_HEATMAP_CLUSTERS = 6
+
+clustering_order = c(
+  'Nop14',
+  'Tmppe', 
+  'Slc13a2',
+  'Ppp2ca',
+  'Srpk1',
+  'Cbx3',
+  'Ncoa3',
+  'Cdk1',
+  'Baz1a',
+  'Dyrk3',
+  'Lclat1',
+  'Lyar',
+  'Umps',
+  'Tsen2',
+  'Ccnh',
+  
+  'Folr1',
+  'Pa2g4',
+  'Zfp296',
+  'Mrps9',
+  'Eif3d',
+  'Nin',
+  'Ddx21',
+  'Bcat1',
+  'Mysm1'
+)
+
+ordered_heatmap_df =  heatmap_df[match(clustering_order,  row.names(heatmap_df) ), ]
+
+NUMBER_OF_HEATMAP_CLUSTERS = 4
 ### Trimmed down
 ### For the main figure
 main_heatmap_figure = 
-pheatmap( t( heatmap_df) , 
+pheatmap( t( ordered_heatmap_df) , 
         # clustering_method = "median",
         #clustering_distance_rows = "correlation",
         #clustering_method = "centroid",
@@ -472,7 +512,7 @@ pheatmap( t( heatmap_df) ,
         cellwidth         = 15,
         treeheight_row    = 0,
         treeheight_col    = 0,
-        cluster_cols      = TRUE, 
+        cluster_cols      = FALSE, 
         cluster_rows      = FALSE,
         color             = myColor,
         breaks            = myBreaks,
@@ -759,7 +799,7 @@ generate_legend_unit = function(gene, experiment_type){
              aes(x    = x, 
                  y    = y, 
                  fill = factor(position, levels = sort(unique( df$position  ) )  )  )  )  + 
-    geom_bar(stat="identity", width= 0.8, color = "black") + 
+    geom_bar(stat="identity", width= 0.8, color = "black", size = 0.3) + 
     theme(
       panel.border     = element_blank(),
       panel.grid       = element_blank(),
@@ -774,17 +814,20 @@ generate_legend_unit = function(gene, experiment_type){
       axis.ticks.y=element_blank(),
       plot.background = element_blank(),
       axis.text.y = element_blank(),
-      plot.title = element_text(color = title_colors[[experiment_type]], size=10, face="bold", hjust = 0.5),
+      plot.title = element_text(color = title_colors[[experiment_type]], size=7, face="bold", hjust = 0.5),
     ) + 
     scale_fill_manual(values = barplot_colors)  + 
-    ggtitle(title_texts[[experiment_type]])
+    #ggtitle(title_texts[[experiment_type]])
+    ggtitle( paste( title_texts[[experiment_type]], as.character(number_of_snps), sep = " " ) )
   
   #if(experiment_type == "rna"){
   #  p = p + scale_y_reverse()
   #}
   
-  return(p)
+  return(p + rotate())
 }
+
+generate_legend_unit("Ncoa3", "ribo")
 
 generate_legend = function(gene){
   p_ribo = generate_legend_unit(gene, experiment_type = "ribo")
@@ -795,15 +838,15 @@ generate_legend = function(gene){
                            nrow = 1,
                            rel_widths = c(0.2, 1 , 0.2, 1 ) )
   this_legend     = plot_grid(this_blank_pad, this_legend_pre, this_blank_pad,
-                              ncol = 1, rel_heights = c(1, 0.6, 1)) 
+                              ncol = 1, rel_heights = c(0.01, 1, 0.01)) 
   
   return(this_legend)
 }
 
 snp_detailed_legend = generate_legend("Nin")
 
-snp_detailed_legend
-generate_legend("Nin")
+snp_detailed_legend 
+generate_legend("Ncoa3")
 
 ################################################################################
 
@@ -1549,20 +1592,43 @@ combine_gene_detail_and_ratio_plots = function(gene){
 
 ncoa3_detailed_plot = combine_gene_detail_and_ratio_plots("Ncoa3")
 ncoa3_detailed_plot
-save_plot_pdf("ncoa3.pdf", ncoa3_detailed_plot, width = 3.5, height = 3.5)
+#save_plot_pdf("ncoa3.pdf", ncoa3_detailed_plot, width = 3.5, height = 3.5)
 
 eif3d_detailed_plot = combine_gene_detail_and_ratio_plots("Eif3d")
 eif3d_detailed_plot
-save_plot_pdf("eif3d.pdf", eif3d_detailed_plot, width = 3.5, height = 3.5)
+#save_plot_pdf("eif3d.pdf", eif3d_detailed_plot, width = 3.5, height = 3.5)
 
 hsp90ab1_detailed_plot = combine_gene_detail_and_ratio_plots("Hsp90ab1")
 hsp90ab1_detailed_plot
-save_plot_pdf("hsp90ab1.pdf", hsp90ab1_detailed_plot, width = 3.5, height = 3.5)
+#save_plot_pdf("hsp90ab1.pdf", hsp90ab1_detailed_plot, width = 3.5, height = 3.5)
 
 folr1_detailed_plot = combine_gene_detail_and_ratio_plots("Folr1")
 folr1_detailed_plot
-save_plot_pdf("folr1.pdf", folr1_detailed_plot, width = 3.5, height = 3.5)
+#save_plot_pdf("folr1.pdf", folr1_detailed_plot, width = 3.5, height = 3.5)
 ################################################################################
+
+################################################################################
+###             SNP Legends for the main figure                             ####
+
+snp_legend_width  = 2
+snp_legend_height = 0.5
+
+ncoa3_snp_legend = generate_legend("Ncoa3")
+ncoa3_snp_legend
+save_plot_pdf("ncoa3_legend.pdf", ncoa3_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+eif3d_snp_legend = generate_legend("Eif3d")
+eif3d_snp_legend
+save_plot_pdf("eif3d_legend.pdf", eif3d_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+
+hsp90ab1_snp_legend = generate_legend("Hsp90ab1")
+hsp90ab1_snp_legend
+save_plot_pdf("hsp90ab1_legend.pdf", hsp90ab1_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+folr1_snp_legend = generate_legend( "Folr1" )
+folr1_snp_legend
+save_plot_pdf("folr1_legend.pdf", folr1_snp_legend, width = snp_legend_width, height = snp_legend_height)
 
 ################################################################################
 #########      M A I N    S N P   F I G U R E   L A Y O U T         ############
@@ -1780,6 +1846,7 @@ interesting_genes = c('Tsen2',
                     # 'Ncoa3',
                      'Dyrk3',
                      'Zfp296')
+
 
 
 for(g in interesting_genes){
