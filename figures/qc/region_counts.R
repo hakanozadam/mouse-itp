@@ -485,10 +485,15 @@ mouse_region_len_percentages_with_error_bars =
                            "Region lengths weighted by ribosome occupancy")
 
 # EXPORT THIS FOR THE MAIN FIGURE
+
+legend_of_mouse_region_counts_comperative_plot = get_legend(mouse_region_counts_with_error_bars)
+
 mouse_region_counts_comperative_plot = 
-  plot_grid( mouse_region_counts_with_error_bars,
-             mouse_region_len_percentages_with_error_bars,
-             ncol = 1)
+  plot_grid( mouse_region_counts_with_error_bars + theme(legend.position = "none"),
+             mouse_region_len_percentages_with_error_bars + theme(legend.position = "none"),
+             legend_of_mouse_region_counts_comperative_plot,
+             ncol = 3,
+             rel_widths = c(1,1,0.2))
 
 
 

@@ -783,7 +783,8 @@ generate_legend_unit = function(gene, experiment_type){
   gene_data = 
     detailed_table_with_dummies %>%
     filter( transcript == gene & type == experiment_type ) %>%
-    filter( group == "2cell" | group == "4cell" | group == "8cell")
+    filter( group == "2cell" | group == "4cell" | group == "8cell") %>%
+    filter(paternal_per_k > 0 | maternal_per_k > 0)
   
   number_of_snps = length( unique(gene_data$position  ) )
   
@@ -860,25 +861,95 @@ detailed_table_with_dummies %>%
   filter( sum(paternal_per_k + maternal_per_k) > 0  )
 
 
-# get_spaced_brakes = function(ymax){
-#   
-#   
-#   if(ymax == 5){
-#     result = c(0, 5)
-#   }
-#   else if(ymax %% 2 == 0){
-#     result = c(0, ymax / 2, ymax)
-#   } 
-#   else if(ymax %% 3 == 0){
-#     result = c(0, ymax / 3, 2*( ymax / 3 ) , ymax)
-#   } 
-#   else{
-#     result = c(0, ymax)
-#   }
-#   
-#   return(result)
-# }
+################################################################################
+################################################################################
+###### Adding color values to the SNP table
 
+get_snp_positions_of_gene = function(gene){
+  this_df = detailed_table_with_dummies %>% 
+    filter(experiment == "4cell-1" & type == "ribo" ) %>%
+    filter(transcript == gene)
+  
+  return( sort(this_df$position) )
+}
+
+a = get_snp_positions_of_gene("Ncoa3")
+a
+
+sort(a$position)
+
+produce_color_map_for_gene_positions = function( gene_positions, type){
+  
+  if(type == "ribo"){
+    this_color_name = "Oranges"
+  }
+  else if(type == "rna"){
+    this_color_name = "Blues"
+  } 
+  else{
+    print("Error! Wrong Type!")
+    return(NULL)
+  }
+  
+  number_of_snps                 = length(gene_positions)
+  this_ribo_color_palette        = (colorRampPalette(brewer.pal(9,this_color_name))( number_of_snps + 5 )[-seq( 1,  5) ])
+  names(this_ribo_color_palette) = gene_positions
+  
+  return( rev(this_ribo_color_palette) )
+}
+
+get_gene_vector = function(){
+  this_df = detailed_table_with_dummies %>% 
+    filter(experiment == "4cell-1" & type == "ribo" ) %>%
+    summarise(transcript)
+    
+  return( sort(unique(this_df$transcript)) )
+  
+}
+
+produce_color_hash_for_gene = function(gene, type){
+  
+  snp_positions  = get_snp_positions_of_gene(gene)
+  this_color_map = produce_color_map_for_gene_positions(snp_positions, type)
+    
+  return(this_color_map)
+}
+
+a = produce_color_hash_for_gene("Nin", "ribo")
+a
+
+
+k = produce_color_map_for_gene_positions(a, "rna")
+
+typeof(k)
+
+b = 
+  detailed_table_with_dummies %>% 
+  filter(experiment == "2cell-1" & type == "rna" ) %>%
+  filter(transcript == "Ncoa3")
+
+sort(b$position)
+
+c = 
+  detailed_table_with_dummies %>% 
+  filter(experiment == "8cell-1" & type == "rna" ) %>%
+  filter(transcript == "Ncoa3")
+
+sorted_snp_positions = sort(c$position)
+length(sorted_snp_positions)
+
+number_of_snps           = length( sorted_snp_positions  )
+
+this_blues_color_palette = colorRampPalette(brewer.pal(9,"Blues"))( number_of_snps + 5 )[-seq( 1,  5) ]
+
+this_ribo_color_mapper = vector("list", number_of_snps)
+
+names(this_ribo_color_mapper) = sorted_snp_positions
+
+for(i in 1:number_of_snps){
+  this_ribo_color_mapper[i] = this_ribo_color_palette[i]
+}
+this_ribo_color_mapper
 ################################################################################
 ### U N I T     P L O T 
 
@@ -950,6 +1021,113 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
       # axis.ticks.y=element_blank()
     ) +
     scale_fill_manual(values = barplot_colors) 
+  
+  if(experiment_type == "ribo"){
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(position = "right", 
+                                              labels   = format_y_axis, 
+                                              breaks   = yticks,
+                                              limits   = c(ymax, 0) , 
+                                              expand   = y_scale_expand ) 
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous(position = "right", 
+                                                 labels   = format_y_axis, 
+                                                 breaks   = yticks,
+                                                 limits   = c(0, ymax) , 
+                                                 expand   = y_scale_expand )
+    }
+  } 
+  else{
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(labels = format_y_axis, 
+                                              limits = c(ymax, 0), 
+                                              breaks   = yticks,
+                                              expand = y_scale_expand )
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous( labels = format_y_axis, 
+                                                  limits = c(0, ymax),
+                                                  breaks   = yticks,
+                                                  expand = y_scale_expand  )
+    }
+  }
+  
+  return(this_plot)
+}
+
+################################################################################
+################################################################################
+unit_plot_alternative = function(gene, experiment_type, experiment_group, allele_type, ymax){
+  ## We won't use this
+  ## We generate the fill colors for each transcript anually
+  ## for sanity check reaosns
+  bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
+  
+  y_scale_expand = c(0,0)
+  ymax           = adjust_ymax(ymax)
+  
+  gene_data = 
+    detailed_table_with_dummies %>%
+    filter(group == "2cell" | group == "4cell" | group == "8cell") %>%
+    filter(transcript == gene) %>% 
+    group_by(position) %>%
+    #filter( sum(paternal_per_k + maternal_per_k) > 0  ) %>%
+    filter( type == experiment_type ) %>%
+    filter( group == experiment_group)
+  
+  number_of_snps = length( unique(gene_data$position  ) )
+  
+  #paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps + 5 )[-seq( 1,  5) ]
+  #paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps  ) 
+  this_fill_colors = produce_color_hash_for_gene(gene, experiment_type)
+  
+  yticks = make_y_axis(ymax)
+  
+  if(experiment_group == "4cell"){
+    background_canvas = element_rect(fill = FOURCELL_BACKGROUND_COLOR)
+  }
+  else if(experiment_group == "2cell"){
+    background_canvas = element_rect(fill = TWOCELL_BACKGROUND_COLOR)  
+  }
+  else if(experiment_group == "8cell"){
+    background_canvas = element_rect(fill = EIGHTCELL_BACKGROUND_COLOR)  
+  }
+  else{
+    background_canvas = element_rect(fill = "white")
+  }
+  
+  
+  if(allele_type == "paternal"){
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = paternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  ) 
+  }else{
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = maternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  
+  this_plot = 
+    plot_base + 
+    geom_bar(stat="identity", width= 1) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      # plot.margin      = margin(5.5, 5.5, 0, 5.5),
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      plot.background = background_canvas,
+      axis.text.y = element_text(family = FIGURE_FONT, face = "plain", size = DETAILED_BARPLOT_FONT_SIZE),
+      # axis.ticks.y=element_blank()
+    ) +
+    scale_fill_manual(values = this_fill_colors) 
   
   if(experiment_type == "ribo"){
     if(allele_type == "maternal"){
@@ -1418,9 +1596,9 @@ top_snps_paternal_ratios_rna_wide[is.na(top_snps_paternal_ratios_rna_wide) ] = 0
 
 
 
-difference_heatmap_color = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
-ribo_heatmap_color       = colorRampPalette(c("white", RATIO_RIBO_COLOUR))(paletteLength)
-rna_heatmap_color        = colorRampPalette(c("white", RATIO_RNA_COLOUR))(paletteLength)
+difference_heatmap_color = colorRampPalette(c(heatmap_ribo_blue, "white", heatmap_ribo_orange))(paletteLength)
+ribo_heatmap_color       = colorRampPalette(c("white", heatmap_ribo_orange))(paletteLength)
+rna_heatmap_color        = colorRampPalette(c("white", heatmap_ribo_blue))(paletteLength)
 
 difference_heatmap_breaks = c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 1), 
               seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
@@ -1630,6 +1808,21 @@ folr1_snp_legend = generate_legend( "Folr1" )
 folr1_snp_legend
 save_plot_pdf("folr1_legend.pdf", folr1_snp_legend, width = snp_legend_width, height = snp_legend_height)
 
+
+supp_legend_genes = c("Cdk1", "Baz1a", "Lclat1", "Umps", "Mrps9", "Nin",
+                      "Aff1", "Pttg1")
+
+for(g in supp_legend_genes){
+  this_legend_p = generate_legend( g )
+  this_file     = paste( g, "legend.pdf", sep = "_"  )
+  save_plot_pdf(this_file, this_legend_p, width = snp_legend_width, height = snp_legend_height)
+}
+
+
+################################################################################
+###             SNP Legends for the supp figure                             ####
+
+
 ################################################################################
 #########      M A I N    S N P   F I G U R E   L A Y O U T         ############
 
@@ -1781,96 +1974,43 @@ combine_gene_detail_and_ratio_plots("Cdt1")
 
 #################################################
 
+# 
+# 
+# combine_gene_detail_and_ratio_plots("Rpa1")
+# 
+# combine_gene_detail_and_ratio_plots("Slc6a8")
+# 
+# 
+# ncoa_plot = combine_gene_detail_and_ratio_plots("Ncoa3") 
+# nin_plot = combine_gene_detail_and_ratio_plots("Nin") 
+# lyar_plot = combine_gene_detail_and_ratio_plots("Lyar")
+# top1_plot = combine_gene_detail_and_ratio_plots("Top1")
+# tpx2_plot = combine_gene_detail_and_ratio_plots("Tpx2")
+# mcm7_plot = combine_gene_detail_and_ratio_plots("Mcm7")
+# rpl38_plot = combine_gene_detail_and_ratio_plots("Rpl38")
+# kdm5b_plot = combine_gene_detail_and_ratio_plots("Kdm5b")
+# ppat_plot = combine_gene_detail_and_ratio_plots("Ppat")
+# 
+# page_plot = plot_grid(ncoa_plot, 
+#                       nin_plot,
+#                       lyar_plot ,
+#                       top1_plot,
+#                       tpx2_plot ,
+#                       mcm7_plot ,
+#                       rpl38_plot ,
+#                       kdm5b_plot ,
+#                       ppat_plot ,
+#                       ncol = 3   )
+# 
+# page_plot = plot_grid(ncoa_plot, 
+#                       nin_plot,
+#                       lyar_plot ,
+#                       top1_plot,
+#                       tpx2_plot ,
+#                       mcm7_plot ,
+#                       ncol = 2   )
+# page_plot
+# 
+# save_plot_pdf("page_plot_pdf.pdf", page_plot, width = 7.25, height = 10.22)
+# 
 
-
-combine_gene_detail_and_ratio_plots("Rpa1")
-
-combine_gene_detail_and_ratio_plots("Slc6a8")
-
-### TRy one page
-
-
-ncoa_plot = combine_gene_detail_and_ratio_plots("Ncoa3") 
-nin_plot = combine_gene_detail_and_ratio_plots("Nin") 
-lyar_plot = combine_gene_detail_and_ratio_plots("Lyar")
-top1_plot = combine_gene_detail_and_ratio_plots("Top1")
-tpx2_plot = combine_gene_detail_and_ratio_plots("Tpx2")
-mcm7_plot = combine_gene_detail_and_ratio_plots("Mcm7")
-rpl38_plot = combine_gene_detail_and_ratio_plots("Rpl38")
-kdm5b_plot = combine_gene_detail_and_ratio_plots("Kdm5b")
-ppat_plot = combine_gene_detail_and_ratio_plots("Ppat")
-
-page_plot = plot_grid(ncoa_plot, 
-                      nin_plot,
-                      lyar_plot ,
-                      top1_plot,
-                      tpx2_plot ,
-                      mcm7_plot ,
-                      rpl38_plot ,
-                      kdm5b_plot ,
-                      ppat_plot ,
-                      ncol = 3   )
-
-page_plot = plot_grid(ncoa_plot, 
-                      nin_plot,
-                      lyar_plot ,
-                      top1_plot,
-                      tpx2_plot ,
-                      mcm7_plot ,
-                      ncol = 2   )
-page_plot
-
-save_plot_pdf("page_plot_pdf.pdf", page_plot, width = 7.25, height = 10.22)
-
-interesting_genes = c('Tsen2',
-                     'Ccnh',
-                     'Lyar',
-                     'Srpk1',
-                     'Lclat1',
-                     'Bcat1',
-                     'Nop14',
-                     'Umps',
-                     'Cbx3',
-                     'Tmppe',
-                     'Slc13a2',
-                     'Ppp2ca',
-                     'Nin',
-                     'Pa2g4',
-                     'Eif3d',
-                     'Mysm1',
-                     'Cdk1',
-                     'Ddx21',
-                     'Baz1a',
-                     'Folr1',
-                     'Mrps9',
-                    # 'Ncoa3',
-                     'Dyrk3',
-                     'Zfp296')
-
-
-
-for(g in interesting_genes){
-  p = combine_gene_detail_and_ratio_plots(g)
-  print(p)
-}
-
-combine_gene_detail_and_ratio_plots("Npm1")
-
-
-### List of genes to be higlighted
-# ('Tsen2-201',
-#   'Lclat1-201',
-#   'Nop14-201',
-#   'Cbx3-201',
-#   'Tmppe-201',
-#   'Slc13a2-201',
-#   'Nin-202',
-#   'Mysm1-201',
-#   'Mrps9-201')
-
-## Not changing genes:
-## Hsp90ab1 # Best so far
-## Pttg1 # very good
-## Npm1
-Aff1
-Nasp

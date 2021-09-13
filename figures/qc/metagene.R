@@ -741,11 +741,11 @@ combine_plots_main = function(plot_upper, plot_lower){
   
   
   
-  base_plot = plot_grid( plot_upper, plot_lower, x_label, ncol = 1, rel_heights = c( 1, 1, 0.1), align = "h")
+  base_plot = plot_grid( plot_upper, plot_lower, ncol = 2)
   
   this_plot = plot_grid(y_label, base_plot, nrow = 1, rel_widths = c(0.05, 1)  )
   
-  return(this_plot)
+  return(base_plot)
 }
 
 
