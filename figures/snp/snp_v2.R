@@ -497,10 +497,12 @@ clustering_order = c(
 
 ordered_heatmap_df =  heatmap_df[match(clustering_order,  row.names(heatmap_df) ), ]
 
+
+
 NUMBER_OF_HEATMAP_CLUSTERS = 4
 ### Trimmed down
 ### For the main figure
-main_heatmap_figure = 
+old_main_heatmap_figure = 
 pheatmap( t( ordered_heatmap_df) , 
         # clustering_method = "median",
         #clustering_distance_rows = "correlation",
@@ -526,7 +528,7 @@ pheatmap( t( ordered_heatmap_df) ,
         fontsize_number   = FONT_LABEL_SIZE,
         )
 
-main_heatmap_figure
+old_main_heatmap_figure
 
 #### Detailed with row names
 #### For the supplementary Figure
@@ -587,8 +589,104 @@ standalone_heatmap_figure_no_stars =
 standalone_heatmap_figure_no_stars
 
 
+################################################################################
+####   N E W   V E R S I O N   O F   T H E   M A I N   H E A T M A P   #########
+
+selected_snps_pseudo_count = 1
+
+riboseq_paternal_ratios_selected = 
+  detailed_riboseq_table %>%
+    filter( group %in% c( '2cell', '4cell', '8cell') ) %>%
+    filter(transcript %in% clustering_order) %>%
+    group_by( group, transcript ) %>%
+    summarise( paternal_ratio =  ( sum(paternal) ) / (sum( paternal + maternal) + 1*selected_snps_pseudo_count ) )
+
+rnaseq_paternal_ratios_selected = 
+  detailed_rnaseq_table %>%
+  filter( group %in% c( '2cell', '4cell', '8cell') ) %>%
+  filter(transcript %in% clustering_order) %>%
+  group_by( group, transcript ) %>%
+  summarise( paternal_ratio =  ( sum(paternal)) / (sum( paternal + maternal) + 1*selected_snps_pseudo_count ) )
+
+riboseq_paternal_ratios_selected_wide_unordered = 
+  dcast( riboseq_paternal_ratios_selected,  
+         transcript ~ group ,
+         value.var = "paternal_ratio" )
+
+rnaseq_paternal_ratios_selected_wide_unordered = 
+  dcast( rnaseq_paternal_ratios_selected,  
+         transcript ~ group ,
+         value.var = "paternal_ratio" )
+
+riboseq_paternal_ratios_selected_wide = 
+  riboseq_paternal_ratios_selected_wide_unordered[match( clustering_order, riboseq_paternal_ratios_selected_wide_unordered$transcript), ]
+rnaseq_paternal_ratios_selected_wide = 
+rnaseq_paternal_ratios_selected_wide_unordered[match( clustering_order, rnaseq_paternal_ratios_selected_wide_unordered$transcript), ]
+
+grey_color_map = colorRampPalette(c("white", "green" ,"black"  ))(paletteLength)
+
+RColorBrewer::brewer.pal(9, "BuGn")
+
+grey_color_map = colorRampPalette( RColorBrewer::brewer.pal(9, "BuGn") )(paletteLength)
+
+grey_color_map = colorRampPalette( RColorBrewer::brewer.pal(9, "Greys") )(paletteLength)
+
+riboseq_paternal_ratios_heatmap = 
+  pheatmap( t( riboseq_paternal_ratios_selected_wide[, -1]) , 
+            # clustering_method = "median",
+            #clustering_distance_rows = "correlation",
+            #clustering_method = "centroid",
+            #clustering_method = "complete",
+            clustering_method = "ward.D",
+            show_rownames     = TRUE,
+            cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS,
+            cellwidth         = 15,
+            treeheight_row    = 0,
+            treeheight_col    = 0,
+            cluster_cols      = FALSE, 
+            cluster_rows      = FALSE,
+            color             = grey_color_map,
+            legend_breaks            = c(0, 0.5, 1),
+            breaks = seq(0,1, length.out = 100),
+            na_col            = "white",
+            angle_col         = 90,
+            labels_row        = c( "2cell", "4cell", "8cell"),
+            labels_col        = riboseq_paternal_ratios_selected_wide[,1], 
+            main              = "",
+            fontsize          = 9,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 6,
+            fontsize_number   = FONT_LABEL_SIZE,
+  )
 
 
+rnaseq_paternal_ratios_heatmap = 
+  pheatmap( t( rnaseq_paternal_ratios_selected_wide[, -1]) , 
+            # clustering_method = "median",
+            #clustering_distance_rows = "correlation",
+            #clustering_method = "centroid",
+            #clustering_method = "complete",
+            clustering_method = "ward.D",
+            show_rownames     = TRUE,
+            cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS,
+            cellwidth         = 15,
+            treeheight_row    = 0,
+            treeheight_col    = 0,
+            cluster_cols      = FALSE, 
+            cluster_rows      = FALSE,
+            color             = grey_color_map,
+            legend_breaks            = c(0, 0.5, 1),
+            breaks = seq(0,1, length.out = 100), 
+            na_col            = "white",
+            angle_col         = 90,
+            labels_row        = c( "2cell", "4cell", "8cell"),
+            labels_col        = rnaseq_paternal_ratios_selected_wide[, 1], 
+            main              = "",
+            fontsize          = 9,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 6,
+            fontsize_number   = FONT_LABEL_SIZE,
+  )
 
 
 ################################################################################
@@ -1725,7 +1823,7 @@ supplementary_heatmap_grid_plot =
 supplementary_heatmap_grid_plot
 
 
-save_plot_pdf( "heatmap_highly_translated_genes.pdf", supplementary_heatmap_grid_plot, width = 7.25, height = 7.25  )
+#save_plot_pdf( "heatmap_highly_translated_genes.pdf", supplementary_heatmap_grid_plot, width = 7.25, height = 7.25  )
 
 
 ################################################################################
@@ -1845,11 +1943,21 @@ main_middle = plot_grid(
            eif3d_detailed_plot, folr1_detailed_plot,
           ncol = 2)
 
-main_bottom = main_heatmap_figure[[4]]
+#main_bottom = main_heatmap_figure[[4]]
+main_bottom = riboseq_paternal_ratios_heatmap[[4]]
 
 main_snp_plot = plot_grid(main_top,  main_bottom, main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
 
-save_plot_pdf( "main_snp_plot.pdf", main_snp_plot, width = 7.2, height = 9  )
+
+
+
+main_snp_plot_ribo = plot_grid(main_top,  riboseq_paternal_ratios_heatmap[[4]], main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
+
+save_plot_pdf( "main_snp_plot_ribo.pdf", main_snp_plot_ribo, width = 7.2, height = 9  )
+
+main_snp_plot_rna = plot_grid(main_top,  rnaseq_paternal_ratios_heatmap[[4]], main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
+
+save_plot_pdf( "main_snp_plot_rna.pdf", main_snp_plot_rna, width = 7.2, height = 9  )
 
 ################################################################################
 #####  P a t e r n a l    A l l e l e     P e r c e n t a g e s

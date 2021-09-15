@@ -39,12 +39,12 @@ separator = generate_blank_plot()
 
 
 ## Scatter plots from human data
-squish_factor_1 = 0.45
+squish_factor_1 = 0.58
 page_top      = plot_grid(sp_grid, separator, rel_widths = c(1,squish_factor_1))
 mouse_sp_grid_modified = plot_grid(mouse_sp_grid, separator, rel_widths = c(1,squish_factor_1))
 
 
-mouse_metagene_plot_modified = plot_grid(mouse_metagene_plot, separator, rel_widths = c(1,0.3))
+mouse_metagene_plot_modified = plot_grid(mouse_metagene_plot, separator, rel_widths = c(1,0.37))
 
 mouse_region_counts_comperative_plot_modified = plot_grid( mouse_region_counts_comperative_plot, separator, rel_widths = c(1,0.34)  )
 

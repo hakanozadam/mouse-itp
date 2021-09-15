@@ -338,9 +338,9 @@ sp_100_1_vs_100_3_new = plot_pairwise_relationships(
 
 sp_grid = 
   plot_grid( 
-             sp_10M_2_vs_10M_3_new      + theme( legend.position = "none"  ),
-             sp_100_1_vs_100_3_new      + theme( legend.position = "none"  ),
-             human_100_vs_10M_means     + theme( legend.position = "none"  ),
+             sp_10M_2_vs_10M_3_new      +  ggtitle("Conventional") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
+             sp_100_1_vs_100_3_new      +  ggtitle("PAC-ITP") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
+             human_100_vs_10M_means     +  ggtitle("PAC-ITP vs Conventional") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5),  axis.title.x = element_blank(), axis.title.y = element_blank()),
              align = "hv",
              ncol  = 3)
 
@@ -497,9 +497,9 @@ sp_gv_3_4 + theme( legend.position = "none"  )
 
 mouse_sp_grid = 
   plot_grid( 
-    sp_gv_3_4        + theme( legend.position = "none"  ),
-    sp_mii_3_4       + theme( legend.position = "none"  ),
-    sp_1cell_2_5     + theme( legend.position = "none"  ),
+    sp_gv_3_4      +  ggtitle("GV") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
+    sp_mii_3_4    +   ggtitle("MII") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
+    sp_1cell_2_5  +   ggtitle("1 cell") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
     align = "hv",
     ncol  = 3)
 
