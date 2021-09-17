@@ -689,6 +689,39 @@ rnaseq_paternal_ratios_heatmap =
   )
 
 
+
+ribo_rna_paternal_ratios_combined = cbind( riboseq_paternal_ratios_selected_wide, rnaseq_paternal_ratios_selected_wide[, -1] )
+View(ribo_rna_paternal_ratios_combined)
+
+
+## We can use the clustering here for hte paper.
+pheatmap( t( ribo_rna_paternal_ratios_combined[, -1]) , 
+          # clustering_method = "median",
+          clustering_distance_cols = "correlation",
+          #clustering_method = "centroid",
+          #clustering_method = "complete",
+          #clustering_method = "ward.D",
+          show_rownames     = TRUE,
+          cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS + 2,
+          cellwidth         = 15,
+          treeheight_row    = 0,
+          treeheight_col    = 0,
+          cluster_cols      = TRUE, 
+          cluster_rows      = FALSE,
+          color             = grey_color_map,
+          legend_breaks            = c(0, 0.5, 1),
+          breaks = seq(0,1, length.out = 100), 
+          na_col            = "white",
+          angle_col         = 90,
+          labels_row        = c( "2cell", "4cell", "8cell", "2cell", "4cell", "8cell"),
+          labels_col        = ribo_rna_paternal_ratios_combined[, 1], 
+          main              = "",
+          fontsize          = 9,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 6,
+          fontsize_number   = FONT_LABEL_SIZE,
+)
+
 ################################################################################
 ################################################################################
 ################################################################################
