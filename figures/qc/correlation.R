@@ -1027,6 +1027,16 @@ save_plot_pdf("genes_accross_bar_main.pdf", genes_accross_stages_main_figure_bar
 ##### MAPK1 goes to the supp.
 ## Mapk1_barplot + theme(legend.position = "none") +  ylab(""),
 
+### Selected plots for  
+
+Ppig_point_plot = 
+  plot_cpm_across_conditions(all_counts, "Ppig", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+Ppig_point_plot
+
+Nlrp14_point_plot = 
+  plot_cpm_across_conditions(all_counts, "Obox7", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+Nlrp14_point_plot
+
 ################################################################################
 # To be deleted
 # plot_cpm_across_conditions(all_counts, "Nfrkb", stages = c("1cell", "MII") ) 

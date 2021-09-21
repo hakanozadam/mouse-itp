@@ -9,8 +9,8 @@ library(ggpubr)
 library(cowplot)
 library(dplyr)
 
-source('./Ribo_Summary_Function.R')
-source('./rename_experiments.R')
+source('../qc/Ribo_Summary_Function.R')
+source('../qc/rename_experiments.R')
 
 human_ribo_file = '../../../../itp/human-itp_v4.ribo'
 mouse_ribo_file = '../../../mouse-itp_v5.ribo'
@@ -162,225 +162,11 @@ replicate_clustering_spearman = function (rcw,
   return(list(cor_matrix = cor_matrix, heatmap_correlation = heatmap_correlation) )
 }
 
-#human_cors = replicate_clustering_spearman( human_rcw, breaks_manual = seq(0.6,1,.01), clustering = F )
-
-################################################################################
-##### Scatter Plots
-
-## Example Pairwise comparisons. These are not the most beautiful but I don't we should try to make them better
-sp_10M_1_vs_10M_2 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[1], 
-  human_experiment_names[2], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[1], 
-  ylab    = human_experiment_names[2])
-sp_10M_1_vs_10M_2
-
-sp_10M_2_vs_10M_3 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[2], 
-  human_experiment_names[3], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[2], 
-  ylab    = human_experiment_names[3])
-sp_10M_2_vs_10M_3
-
-
-sp_10M_1_vs_10M_3 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[1], 
-  human_experiment_names[3], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[1], 
-  ylab    = human_experiment_names[3])
-sp_10M_1_vs_10M_3
-
-
-sp_100_1_vs_100_2 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[4], 
-  human_experiment_names[5], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[4], 
-  ylab    = human_experiment_names[5])
-
-sp_100_1_vs_100_2
-
-
-sp_100_2_vs_100_3 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[5], 
-  human_experiment_names[6], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[5], 
-  ylab    = human_experiment_names[6])
-
-sp_100_2_vs_100_3
-
-sp_100_1_vs_100_3 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[4], 
-  human_experiment_names[6], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[4], 
-  ylab    = human_experiment_names[6])
-
-sp_100_1_vs_100_3
-
-sp_100_1_vs_100_3 + theme( legend.position = "none"  )
-
-
-sp_10M_1_vs_100_1 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[1], 
-  human_experiment_names[4], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[1], 
-  ylab    = human_experiment_names[4])
-
-sp_10M_1_vs_100_1
-
-sp_10M_2_vs_100_1 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[2], 
-  human_experiment_names[4], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[2], 
-  ylab    = human_experiment_names[4])
-
-sp_10M_2_vs_100_1
-
-sp_10M_3_vs_100_1 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[3], 
-  human_experiment_names[4], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[3], 
-  ylab    = human_experiment_names[4])
-
-sp_10M_3_vs_100_1
-
-sp_grid_alt = 
-  plot_grid( sp_10M_1_vs_10M_2 + theme( legend.position = "none"  ),
-             sp_10M_2_vs_10M_3 + theme( legend.position = "none"  ),
-             sp_10M_1_vs_10M_3 + theme( legend.position = "none"  ),
-             sp_100_1_vs_100_2 + theme( legend.position = "none"  ),
-             sp_100_2_vs_100_3 + theme( legend.position = "none"  ),
-             sp_100_1_vs_100_3 + theme( legend.position = "none"  ),
-             sp_10M_1_vs_100_1 + theme( legend.position = "none"  ),
-             sp_10M_2_vs_100_1 + theme( legend.position = "none"  ),
-             sp_10M_3_vs_100_1 + theme( legend.position = "none"  ),
-             align = "hv",
-             ncol  = 3)
-
-sp_grid_alt
-
-
-cpm_threshold = 1
-detected      = rowSums( cpm (human_rcw[,-1]) > cpm_threshold) > (dim(human_rcw)[2] / 3)
-
-## Comparing the variance/mean relationship and ITP ~ Monosome similiarity
-human_means_cpm = data.frame("Average_100" = apply( cpm(human_rcw[detected,-1])[,4:6]  , 1, mean),
-                             "Average_10M" = apply( cpm(human_rcw[detected,-1])[,1:3] , 1, mean)  )
-
-scatter_axis_range = 10000
-
-human_100_vs_10M_means = plot_pairwise_relationships(
-  human_means_cpm, 
-  "Average_100", 
-  "Average_10M", 
-  xrange  = scatter_axis_range, 
-  yrange  = scatter_axis_range, 
-  num_bin = 50,
-  xlab    = "100 Average", 
-  ylab    = "10M Average")
-
-human_100_vs_10M_means
-
-sp_10M_2_vs_10M_3_new = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[2], 
-  human_experiment_names[3], 
-  xrange  = scatter_axis_range, 
-  yrange  = scatter_axis_range, 
-  num_bin = 50,
-  xlab    = human_experiment_names[2], 
-  ylab    = human_experiment_names[3])
-
-sp_100_1_vs_100_3_new = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[4], 
-  human_experiment_names[6], 
-  xrange  = scatter_axis_range, 
-  yrange  = scatter_axis_range, 
-  num_bin = 50,
-  xlab    = human_experiment_names[4], 
-  ylab    = human_experiment_names[6])
-
-sp_grid = 
-  plot_grid( 
-    sp_10M_2_vs_10M_3_new      +  ggtitle("Conventional") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
-    sp_100_1_vs_100_3_new      +  ggtitle("PAC-ITP") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
-    human_100_vs_10M_means     +  ggtitle("PAC-ITP vs Conventional") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5),  axis.title.x = element_blank(), axis.title.y = element_blank()),
-    align = "hv",
-    ncol  = 3)
-
-sp_grid
-
 ################################################################################
 
 cpm_threshold = 1
 detected      = rowSums( cpm (human_rcw[,-1]) > cpm_threshold) > (dim(human_rcw)[2] / 3)
 
-## Comparing the variance/mean relationship and ITP ~ Monosome similiarity
-means_sd_cpm = data.frame(Mean_log2CPM_100 = apply( log2(cpm(human_rcw[detected,-1])[,4:6] + 0.5) , 1, mean),
-                          Mean_log2CPM_Monosome = apply( log2(cpm(human_rcw[detected,-1])[,1:3] + 0.5 ), 1, mean),
-                          Sd_log2CPM_100 = apply( log2(cpm(human_rcw[detected,-1])[,4:6] + 0.5) , 1, sd),
-                          Sd_log2CPM_Monosome = apply( log2(cpm(human_rcw[detected,-1])[,1:3] + 0.5 ), 1, sd)
-)
-
-means_sd_cpm_filtered = means_sd_cpm[ means_sd_cpm$Mean_log2CPM_100 > 2 & means_sd_cpm$Mean_log2CPM_Monosome > 2, ]
-
-mean_vs_var_100_color_point = rgb(124,203,162 , maxColorValue = 255 )
-mean_vs_var_100_color_line  = rgb(4,82,117 , maxColorValue = 255 )
-mean_vs_var_10M_color_point = rgb(240,116,110 , maxColorValue = 255 ) 
-mean_vs_var_10M_color_line = rgb(110,0,95 , maxColorValue = 255 )
-
-mean_vs_var_colors = c( "100_point" = mean_vs_var_100_color_point,
-                        "100_line" = mean_vs_var_100_color_line,
-                        "10M_point" = mean_vs_var_10M_color_point,
-                        "10M_line" = mean_vs_var_10M_color_line)
-
-mean_vs_variance_human_plot = 
-  ggplot( means_sd_cpm_filtered, 
-          aes(x= Mean_log2CPM_100, y = sqrt(Sd_log2CPM_100) )  ) +
-  
-  geom_smooth( method = "loess", se = FALSE , color = mean_vs_var_100_color_line) + 
-  geom_smooth(aes(x = Mean_log2CPM_Monosome, y = Sd_log2CPM_Monosome)  , method = "loess", se = FALSE , color = mean_vs_var_10M_color_line) + 
-  geom_point(aes(x = Mean_log2CPM_Monosome, y = Sd_log2CPM_Monosome ),size = 0.4, alpha =0.1, color = mean_vs_var_10M_color_point ) + 
-  geom_point(alpha =0.1, color = mean_vs_var_100_color_point, size = 0.4  ) + 
-  xlab("Mean") + ylab( "Sqrt(Standard Deviation)" ) + ggtitle("Log2(CPM)") + 
-  theme_bw() +
-  xlim( c(1,13.5) ) 
 
 
 
@@ -453,110 +239,14 @@ ribo_rc$experiment = rename_experiments(ribo_rc$experiment)
 
 rcw = dcast(ribo_rc, transcript ~ experiment)  
 rcw_2 = dcast(ribo_rc, transcript ~ experiment)
-################################################################################
-#########         M o u s e     S c a t t e r     P l o t s           ##########
-
-mouse_scatter_axis_range = 1000
-
-sp_1cell_2_5 = plot_pairwise_relationships(
-  rcw, 
-  "1cell-2", 
-  "1cell-5", 
-  xrange  = mouse_scatter_axis_range, 
-  yrange  = mouse_scatter_axis_range, 
-  num_bin = 50,
-  xlab    = "1cell-2", 
-  ylab    = "1cell-5")
-
-sp_1cell_2_5 + theme( legend.position = "none"  )
-
-sp_mii_3_4 = plot_pairwise_relationships(
-  rcw, 
-  "MII-3", 
-  "MII-4", 
-  xrange  = mouse_scatter_axis_range, 
-  yrange  = mouse_scatter_axis_range, 
-  num_bin = 50,
-  xlab    = "MII-3", 
-  ylab    = "MII-4")
-
-sp_mii_3_4 + theme( legend.position = "none"  )
-
-
-sp_gv_3_4 = plot_pairwise_relationships(
-  rcw, 
-  "GV-3", 
-  "GV-4", 
-  xrange  = mouse_scatter_axis_range, 
-  yrange  = mouse_scatter_axis_range, 
-  num_bin = 50,
-  xlab    = "GV-3", 
-  ylab    = "GV-4")
-
-sp_gv_3_4 + theme( legend.position = "none"  )
-
-mouse_sp_grid = 
-  plot_grid( 
-    sp_gv_3_4      +  ggtitle("GV") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
-    sp_mii_3_4    +   ggtitle("MII") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
-    sp_1cell_2_5  +   ggtitle("1 cell") +  theme( legend.position = "none", plot.title = element_text(hjust = 0.5), axis.title.x = element_blank(), axis.title.y = element_blank()),
-    align = "hv",
-    ncol  = 3)
-
-mouse_sp_grid
-
-################################################################################
-
+ 
 # GV:    3, 4, 5
 # MII:   2, 3, 4
 # 1cell: 1, 2, 5
 selected_samples = c(2,3,6, 23, 24, 25, 21, 20, 19)
 selected_rcw     = rcw[, selected_samples]
 
-set.seed(3)
-sub_40k = subsampleMatrix( selected_rcw, 40000)
-sub_30k = subsampleMatrix( selected_rcw, 30000)
-sub_20k = subsampleMatrix( selected_rcw, 20000)
-sub_10k = subsampleMatrix( selected_rcw, 10000)
-sub_5k  = subsampleMatrix( selected_rcw, 5000)
-sub_0   = subsampleMatrix( selected_rcw, 0)
 
-# Plot number of genes detected as a function of UMI count
-# We should plot a line graph that shows cell to cell relationship as well the sum across cells. 
-genes_detected_df = data.frame( 
-  sample_depth = c( colSums(selected_rcw ), colSums(sub_40k), colSums(sub_30k), 
-                    colSums(sub_20k), colSums(sub_10k), colSums(sub_5k), colSums(sub_0)), 
-  genes_detected = c(   apply (selected_rcw, 2, function(x){sum(x > 0)}), 
-                        apply (sub_40k, 2, function(x){sum(x > 0)}), 
-                        apply (sub_30k, 2, function(x){sum(x > 0)}), 
-                        apply (sub_20k, 2, function(x){sum(x > 0)}), 
-                        apply (sub_10k, 2, function(x){sum(x > 0)}),
-                        apply (sub_5k, 2, function(x){sum(x > 0)}), 
-                        apply (sub_0, 2, function(x){sum(x > 0)})
-  ), 
-  sample_id =  rep(colnames(selected_rcw), 7)
-  
-)
-
-## Ggplot will be finalized
-umis_vs_genes_detected_plot = 
-  ggplot(
-    data = genes_detected_df, 
-    aes(x = sample_depth, y = genes_detected, group=sample_id) ) +
-  geom_line(linetype = "dashed", aes(col = sample_id) )  +  ylim(c( 0, 7000) ) +
-  geom_point(size = 0.7, aes(color = sample_id) ) + 
-  xlab("Number of CDS Mapping UMIs") + 
-  ylab("Genes Detected") + 
-  theme_bw() + 
-  theme(legend.title      = element_blank(),
-        axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        legend.text       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
-  #scale_x_continuous( expand = c(0.05, 0.05) )
-  scale_x_continuous( expand = c(0.05, 0.05), minor_breaks = NULL, labels = scales::label_number_si()) +
-  scale_y_continuous( expand = c(0.05, 0.05), minor_breaks = NULL, labels = scales::label_number_si())
 
 
 
@@ -564,25 +254,18 @@ umis_vs_genes_detected_plot =
 rcw_columns_reordered = rcw[, c(1, 17:26, 2:16)]
 mouse_cors = replicate_clustering_spearman( rcw_columns_reordered, breaks_manual = seq(0,1,.01), filter = T, clustering = F)
 
-## We can add a few example pairwise comparisons: 
-plot_pairwise_relationships(rcw, 
-                            "GV-3", 
-                            "GV-5", 
-                            xrange = 3000, yrange = 3000, num_bin = 50,
-                            xlab = "GV-3", ylab = "GV-5")
 
-
-plot_pairwise_relationships(rcw, 
-                            "1cell-3", 
-                            "1cell-5", 
-                            xrange = 1000, yrange = 1000, num_bin = 50,
-                            xlab = "1cell-3", ylab = "1cell-5")
 
 # my matrix subsampling gives very similar results
 set.seed(3)
-test_normalize = LogNormalize(as.matrix(rcw_columns_reordered[,-1]), scale.factor = 30000, verbose = TRUE)
-variables      = FindVariableFeatures(test_normalize, selection.method = "vst")
-rcw_columns_reordered[variables$vst.variance.standardized > 5,] 
+test_normalize_ribo = NormalizeData(as.matrix(rcw_columns_reordered[,-1]), 
+                                    scale.factor = 30000, 
+                                    normalization.method= "CLR",
+                                    margin = 2,
+                                    verbose = TRUE)
+#test_normalize_ribo = LogNormalize(as.matrix(rcw_columns_reordered[,-1]), scale.factor = 30000, verbose = TRUE)
+variables_ribo           = FindVariableFeatures(test_normalize_ribo, selection.method = "vst")
+rcw_columns_reordered[variables_ribo$vst.variance.standardized > 5,] 
 ## Spin1 is a great one.  -> https://journals.biologists.com/dev/article/124/2/493/39566/Spindlin-a-major-maternal-transcript-expressed-in
 #Rfpl4 seems very interesting as well
 ## AU022751 -> Ovary specific
@@ -596,10 +279,13 @@ feature_color_palette = colorRampPalette(c("#3361A5", "#2884E7", "#1BA7FF", "#76
 
 
 
-variance_threshold = 4.3
+variance_threshold = 5
+variance_threshold = 4.125
+dim(test_normalize_ribo[variables_ribo$vst.variance.standardized> variance_threshold, ])
+
 distinct_genes_heatmap_from_normalization = 
-  pheatmap(test_normalize[variables$vst.variance.standardized> variance_threshold, ], 
-           labels_row     = strip_extension(rcw_columns_reordered[variables$vst.variance.standardized > variance_threshold,1]), 
+  pheatmap(test_normalize_ribo[variables_ribo$vst.variance.standardized> variance_threshold, ], 
+           labels_row     = strip_extension(rcw_columns_reordered[variables_ribo$vst.variance.standardized > variance_threshold,1]), 
            cluster_cols   = FALSE, 
            cutree_rows    = 8,
            fontsize       = 8,
@@ -608,39 +294,106 @@ distinct_genes_heatmap_from_normalization =
            color        = feature_color_palette(100),
            fontsize_row   = 7)
 
-features_from_normalization = rcw_columns_reordered[variables$vst.variance.standardized > variance_threshold,1]
+features_from_normalization = rcw_columns_reordered[variables_ribo$vst.variance.standardized > variance_threshold,1]
+print(length(features_from_normalization))
+
+# 100 genes
+variance_threshold = 3.68
+dim(test_normalize_ribo[variables_ribo$vst.variance.standardized> variance_threshold, ])
+
+ribo_distinct_genes_heatmap_from_normalization_main = 
+  pheatmap(test_normalize_ribo[variables_ribo$vst.variance.standardized> variance_threshold, ], 
+           labels_row     = strip_extension(rcw_columns_reordered[variables_ribo$vst.variance.standardized > variance_threshold,1]), 
+           cluster_cols   = FALSE, 
+           #cutree_rows    = 7,
+           fontsize       = 8,
+           fontsize_col   = 6,
+           treeheight_row = 0, 
+           border_color = NA,
+           #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+           color        = feature_color_palette(100),
+           show_rownames = FALSE,
+           fontsize_row   = 6)
+
+features_from_normalization = rcw_columns_reordered[variables_ribo$vst.variance.standardized > variance_threshold,1]
 print(length(features_from_normalization))
 
 
+averaged_log_normalized_ribo = 
+  data.frame( GV        = apply(test_normalize_ribo[, 1:5],   1, mean) ,
+              MII       = apply(test_normalize_ribo[, 6:10],  1, mean),
+              "1cell"   = apply(test_normalize_ribo[, 11:15], 1, mean),
+              "2cell"   = apply(test_normalize_ribo[, 16:18], 1, mean),
+              "4cell"   = apply(test_normalize_ribo[, 19:21], 1, mean),
+              "8cell" = apply(test_normalize_ribo[, 22:25], 1, mean)
+              )
 
-#  We decided not to use the following sampling. Instead we use "LogNormalize" above
-# which does the sampling (via scale.factor)
-#
-# set.seed(3)
-# sample_all_30k           = subsampleMatrix( rcw_columns_reordered[, -1], 30000)
-# sample_all_30k           = LogNormalize(as.matrix(sample_all_30k), scale.factor = 30000, verbose = TRUE)
-# subsample_variables      = FindVariableFeatures(sample_all_30k, selection.method = "vst")
-# variance_threshold_subsample = 3.86
-# 
-# 
-# feature_color_palette = colorRampPalette(brewer.pal(9,"YlGn")) 
-# feature_color_palette = colorRampPalette(c("#3362A5", "dodgerblue3", "dodgerblue2", "dodgerblue1", "deepskyblue", "lightblue", "lightgray", "gold", "orange","firebrick2"), space="Lab")
-# 
-# distinct_genes_heatmap_from_subsampling = 
-# pheatmap(sample_all_30k[subsample_variables$vst.variance.standardized> variance_threshold_subsample, ], 
-#          labels_row     = strip_extension( rcw_columns_reordered[subsample_variables$vst.variance.standardized > variance_threshold_subsample,1]), 
-#          cluster_cols   = FALSE, 
-#          cutree_rows    = 7,
-#          fontsize       = 8,
-#          fontsize_col   = 7,
-#          color        = feature_color_palette(100),
-#          fontsize_row   = 7)
-# 
-# features_from_subsampling = rcw_columns_reordered[subsample_variables$vst.variance.standardized > variance_threshold_subsample,1]
-# print(length(features_from_subsampling))
-# 
-# length(intersect(features_from_normalization, features_from_subsampling) )
+variables_ribo_averaged           = FindVariableFeatures(averaged_log_normalized_ribo, selection.method = "vst")
 
+col_names_of_averaged = c("GV", "MII", "1cell", "2cell", "4cell", "8cell")
+
+# 100 genes
+variance_threshold = 3.645
+#variance_threshold = 2.905
+dim(test_normalize_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ])
+
+averaged_heatmap_top_200 = 
+pheatmap(averaged_log_normalized_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ], 
+         labels_row     = strip_extension(rcw_columns_reordered[variables_ribo_averaged$vst.variance.standardized > variance_threshold,1]), 
+         cluster_cols   = FALSE, 
+         #cutree_rows    = 7,
+         fontsize       = 8,
+         fontsize_col   = 6,
+         treeheight_row = 0, 
+         border_color = NA,
+         #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+         color        = feature_color_palette(100),
+         show_rownames = FALSE,
+         fontsize_row   = 6,
+         labels_col     = col_names_of_averaged )
+
+
+# 100 genes
+variance_threshold = 4.22
+#variance_threshold = 2.905
+dim(test_normalize_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ])
+
+averaged_heatmap_top_100 = 
+  pheatmap(averaged_log_normalized_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ], 
+           labels_row     = strip_extension(rcw_columns_reordered[variables_ribo_averaged$vst.variance.standardized > variance_threshold,1]), 
+           cluster_cols   = FALSE, 
+           #cutree_rows    = 7,
+           fontsize       = 8,
+           fontsize_col   = 6,
+           treeheight_row = 0, 
+           border_color = NA,
+           #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+           color        = feature_color_palette(100),
+           show_rownames = FALSE,
+           fontsize_row   = 6,
+           labels_col     = col_names_of_averaged )
+
+
+
+
+#variance_threshold = 4.125
+variance_threshold = 4.8
+dim(test_normalize_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ])
+#dim(test_normalize_ribo[variables_ribo_averaged$mvp.dispersion.scaled> variance_threshold, ])
+
+distinct_genes_heatmap_from_normalization_averaged = 
+  pheatmap(averaged_log_normalized_ribo[variables_ribo_averaged$vst.variance.standardized> variance_threshold, ], 
+           labels_row     = strip_extension(rcw_columns_reordered[variables_ribo_averaged$vst.variance.standardized > variance_threshold,1]), 
+           cluster_cols   = FALSE, 
+           cutree_rows    = 6,
+           #cutree_cols    = 3,
+           fontsize       = 8,
+           fontsize_col   = 7,
+           #color         =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+           color          = feature_color_palette(100),
+           fontsize_row   = 7,
+           treeheight_row = 0, 
+           labels_col     = col_names_of_averaged)
 
 
 ################################################################################
@@ -681,11 +434,12 @@ for (id in 1:length(mouse_rna_cds$transcript)) {
 mouse_rna_cds = mouse_rna_cds[, c(1,16:23,2:15)]
 
 
+
 ## RNA-Seq correlation
-mouse_rna_cors = replicate_clustering_spearman( mouse_rna_cds, 
-                                                breaks_manual = seq(0,1,.01), 
-                                                filter        = T,
-                                                clustering    = F )
+# mouse_rna_cors = replicate_clustering_spearman( mouse_rna_cds, 
+#                                                 breaks_manual = seq(0,1,.01), 
+#                                                 filter        = T,
+#                                                 clustering    = F )
 
 ## RNA-Seq clustering by variable genes
 ## Based on the above we might want to change this as well
@@ -695,31 +449,88 @@ variables          = FindVariableFeatures(test_normalize_rna, selection.method =
 mouse_rna_cds[variables$vst.variance.standardized > 7, 1] 
 
 
-pheatmap(log10 (mouse_rna_cds[variables$vst.variance.standardized > 7,-1] + 1 ) , 
-         #labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
-         cluster_cols   = FALSE, 
-         cutree_rows    = 5,
-         fontsize       = 8,
-         fontsize_col   = 7,
-         #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
-         color        = feature_color_palette(100),
-         labels_row   = unlist( lapply(strsplit( mouse_rna_cds[variables$vst.variance.standardized > 7,1], split = "-" ) , "[[", 1 ) ),
-         fontsize_row   = 7
-)
+# pheatmap(log10 (test_normalize_rna[variables$vst.variance.standardized > 7,-1] + 1 ) , 
+#          #labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
+#          cluster_cols   = FALSE, 
+#          cutree_rows    = 5,
+#          fontsize       = 8,
+#          fontsize_col   = 7,
+#          #color        =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+#          color        = feature_color_palette(100),
+#          labels_row   = unlist( lapply(strsplit( mouse_rna_cds[variables$vst.variance.standardized > 7,1], split = "-" ) , "[[", 1 ) ),
+#          fontsize_row   = 7
+# )
+# 
+# # This should give top 200 genes
+# variance_threshold = 5.125
+# 
+# variance_threshold = 4
+# 
+# dim(mouse_rna_cds[variables$vst.variance.standardized > variance_threshold ,-1])
+# 
+# pheatmap(log10 (test_normalize_rna[variables$vst.variance.standardized > variance_threshold,-1] + 1 ) , 
+#          #labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
+#          cluster_cols   = FALSE, 
+#          cutree_rows    = 6,
+#          fontsize       = 8,
+#          treeheight_row = 0, 
+#          show_rownames  = FALSE, 
+#          #color         =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
+#          color          = feature_color_palette(100),
+#          labels_row     = unlist( lapply(strsplit( mouse_rna_cds[variables$vst.variance.standardized > 7,1], split = "-" ) , "[[", 1 ) ),
+#          fontsize_row   = 7,
+#          fontsize_col   = 6
+# )
 
-# This should give top 200 genes
-dim(mouse_rna_cds[variables$vst.variance.standardized > 5.125 ,-1])
+################################################################################
+##########   P R O T E O M I C S    D A T A               ######################
 
-pheatmap(log10 (mouse_rna_cds[variables$vst.variance.standardized > 5.25,-1] + 1 ) , 
-         #labels_row = mouse_rna_cds[variables$vst.variance.standardized > 7,1],
-         cluster_cols   = FALSE, 
-         cutree_rows    = 9,
-         fontsize       = 8,
-         fontsize_col   = 7,
-         treeheight_row = 0, 
-         show_rownames  = FALSE, 
-         #color         =  colorRampPalette(brewer.pal( 9 ,"YlGnBu"))(100),
-         color          = feature_color_palette(100),
-         labels_row     = unlist( lapply(strsplit( mouse_rna_cds[variables$vst.variance.standardized > 7,1], split = "-" ) , "[[", 1 ) ),
-         fontsize_row   = 7
-)
+
+
+
+################################################################################
+####### Page Layout
+
+generate_blank_plot = function(bg = "white"){
+  
+  this_background = element_blank()
+  
+  if(bg != "white"){
+    this_background = element_rect(fill = bg)
+  }  
+  
+  df <- data.frame()
+  p = ggplot(df) + geom_point() + 
+    xlim(0, 4) + ylim(0, 100) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = this_background,
+      axis.title.x     = element_blank(),
+      axis.title.y     = element_blank(),
+      axis.text.x      = element_blank(),
+      axis.text.y      = element_blank(),
+      axis.ticks.x     = element_blank(),
+      plot.background  = element_blank(),
+      axis.ticks.y     = element_blank()
+    ) 
+  return(p)
+}
+
+separator = generate_blank_plot()
+
+figure_left = plot_grid(distinct_genes_heatmap_from_normalization_averaged [[4]] , 
+                          separator, 
+                          rel_heights = c(1, 0.5),
+                          nrow = 2  )
+
+figure_layout = plot_grid(figure_left,
+                          separator,
+                          ncol = 2,
+                          rel_widths = c(1, 2.8))
+
+save_plot_pdf("diff_figure_layout.pdf", figure_layout, width = unit(7.20, "in"), height = unit(9, "in"))
+
+
+
+

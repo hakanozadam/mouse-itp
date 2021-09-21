@@ -2132,26 +2132,52 @@ combine_gene_detail_and_ratio_plots("Cdt1")
 # kdm5b_plot = combine_gene_detail_and_ratio_plots("Kdm5b")
 # ppat_plot = combine_gene_detail_and_ratio_plots("Ppat")
 # 
-# page_plot = plot_grid(ncoa_plot, 
-#                       nin_plot,
-#                       lyar_plot ,
-#                       top1_plot,
-#                       tpx2_plot ,
-#                       mcm7_plot ,
-#                       rpl38_plot ,
-#                       kdm5b_plot ,
-#                       ppat_plot ,
-#                       ncol = 3   )
-# 
-# page_plot = plot_grid(ncoa_plot, 
-#                       nin_plot,
-#                       lyar_plot ,
-#                       top1_plot,
-#                       tpx2_plot ,
-#                       mcm7_plot ,
-#                       ncol = 2   )
-# page_plot
-# 
-# save_plot_pdf("page_plot_pdf.pdf", page_plot, width = 7.25, height = 10.22)
-# 
 
+################################################################################
+### t-test for the aggregated paternal ratios
+
+aggregated_riboseq_counts =
+detailed_riboseq_table %>% 
+  filter(group %in% c("4cell", "8cell")) %>%
+  group_by(experiment) %>%
+  summarise(aggregated_maternal_raw = sum(maternal),
+            aggregated_paternal_raw = sum(paternal))
+
+View(aggregated_riboseq_counts)
+
+ribo_2cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("2cell-1", "2cell-2", "2cell-3") )
+
+rna_2cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("2cell-1", "2cell-2", "2cell-3", "2cell-4") )
+
+ribo_4cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("4cell-1", "4cell-2", "4cell-3") )
+
+ribo_8cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("8cell-1", "8cell-2", "8cell-3", "8cell-4") )
+
+rna_4cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("4cell-1", "4cell-2") )
+
+rna_8cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("8cell-1", "8cell-2", "8cell-3", "8cell-4") )
+
+
+result_t_test_2cell = 
+  t.test(ribo_2cell_paternal_percentages$Percentage, rna_2cell_paternal_percentages$Percentage)
+print(paste("2cell comparison p-value is", result_t_test_2cell$p.value, sep = " " ))
+
+result_t_test_4cell = 
+    t.test(ribo_4cell_paternal_percentages$Percentage, rna_4cell_paternal_percentages$Percentage)
+print(paste("4cell comparison p-value is", result_t_test_4cell$p.value, sep = " " ))
+
+result_t_test_8cell = 
+  t.test(ribo_8cell_paternal_percentages$Percentage, rna_8cell_paternal_percentages$Percentage)
+print(paste("8cell comparison p-value is", result_t_test_8cell$p.value, sep = " " ))

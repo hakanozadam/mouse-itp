@@ -512,6 +512,13 @@ human_region_counts_per_gene =
                     transcript  = FALSE,
                     compact     = FALSE)
 
+
+################################################################################
+####             Chi-squared Test for Region Counts (HUMAN)                 ####
+
+human_counts_wide = dcast( human_region_counts_per_gene,  experiment + transcript ~ region)
+colnames(human_counts_wide) = c(colnames(human_counts_wide)[1:2], "CDS_count", "UTR3_count", "UTR5_count")
+
 human_region_total_counts = 
   human_region_counts_per_gene %>%
   group_by(experiment, transcript) %>%
@@ -521,19 +528,101 @@ human_region_lengths = get_region_lengths(human_ribo)
 
 human_region_lengths = human_region_lengths %>% select(transcript, UTR5, CDS, UTR3)
 
-
+human_counts_and_lengths_wide = merge( human_counts_wide, human_region_lengths  )
 
 human_region_total_counts_and_lengths = merge(human_region_total_counts, human_region_lengths)
 
+human_expected_counts = human_counts_and_lengths_wide %>%
+  group_by(experiment, transcript) %>%
+  mutate(total_count = sum(CDS_count, UTR3_count, UTR5_count), total_length = sum(CDS, UTR3, UTR5)) %>%
+  mutate(CDS_expected = total_count * (CDS / total_length),
+         UTR5_expected = total_count * (UTR5 / total_length),
+         UTR3_expected = total_count * (UTR3/ total_length))
+
+human_expected_totals = 
+  human_expected_counts %>% 
+  group_by(experiment) %>%
+  summarise( CDS_total           = sum(CDS_count),
+             UTR3_total          = sum(UTR3_count),
+             UTR5_total          = sum(UTR5_count),
+             CDS_expected_total  = sum(CDS_expected),
+             UTR5_expected_total = sum(UTR5_expected),
+             UTR3_expected_total = sum(UTR3_expected),
+             ) 
+
+human_chisquared_res = human_expected_totals %>%
+  group_by(experiment) %>%
+  summarise( pval = chisq.test( x = c(CDS_total, UTR3_total, UTR5_total),
+                                p = c(CDS_expected_total, UTR3_expected_total, UTR5_expected_total),
+                                rescale.p = T)$p.value  )
 
 
-human_region_total_counts_and_lengths = 
-  human_region_total_counts_and_lengths %>% 
-  mutate(total_length = sum(UTR5 + CDS + UTR3)) %>%
-  mutate( UTR5_w_ratio = (UTR5 / total_length) * total_count,
-          CDS_w_ratio  = (CDS / total_length) * total_count,
-          UTR3_w_ratio = (UTR3 / total_length) * total_count )
+rep1_chi = 
+chisq.test( x = unlist(human_expected_totals[4,2:4]),
+            p = unlist(human_expected_totals[4,5:7]),
+            rescale.p = T)
 
+print(human_expected_totals[4,1])
+rep1_chi
+
+rep2_chi = 
+  chisq.test( x = unlist(human_expected_totals[5,2:4]),
+              p = unlist(human_expected_totals[5,5:7]),
+              rescale.p = T)
+
+print(human_expected_totals[5,1])
+rep2_chi
+
+rep3_chi = 
+  chisq.test( x = unlist(human_expected_totals[6,2:4]),
+              p = unlist(human_expected_totals[6,5:7]),
+              rescale.p = T)
+
+print(human_expected_totals[6,1])
+rep3_chi
+
+
+################################################################################
+####             Chi-squared Test for Region Counts (MOUSE)                 ####
+
+mouse_counts_wide           = dcast( mouse_region_counts_per_gene,  experiment + transcript ~ region)
+colnames(mouse_counts_wide) = c(colnames(mouse_counts_wide)[1:2], "CDS_count", "UTR3_count", "UTR5_count")
+
+mouse_region_total_counts = 
+  mouse_region_counts_per_gene %>%
+  group_by(experiment, transcript) %>%
+  summarise(total_count = sum(count))
+
+mouse_region_lengths = get_region_lengths(mouse_ribo)
+
+mouse_region_lengths = mouse_region_lengths %>% select(transcript, UTR5, CDS, UTR3)
+
+mouse_counts_and_lengths_wide = merge( mouse_counts_wide, mouse_region_lengths  )
+
+mouse_region_total_counts_and_lengths = merge(mouse_region_total_counts, mouse_region_lengths)
+
+mouse_expected_counts = mouse_counts_and_lengths_wide %>%
+  group_by(experiment, transcript) %>%
+  mutate(total_count = sum(CDS_count, UTR3_count, UTR5_count), total_length = sum(CDS, UTR3, UTR5)) %>%
+  mutate(CDS_expected = total_count * (CDS / total_length),
+         UTR5_expected = total_count * (UTR5 / total_length),
+         UTR3_expected = total_count * (UTR3/ total_length))
+
+
+mouse_expected_totals = 
+  mouse_expected_counts %>% 
+  group_by(experiment) %>%
+  summarise( CDS_total           = sum(CDS_count),
+             UTR3_total          = sum(UTR3_count),
+             UTR5_total          = sum(UTR5_count),
+             CDS_expected_total  = sum(CDS_expected),
+             UTR5_expected_total = sum(UTR5_expected),
+             UTR3_expected_total = sum(UTR3_expected),
+  ) 
+
+
+
+################################################################################
 
 human_region_total_counts_and_lengths$experiment = human_rename_experiments(human_region_total_counts_and_lengths$experiment)
 
