@@ -5,6 +5,7 @@ library(Seurat)
 library(reshape2)
 library(edgeR)
 library(EnhancedVolcano)
+library(cowplot)
 library(M3C, include.only = "umap")
 ## We can use DESeq2 to take advantage of their effect size shrinkage. 
 library(DESeq2)
@@ -441,16 +442,182 @@ cell2_4_RNA = calculate_RNADE(all_counts_reordered[,c(13:18)])
 cell4_8_RNA = calculate_RNADE(all_counts_reordered[,c(17:22)])
 
 
-DESeq_results_RNA = as.data.frame(cell1_2_RNA[, c(2,5)] ) 
-DESeq_results_TE = as.data.frame(cell1_2_deseq2[, c(2,5)] ) 
+#### We will be focusing on transitions from MII to 1cell 
+#### and from 1cell to 2 cell
 
-combined_table = merge(DESeq_results_TE, DESeq_results_RNA, by = "row.names", all.x = T)
+## From GV to MII
 
-combined_table$TE_significance = ifelse(combined_table$log2FoldChange.x < 0 & combined_table$padj.x < 0.01, -1,
-                                        ifelse(combined_table$log2FoldChange.x > 0 & combined_table$padj.x < 0.01, 1, 0) ) 
-combined_table$RNA_significance = ifelse(combined_table$log2FoldChange.y < 0 & combined_table$padj.y < 0.01, -1,
-                                        ifelse(combined_table$log2FoldChange.y > 0 & combined_table$padj.y < 0.01, 1, 0) ) 
-table(combined_table$TE_significance, combined_table$RNA_significance)
+DESeq_results_RNA_GV_MII = as.data.frame(GV_MII_RNA[, c(2,5)] ) 
+DESeq_results_TE_GV_MII  = as.data.frame(GV_MII_deseq2[, c(2,5)] ) 
+
+combined_table_GV_vs_MII = merge(DESeq_results_TE_GV_MII,
+                                 DESeq_results_RNA_GV_MII,
+                                 by = "row.names", all.x = T)
+
+combined_table_GV_vs_MII$TE_significance = ifelse(combined_table_GV_vs_MII$log2FoldChange.x < 0 & combined_table_GV_vs_MII$padj.x < 0.01, -1,
+                                                 ifelse(combined_table_GV_vs_MII$log2FoldChange.x > 0 & combined_table_GV_vs_MII$padj.x < 0.01, 1, 0) ) 
+
+combined_table_GV_vs_MII$RNA_significance = ifelse(combined_table_GV_vs_MII$log2FoldChange.y < 0 & combined_table_GV_vs_MII$padj.y < 0.01, -1,
+                                                  ifelse(combined_table_GV_vs_MII$log2FoldChange.y > 0 & combined_table_GV_vs_MII$padj.y < 0.01, 1, 0) ) 
+
+table(combined_table_GV_vs_MII$TE_significance, combined_table_GV_vs_MII$RNA_significance)
+
+TE_up_GV_MII = 
+  combined_table_GV_vs_MII %>%
+  filter(TE_significance == 1)
+
+write.csv(TE_up_GV_MII, file = "TE_up_GV_vs_MII_table.csv", quote = FALSE)
+
+TE_down_GV_vs_MII = 
+  combined_table_GV_vs_MII %>%
+  filter(TE_significance == -1)
+
+write.csv(TE_down_GV_vs_MII, file = "TE_down_GV_vs_MII_table.csv", quote = FALSE)
+
+background_table_GV_vs_MII =
+  combined_table_GV_vs_MII %>%
+  filter( ! is.na(padj.x) )
+
+write.csv( background_table_GV_vs_MII, file = "TE_background_GV_vs_MII.csv", quote = FALSE )
+
+
+## From MII to 1Cell
+
+DESeq_results_RNA_MII_vs_1 = as.data.frame(MII_1cell_RNA[, c(2,5)] ) 
+DESeq_results_TE_MII_vs_1  = as.data.frame(MII_1cell_deseq2[, c(2,5)] ) 
+
+combined_table_MII_vs_1 = merge(DESeq_results_TE_MII_vs_1,
+                                DESeq_results_RNA_MII_vs_1,
+                                by = "row.names", all.x = T)
+
+combined_table_MII_vs_1$TE_significance = ifelse(combined_table_MII_vs_1$log2FoldChange.x < 0 & combined_table_MII_vs_1$padj.x < 0.01, -1,
+                                               ifelse(combined_table_MII_vs_1$log2FoldChange.x > 0 & combined_table_MII_vs_1$padj.x < 0.01, 1, 0) ) 
+
+combined_table_MII_vs_1$RNA_significance = ifelse(combined_table_MII_vs_1$log2FoldChange.y < 0 & combined_table_MII_vs_1$padj.y < 0.01, -1,
+                                                ifelse(combined_table_MII_vs_1$log2FoldChange.y > 0 & combined_table_MII_vs_1$padj.y < 0.01, 1, 0) ) 
+
+table(combined_table_MII_vs_1$TE_significance, combined_table_MII_vs_1$RNA_significance)
+
+TE_up_MII_vs_1 = 
+  combined_table_MII_vs_1 %>%
+    filter(TE_significance == 1)
+
+write.csv(TE_up_MII_vs_1, file = "TE_up_MII_vs_1_table.csv", quote = FALSE)
+
+TE_down_MII_vs_1 = 
+  combined_table_MII_vs_1 %>%
+  filter(TE_significance == -1)
+
+write.csv(TE_down_MII_vs_1, file = "TE_down_MII_vs_1_table.csv", quote = FALSE)
+
+background_table_MII_vs_1 =
+  combined_table_MII_vs_1 %>%
+  filter( ! is.na(padj.x) )
+
+write.csv( background_table_MII_vs_1, file = "TE_background_MII_vs_1.csv", quote = FALSE )
+
+## From 1Cell to 2Cell
+
+DESeq_results_RNA_1_vs_2 = as.data.frame(cell1_2_RNA[, c(2,5)] ) 
+DESeq_results_TE_1_vs_2  = as.data.frame(cell1_2_deseq2[, c(2,5)] ) 
+
+combined_table_1_vs_2    = merge(DESeq_results_TE_1_vs_2, 
+                                 DESeq_results_RNA_1_vs_2, 
+                                 by = "row.names", all.x = T)
+
+combined_table_1_vs_2$TE_significance = ifelse(combined_table_1_vs_2$log2FoldChange.x < 0 & combined_table_1_vs_2$padj.x < 0.01, -1,
+                                               ifelse(combined_table_1_vs_2$log2FoldChange.x > 0 & combined_table_1_vs_2$padj.x < 0.01, 1, 0) ) 
+
+combined_table_1_vs_2$RNA_significance = ifelse(combined_table_1_vs_2$log2FoldChange.y < 0 & combined_table_1_vs_2$padj.y < 0.01, -1,
+                                                ifelse(combined_table_1_vs_2$log2FoldChange.y > 0 & combined_table_1_vs_2$padj.y < 0.01, 1, 0) ) 
+
+table(combined_table_1_vs_2$TE_significance, combined_table_1_vs_2$RNA_significance)
+
+TE_up_1_vs_2 = 
+  combined_table_1_vs_2 %>%
+  filter(TE_significance == 1)
+
+TE_down_1_vs_2 = 
+  combined_table_1_vs_2 %>%
+  filter(TE_significance == -1)
+
+write.csv( TE_up_1_vs_2,   file = "TE_up_1_vs_2_table.csv",   quote = FALSE )
+write.csv( TE_down_1_vs_2, file = "TE_down_1_vs_2_table.csv", quote = FALSE )
+
+
+
+background_table_1_vs_2 =
+  combined_table_1_vs_2 %>%
+  filter( ! is.na(padj.x) )
+
+write.csv( background_table_1_vs_2, file = "TE_background_1_vs_2.csv", quote = FALSE )
+
+
+## From 2 cell to 4 cell
+
+DESeq_results_RNA_2_vs_4 = as.data.frame(cell2_4_RNA[, c(2,5)] ) 
+DESeq_results_TE_2_vs_4  = as.data.frame(cell2_4_deseq2[, c(2,5)] ) 
+
+combined_table_2_vs_4    = merge(DESeq_results_TE_2_vs_4, 
+                                 DESeq_results_RNA_2_vs_4, 
+                                 by = "row.names", all.x = T)
+
+combined_table_2_vs_4$TE_significance = ifelse(combined_table_2_vs_4$log2FoldChange.x < 0 & combined_table_2_vs_4$padj.x < 0.01, -1,
+                                               ifelse(combined_table_2_vs_4$log2FoldChange.x > 0 & combined_table_2_vs_4$padj.x < 0.01, 1, 0) ) 
+
+combined_table_2_vs_4$RNA_significance = ifelse(combined_table_2_vs_4$log2FoldChange.y < 0 & combined_table_2_vs_4$padj.y < 0.01, -1,
+                                                ifelse(combined_table_2_vs_4$log2FoldChange.y > 0 & combined_table_2_vs_4$padj.y < 0.01, 1, 0) ) 
+
+table(combined_table_2_vs_4$TE_significance, combined_table_2_vs_4$RNA_significance)
+
+TE_up_2_vs_4 = 
+  combined_table_2_vs_4 %>%
+  filter(TE_significance == 1)
+
+TE_down_2_vs_4 = 
+  combined_table_2_vs_4 %>%
+  filter(TE_significance == -1)
+
+background_table_2_vs_4 =
+  combined_table_2_vs_4 %>%
+  filter( ! is.na(padj.x) )
+
+write.csv( TE_up_2_vs_4,   file = "TE_up_2_vs_4_table.csv",   quote = FALSE )
+write.csv( TE_down_2_vs_4, file = "TE_down_2_vs_4_table.csv", quote = FALSE )
+write.csv( background_table_2_vs_4, file = "TE_background_2_vs_4.csv", quote = FALSE )
+
+## From 4 cell to 8 cell
+
+DESeq_results_RNA_4_vs_8 = as.data.frame(cell4_8_RNA[, c(2,5)] ) 
+DESeq_results_TE_4_vs_8  = as.data.frame(cell4_8_deseq2[, c(2,5)] )
+
+combined_table_4_vs_8    = merge(DESeq_results_TE_4_vs_8, 
+                                 DESeq_results_RNA_4_vs_8, 
+                                 by = "row.names", all.x = T)
+
+combined_table_4_vs_8$TE_significance = ifelse(combined_table_4_vs_8$log2FoldChange.x < 0 & combined_table_4_vs_8$padj.x < 0.01, -1,
+                                               ifelse(combined_table_4_vs_8$log2FoldChange.x > 0 & combined_table_4_vs_8$padj.x < 0.01, 1, 0) ) 
+
+combined_table_4_vs_8$RNA_significance = ifelse(combined_table_4_vs_8$log2FoldChange.y < 0 & combined_table_4_vs_8$padj.y < 0.01, -1,
+                                                ifelse(combined_table_4_vs_8$log2FoldChange.y > 0 & combined_table_4_vs_8$padj.y < 0.01, 1, 0) ) 
+
+table(combined_table_4_vs_8$TE_significance, combined_table_4_vs_8$RNA_significance)
+
+TE_up_4_vs_8 = 
+  combined_table_4_vs_8 %>%
+  filter(TE_significance == 1)
+
+TE_down_4_vs_8 = 
+  combined_table_4_vs_8 %>%
+  filter(TE_significance == -1)
+
+background_table_4_vs_8 =
+  combined_table_4_vs_8 %>%
+  filter( ! is.na(padj.x) )
+
+write.csv( TE_up_4_vs_8,   file = "TE_up_4_vs_8_table.csv",   quote = FALSE )
+write.csv( TE_down_4_vs_8, file = "TE_down_4_vs_8_table.csv", quote = FALSE )
+write.csv( background_table_4_vs_8, file = "TE_background_4_vs_8.csv", quote = FALSE )
 
 ## MII - 1 cell is a very interesting stage as TE changes are not accompanied by RNA changes
 ## However, there is a distinct set of genes with increased translation efficiency
@@ -873,3 +1040,28 @@ EnhancedVolcano(mii_onecell_volcano_data[!is.na(keyvals),],
 volcano_main_plot = plot_grid(volcano_mii_vs_1_main, 
                               volcano_1_vs_2_main,
                               ncol = 2)
+
+volcano_plot_supp = plot_grid( volcano_gv_vs_mii_main,
+                               volcano_2_vs_4_main,
+                               ncol = 2)
+
+################################################################################
+get_output_file_path = function(file_name, output_folder = "pdf"){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
+
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+         plot   = this_plot, 
+         device = cairo_pdf, 
+         width  = width,
+         height = height,
+         dpi    = 600 )
+  
+}
+
+
+save_plot_pdf( "volcano_supp.pdf", volcano_plot_supp, width = 5, height = 3 )

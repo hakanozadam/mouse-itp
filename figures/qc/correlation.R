@@ -759,11 +759,16 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
   }
   
   if (stages[1] == "all" )  {  
-    normalizedcounts = LogNormalize(counts[,-1], scale = 30000)
+    normalizedcounts = NormalizeData(counts[,-1], 
+                                     scale = 10000, 
+                                     normalization.method = "CLR", 
+                                     margin = 2)
   } 
   else { 
     selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
-    normalizedcounts = LogNormalize(counts[,selected_samples], scale = 30000)
+    normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+                                     normalization.method = "CLR", 
+                                     margin = 2)
   }
   
   tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
@@ -792,7 +797,7 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
     scale_y_continuous( limits = c(0, ymax) , breaks = ybreaks ) + 
     scale_color_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) + 
     scale_shape_manual(values = c(4, 16, 3, 6)) + 
-    ylab("Log Normalized Counts") + xlab("") 
+    ylab("Normalized Count") + xlab("") 
   
   if(plot_type == "point"){
     return(p)
@@ -1102,3 +1107,124 @@ combined_cors_rna_ribo_separate
 
 save_plot_pdf("combined_cors_rna_ribo_separate.pdf", combined_cors_rna_ribo_separate$heatmap_correlation[[4]], 
               width = unit(7.2, "in"), height = unit(7.2, "in") )
+
+
+
+#############################################################################
+
+Apc = 
+  plot_cpm_across_conditions(all_counts, "Apc", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
+Apc
+
+Kit = 
+  plot_cpm_across_conditions(all_counts, "Kit", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+Kit
+
+#Myh9 = 
+#  plot_cpm_across_conditions(all_counts, "Myh9", 
+#                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+#Myh9
+
+Pcm1 = 
+  plot_cpm_across_conditions(all_counts, "Pcm1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+Pcm1
+
+
+Ptk2 = 
+  plot_cpm_across_conditions(all_counts, "Ptk2", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+Ptk2
+
+# Rock1 = 
+#   plot_cpm_across_conditions(all_counts, "Rock1", 
+#                              stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+# Rock1
+
+
+#Hnrnpa2b1 = 
+#  plot_cpm_across_conditions(all_counts, "Hnrnpa2b1", 
+#                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+#Hnrnpa2b1
+
+Qk = 
+  plot_cpm_across_conditions(all_counts, "Qk", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Qk
+
+Celf1 = 
+  plot_cpm_across_conditions(all_counts, "Celf1", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Celf1
+
+Cnot4 = 
+  plot_cpm_across_conditions(all_counts, "Cnot4", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Cnot4
+
+
+
+Dazl = 
+  plot_cpm_across_conditions(all_counts, "Dazl", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Dazl
+
+
+#Pa2g4 = 
+#  plot_cpm_across_conditions(all_counts, "Pa2g4", 
+#                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+#Pa2g4
+
+Stau1 = 
+  plot_cpm_across_conditions(all_counts, "Stau1", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Stau1
+
+
+#Ythdc1 = 
+#  plot_cpm_across_conditions(all_counts, "Ythdc1", 
+#                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+#Ythdc1
+
+Calr = 
+  plot_cpm_across_conditions(all_counts, "Calr", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Calr
+
+
+# Eprs = 
+#   plot_cpm_across_conditions(all_counts, "Eprs", 
+#                              stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+# Eprs
+
+
+# Fxr1 = 
+#   plot_cpm_across_conditions(all_counts, "Fxr1", 
+#                              stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+# Fxr1
+
+
+# Larp7 = 
+#   plot_cpm_across_conditions(all_counts, "Larp7", 
+#                              stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+# Larp7
+
+
+# Ncl = 
+#   plot_cpm_across_conditions(all_counts, "Ncl", 
+#                              stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+# Ncl
+
+# 
+# Snw1 = 
+#   plot_cpm_across_conditions(all_counts, "Snw1", 
+#                              stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+# Snw1
+
+
+Ythdf2 = 
+  plot_cpm_across_conditions(all_counts, "Ythdf2", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Ythdf2
