@@ -2181,3 +2181,39 @@ print(paste("4cell comparison p-value is", result_t_test_4cell$p.value, sep = " 
 result_t_test_8cell = 
   t.test(ribo_8cell_paternal_percentages$Percentage, rna_8cell_paternal_percentages$Percentage)
 print(paste("8cell comparison p-value is", result_t_test_8cell$p.value, sep = " " ))
+
+
+################################################################################
+### Sanity Checks on our filtering
+
+# The intersections should produce empty sets in each case.
+
+ribo_t = 
+  detailed_riboseq_table %>%
+  filter(group %in% c("2cell", "4cell", "8cell")) %>%
+  group_by(group, transcript) %>%
+  summarise( maternal_total = sum(maternal), paternal_total = sum(paternal) )
+
+rna_t = 
+  detailed_rnaseq_table %>%
+  filter(group %in% c("2cell", "4cell", "8cell")) %>%
+  group_by(group, transcript) %>%
+  summarise( maternal_total = sum(maternal), paternal_total = sum(paternal) )
+
+ribo_intr_genes =  ribo_t %>% filter(maternal_total ==2 & paternal_total >= 8)
+rna_intr_genes =  rna_t %>% filter(maternal_total ==2 & paternal_total >= 8)
+
+ribo_intr_genes_2cells = (ribo_intr_genes %>% filter(group == "2cell"))$transcript
+rna_intr_genes_2cells  = (rna_intr_genes %>% filter(group == "2cell"))$transcript
+
+intersect(ribo_intr_genes_2cells, rna_intr_genes_2cells)
+
+ribo_intr_genes_4cells = (ribo_intr_genes %>% filter(group == "4cell"))$transcript
+rna_intr_genes_4cells  = (rna_intr_genes %>% filter(group == "4cell"))$transcript
+
+intersect(ribo_intr_genes_4cells, rna_intr_genes_4cells)
+
+ribo_intr_genes_8cells = (ribo_intr_genes %>% filter(group == "8cell"))$transcript
+rna_intr_genes_8cells  = (rna_intr_genes %>% filter(group == "8cell"))$transcript
+
+intersect(ribo_intr_genes_8cells, rna_intr_genes_8cells)

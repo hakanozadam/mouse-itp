@@ -96,3 +96,24 @@ ggsave("pdf/figure_layout.png",
        width  = unit(7.20, "in"),
        height = unit(9, "in"),
        dpi    = 600 )
+
+
+figure_layout_bottom_only = 
+  plot_grid(separator,
+            schematic_label,
+            separator,
+            separator,
+            separator, 
+            page_bottom,
+            ncol = 1,
+            rel_heights = c(0.9, 1, 1, 0.9, 1),
+            #labels = c("A", "B", "C", "D", "E"),
+            labels = "AUTO",
+            label_size = 10,
+            label_fontfamily = "helvetica",
+            align = "hv")
+
+save_plot_pdf("qc_figure_layout_bottom.pdf", 
+              figure_layout_bottom_only, 
+              width = unit(7.20, "in"), 
+              height = unit(9, "in"))

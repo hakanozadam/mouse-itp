@@ -137,6 +137,9 @@ ribo_prot_cors = ribo_prot_cors[1:6, 7:11]
 rna_prot_cors
 ribo_prot_cors
 
+write.csv(rna_prot_cors, "rna_proteomics_correlations.csv", quote = FALSE)
+write.csv(ribo_prot_cors, "ribo_proteomics_correlations.csv", quote = FALSE)
+
 prots_rna_ribo_density_ordered = prots_rna_ribo[,c(5,6, 1:4, 14:18, 11, 12, 7:10)]
 
 ## UMAP clustering of the rank based data
@@ -149,154 +152,6 @@ umap(ranking, dotsize = 2, axistextsize = 12, legendtextsize = 12, textlabelsize
 
 plotMDS(ranking)
 cluster::pam(t(ranking), k = 5)
-
-
-## Sankey Diagram of the Correlations
-exp_stages  = c("GV", "MII", "1cell", "2cell", "4cell", "8cell")
-prot_stages = c("1cell", "2cell", "4cell", "8cell", "morula")
-
-
-
-# Remove 8-cell protein add blastocyst
-ribo_orange = rgb(228,88,10 , maxColorValue = 255)
-rna_blue   = rgb(55,135,192, maxColorValue = 255)
-
-# All columns
-selected_ribo = 1:6
-selected_rna = 13:17
-selected_protein = c(7:9, 11)
-
-# Split into two graphs. One for GV - 1cell; One drawback is the ratio between two is warped. 
-selected_ribo = 1:3
-selected_rna = 13:15
-selected_protein = c(7:9)
-
-## 
-# The other for 4,8 cell to morula
-selected_ribo = 5:6
-selected_rna = 16:17
-selected_protein = 11
-
-selected_cols = c(selected_ribo, selected_protein, selected_rna)
-
-## We can create two link_lists and make two diagram to get better spacing
-link_list = list( 
-      source = c(), 
-      target = c(), 
-      value = c()
-)
-  # We will only calculate ITP-Prot; RNA-Prot correlation with Spearman's corrrection
-  # We will update link list with >0 correlations
-for (column_id in c(selected_ribo, selected_rna)  ) { 
-  for (prot_id in selected_protein) { 
-    if (column_id < 7) { 
-        spearman = cor(prots_rna_ribo_density_ordered[,column_id], prots_rna_ribo_density_ordered[,prot_id], method = "spearman") / sqrt(prot_reliability * ribo_reliability)
-      } else { 
-        spearman = cor(prots_rna_ribo_density_ordered[,column_id], prots_rna_ribo_density_ordered[,prot_id], method = "spearman") / sqrt(prot_reliability * rna_reliability)
-      }
-    if (spearman >  0 ) {
-      if (column_id < 7) { 
-        link_list[["source"]] = c(link_list[["source"]], column_id-1)
-        link_list[["target"]] = c(link_list[["target"]], prot_id-1)
-        link_list[["value"]] = c(link_list[["value"]], round(spearman, 2) ) 
-      } else { 
-        link_list[["source"]] = c(link_list[["source"]], prot_id-1)
-        link_list[["target"]] = c(link_list[["target"]], column_id-1)
-        link_list[["value"]] = c(link_list[["value"]], round(spearman, 2) ) 
-      }
-    }
-      
-  }
-}
-
-cor_breaks = seq(0,1, by=.1)
-cor_breaks = c(0,0.2, 0.4, 0.5, 0.6, 0.7, 0.8)
-# Based on quantile of link_list value
-cor_breaks = c(0,0.18, 0.32, 0.46, 0.54, 0.731)
-
-# Based on hand selected 
-cor_breaks = c(0,0.35, 0.42, 0.47, 0.52, 0.58, 0.731)
-
-
-link_list$color = cut(link_list$value, breaks = cor_breaks, 
-                    labels = colorRampPalette(
-                      colors = c("lightgray", "darkblue"))(length(cor_breaks)-1 ) )
-
-
-node_list_all = list(
-  label = colnames(prots_rna_ribo_density_ordered),
-  color = c(rep(ribo_orange, 6), rep("green", 5), rep(rna_blue, 6) ),
-  y = c(0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 
-        0.3, 0.4, 0.6, 0.8,
-        0.1, 0.2, 0.3, 0.4, 0.6, 0.7), 
-  x = c(rep(0.1, 6), 
-        rep(0.3, 4), 
-        rep(0.6, 6)), 
-  pad = 40,
-  thickness = 20,
-  line = list(
-    color = "black",
-    width = 0.5
-  )
-)
-
-
-node_list_48 = list(
-  label = colnames(prots_rna_ribo_density_ordered),
-  color = c(rep(ribo_orange, 6), rep("green", 5), rep(rna_blue, 6) ),
-  y = c(0.1, 0.5, 0.55, 0.1, 0.5), 
-  x = c(0.1, 0.1, 
-        0.3, 
-        0.6, 0.6), 
-  pad = 40,
-  thickness = 16,
-  line = list(
-    color = "black",
-    width = 0.5
-  )
-)
-
-node_list_GV_2 = list(
-  label = colnames(prots_rna_ribo_density_ordered),
-  color = c(rep(ribo_orange, 6), rep("green", 5), rep(rna_blue, 6) ),
-  y = c(0.1, 0.34, 0.55, 
-        0.3, 0.56, 0.77, 
-        0.05, 0.24, 0.45), 
-  x = c(0.1, 0.1, 0.1, 
-        0.3, 0.3, 0.3,
-        0.6, 0.6, 0.6), 
-  pad = 40,
-  thickness = 16,
-  line = list(
-    color = "black",
-    width = 0.5
-  )
-)
-
-
-## Node color added manually
-fig <- plot_ly(
-  type = "sankey",
-  orientation = "v",
-  textfont = list( family = "Arial"),
-
-#  node = node_list_all , 
-  node = node_list_48 , 
-#  node =node_list_GV_2,
-  link = link_list
-)
-
-fig <- fig %>% layout(
-  title = "Spearman Correlation",
-  font = list(
-    size = 10
-  )
-)
-
-fig
-
-## Orca requires the commandline-tools separately installed
-orca(fig, "sankey.pdf")
 
 
 
@@ -408,6 +263,7 @@ MII_1cell_deseq2 = calculate_interaction_based_TE(all_counts_reordered[,c(5:12, 
 cell1_2_deseq2   = calculate_interaction_based_TE(all_counts_reordered[,c(9:16, 33:40 )])
 cell2_4_deseq2   = calculate_interaction_based_TE(all_counts_reordered[,c(13:18, 38:43 )])
 cell4_8_deseq2   = calculate_interaction_based_TE(all_counts_reordered[,c(17:22, 41:47 )])
+
 
 
 calculate_RNADE = function (count_table) { 
@@ -645,11 +501,11 @@ twocell_fourcell_volcano_data   = as.data.frame(cell2_4_deseq2[, c(2,5)] )
 fourcell_eightcell_volcano_data = as.data.frame(cell4_8_deseq2[, c(2,5)] )
 
 ### Volcano Plot Parameters
-
+labSize_main         = 2
 axisLabSize_main     = 7
 titleLabSize_main    = 9
-subtitleLabSize_main = 7
-captionLabSize_main  = 7
+subtitleLabSize_main = 6
+captionLabSize_main  = 6
 legendIconSize_main  = 1.0
 legendLabSize_main   = 8
 encircleSize_main    = 1
@@ -712,8 +568,60 @@ EnhancedVolcano(gv_mii_volcano_data_modified[!is.na(keyvals),],
                 #colConnectors = 'black',
                 )
 
+################################################################################
+
+gv_mii_volcano_data_flipped = gv_mii_volcano_data_modified 
+
+gv_mii_volcano_data_flipped$log2FoldChange = (-1) * gv_mii_volcano_data_modified$log2FoldChange
+
+keyvals_gv_mii_flipped = ifelse(gv_mii_volcano_data_flipped$log2FoldChange < -1 & gv_mii_volcano_data_flipped$padj < 0.01, '#6e005f',
+                 ifelse(gv_mii_volcano_data_flipped$log2FoldChange > 1 & gv_mii_volcano_data_flipped$padj < 0.01, '#045275', 'grey60') )
+
+names(keyvals_gv_mii_flipped)[keyvals_gv_mii_flipped == '#6e005f'] <- 'lowTE'
+names(keyvals_gv_mii_flipped)[keyvals_gv_mii_flipped == '#045275'] <- 'highTE'
+names(keyvals_gv_mii_flipped)[keyvals_gv_mii_flipped == 'grey60']  <- 'NS'
+
+
+volcano_gv_vs_mii_flipped = 
+  EnhancedVolcano(gv_mii_volcano_data_flipped[!is.na(keyvals_gv_mii_flipped),], 
+                  lab = rownames(gv_mii_volcano_data_flipped)[!is.na(keyvals_gv_mii_flipped)], 
+                  x               = "log2FoldChange" , 
+                  y               = "padj", 
+                  title           = "", 
+                  subtitle        = "GV vs MII",
+                  selectLab       = c(""), 
+                  axisLabSize     = axisLabSize_main,
+                  titleLabSize    = titleLabSize_main,
+                  subtitleLabSize = subtitleLabSize_main,
+                  captionLabSize  = captionLabSize_main,
+                  legendIconSize  = legendIconSize_main,
+                  legendLabSize   = legendLabSize_main,
+                  encircleSize    = 1,
+                  cutoffLineType  = 'blank',
+                  vline           = c(0),
+                  #vlineType       = 'solid',
+                  cutoffLineWidth = cutoffLineWidth_main,
+                  pointSize       = pointSize_main,
+                  vlineWidth      = vlineWidth_main,
+                  caption         = "",
+                  legendLabels    = c("NS", "NS", "NS", "1% FDR"),
+                  colCustom       = keyvals_gv_mii_flipped[!is.na(keyvals_gv_mii_flipped)], 
+                  colAlpha        = colAlpha_main,
+                  gridlines.minor = gridlines.minor_main,
+                  gridlines.major = gridlines.major_main,
+                  borderWidth     = borderWidth_main
+                  #drawConnectors = TRUE,
+                  #pointSize = c(ifelse(qlf_rna$table$PValue< fdr5_nominalp_RNA, 1, 0.2)),
+                  #widthConnectors = 0.5,
+                  #colConnectors = 'black',
+  )
+
+volcano_gv_vs_mii_flipped
+
+################################################################################
+
 volcano_gv_vs_mii_main = 
-  volcano_gv_vs_mii + 
+  volcano_gv_vs_mii_flipped + 
     theme(axis.ticks      = element_line(colour = "black", size = 0.3),
           legend.position = "none",
           plot.subtitle   = element_text(hjust = 0.5)) + 
@@ -741,14 +649,19 @@ names(keyvals)[keyvals == '#6e005f'] <- 'lowTE'
 names(keyvals)[keyvals == '#045275'] <- 'highTE'
 names(keyvals)[keyvals == 'grey60']  <- 'NS'
 
+mii_onecell_volcano_data_modified$gene_names = lapply(strsplit( rownames(mii_onecell_volcano_data_modified),
+                                                        split = "-"), "[[", 1 )
+
 volcano_mii_vs_1 = 
   EnhancedVolcano(mii_onecell_volcano_data_modified[!is.na(keyvals),], 
-                  lab = rownames(mii_onecell_volcano_data_modified)[!is.na(keyvals)], 
+                  #lab = rownames(mii_onecell_volcano_data_modified)[!is.na(keyvals)], 
                   x               = "log2FoldChange" , 
                   y               = "padj", 
                   title           = "", 
                   subtitle        = "MII vs 1Cell",
-                  selectLab       = c(""), 
+                  lab             = mii_onecell_volcano_data_modified[!is.na(keyvals),]$gene_names,
+                  labSize         = labSize_main,
+                  selectLab       = c("Apc", "Camsap1", "Cep120", "Numa1", "Cenpe"), 
                   axisLabSize     = axisLabSize_main,
                   titleLabSize    = titleLabSize_main,
                   subtitleLabSize = subtitleLabSize_main,
@@ -769,12 +682,12 @@ volcano_mii_vs_1 =
                   gridlines.minor = gridlines.minor_main,
                   gridlines.major = gridlines.major_main,
                   borderWidth     = borderWidth_main,
-                  #drawConnectors = TRUE,
+                  drawConnectors = TRUE,
                   #pointSize = c(ifelse(qlf_rna$table$PValue< fdr5_nominalp_RNA, 1, 0.2)),
                   #widthConnectors = 0.5,
                   #colConnectors = 'black',
   )
-
+volcano_mii_vs_1
 
 volcano_mii_vs_1_main = 
   volcano_mii_vs_1 + 
@@ -806,15 +719,19 @@ names(keyvals)[keyvals == '#6e005f'] <- 'lowTE'
 names(keyvals)[keyvals == '#045275'] <- 'highTE'
 names(keyvals)[keyvals == 'grey60']  <- 'NS'
 
+onecell_twocell_volcano_data_modified$gene_names = lapply(strsplit( rownames(onecell_twocell_volcano_data_modified),
+                                                                split = "-"), "[[", 1 )
 
 volcano_1_vs_2 = 
   EnhancedVolcano(onecell_twocell_volcano_data_modified[!is.na(keyvals),], 
-                  lab = rownames(onecell_twocell_volcano_data_modified)[!is.na(keyvals)], 
+                  #lab             = rownames(onecell_twocell_volcano_data_modified)[!is.na(keyvals),], 
                   x               = "log2FoldChange" , 
                   y               = "padj", 
                   title           = "", 
                   subtitle        = "1Cell vs 2Cell",
-                  selectLab       = c(""), 
+                  lab             = onecell_twocell_volcano_data_modified[!is.na(keyvals),]$gene_names, 
+                  labSize         = labSize_main,
+                  selectLab       = c("Hnrnpa2b1", "Ythdf2", "Ythdc1", "Alkbh5"), 
                   axisLabSize     = axisLabSize_main,
                   titleLabSize    = titleLabSize_main,
                   subtitleLabSize = subtitleLabSize_main,
@@ -835,7 +752,7 @@ volcano_1_vs_2 =
                   gridlines.minor = gridlines.minor_main,
                   gridlines.major = gridlines.major_main,
                   borderWidth     = borderWidth_main,
-                  #drawConnectors = TRUE,
+                  drawConnectors = TRUE,
                   #pointSize = c(ifelse(qlf_rna$table$PValue< fdr5_nominalp_RNA, 1, 0.2)),
                   #widthConnectors = 0.5,
                   #colConnectors = 'black',
@@ -843,8 +760,65 @@ volcano_1_vs_2 =
 
 volcano_1_vs_2
 
+################################################################################
+### 1 vs 2 Cell Flipped
+
+# multiply fold changes by -1 to flip
+onecell_twocell_volcano_data_flipped = onecell_twocell_volcano_data_modified
+
+onecell_twocell_volcano_data_flipped$log2FoldChange =
+  onecell_twocell_volcano_data_modified$log2FoldChange * (-1)
+
+keyvals_1_2_cell_flipped = ifelse(onecell_twocell_volcano_data_flipped$log2FoldChange < -1 & onecell_twocell_volcano_data_flipped$padj < 0.01, '#6e005f',
+                 ifelse(onecell_twocell_volcano_data_flipped$log2FoldChange > 1 & onecell_twocell_volcano_data_flipped$padj < 0.01, '#045275', 'grey60') )
+
+names(keyvals_1_2_cell_flipped)[keyvals_1_2_cell_flipped == '#6e005f'] <- 'lowTE'
+names(keyvals_1_2_cell_flipped)[keyvals_1_2_cell_flipped == '#045275'] <- 'highTE'
+names(keyvals_1_2_cell_flipped)[keyvals_1_2_cell_flipped == 'grey60']  <- 'NS'
+
+volcano_1_vs_2_flipped = 
+  EnhancedVolcano(onecell_twocell_volcano_data_flipped[!is.na(keyvals_1_2_cell_flipped),], 
+                  #lab             = rownames(onecell_twocell_volcano_data_modified)[!is.na(keyvals),], 
+                  x               = "log2FoldChange" , 
+                  y               = "padj", 
+                  title           = "", 
+                  subtitle        = "1Cell vs 2Cell",
+                  lab             = onecell_twocell_volcano_data_flipped[!is.na(keyvals_1_2_cell_flipped),]$gene_names, 
+                  labSize         = labSize_main,
+                  selectLab       = c("Hnrnpa2b1", "Ythdf2", "Ythdc1", "Alkbh5"), 
+                  axisLabSize     = axisLabSize_main,
+                  titleLabSize    = titleLabSize_main,
+                  subtitleLabSize = subtitleLabSize_main,
+                  captionLabSize  = captionLabSize_main,
+                  legendIconSize  = legendIconSize_main,
+                  legendLabSize   = legendLabSize_main,
+                  encircleSize    = 1,
+                  cutoffLineType  = 'blank',
+                  vline           = c(0),
+                  #vlineType       = 'solid',
+                  cutoffLineWidth = cutoffLineWidth_main,
+                  pointSize       = pointSize_main,
+                  vlineWidth      = vlineWidth_main,
+                  caption         = "",
+                  legendLabels    = c("NS", "NS", "NS", "1% FDR"),
+                  colCustom       = keyvals_1_2_cell_flipped[!is.na(keyvals_1_2_cell_flipped)], 
+                  colAlpha        = colAlpha_main,
+                  gridlines.minor = gridlines.minor_main,
+                  gridlines.major = gridlines.major_main,
+                  borderWidth     = borderWidth_main,
+                  drawConnectors = TRUE,
+                  #pointSize = c(ifelse(qlf_rna$table$PValue< fdr5_nominalp_RNA, 1, 0.2)),
+                  #widthConnectors = 0.5,
+                  #colConnectors = 'black',
+  )
+
+volcano_1_vs_2_flipped
+################################################################################
+
+
+
 volcano_1_vs_2_main = 
-  volcano_1_vs_2 + 
+  volcano_1_vs_2_flipped + 
   theme(axis.ticks      = element_line(colour = "black", size = 0.3),
         legend.position = "none",
         plot.subtitle   = element_text(hjust = 0.5)) + 
@@ -876,7 +850,7 @@ names(keyvals)[keyvals == 'grey60']  <- 'NS'
 
 volcano_2_vs_4 = 
   EnhancedVolcano(twocell_fourcell_volcano_data_modified[!is.na(keyvals),], 
-                  lab = rownames(twocell_fourcell_volcano_data_modified)[!is.na(keyvals)], 
+                  lab = rownames(twocell_fourcell_volcano_data_modified)[!is.na(keyvals)] , 
                   x               = "log2FoldChange" , 
                   y               = "padj", 
                   title           = "", 
@@ -908,8 +882,67 @@ volcano_2_vs_4 =
                   #colConnectors = 'black',
   )
 
+################################################################################
+##### 2 vs 4 Flipped
+
+twocell_fourcell_volcano_data_flipped = twocell_fourcell_volcano_data_modified
+
+twocell_fourcell_volcano_data_flipped$log2FoldChange = 
+  (-1) * twocell_fourcell_volcano_data_modified$log2FoldChange
+
+
+keyvals_2_4_flipped = ifelse(twocell_fourcell_volcano_data_flipped$log2FoldChange < -1 & twocell_fourcell_volcano_data_flipped$padj < 0.01, '#6e005f',
+                 ifelse(twocell_fourcell_volcano_data_flipped$log2FoldChange > 1 & twocell_fourcell_volcano_data_flipped$padj < 0.01, '#045275', 'grey60') )
+
+names(keyvals_2_4_flipped)[keyvals_2_4_flipped == '#6e005f'] <- 'lowTE'
+names(keyvals_2_4_flipped)[keyvals_2_4_flipped == '#045275'] <- 'highTE'
+names(keyvals_2_4_flipped)[keyvals_2_4_flipped == 'grey60']  <- 'NS'
+
+
+volcano_2_vs_4_flipped = 
+  EnhancedVolcano(twocell_fourcell_volcano_data_flipped[!is.na(keyvals_2_4_flipped),], 
+                  lab = rownames(twocell_fourcell_volcano_data_flipped)[!is.na(keyvals_2_4_flipped)] , 
+                  x               = "log2FoldChange" , 
+                  y               = "padj", 
+                  title           = "", 
+                  subtitle        = "2Cell vs 4Cell",
+                  selectLab       = c(""), 
+                  axisLabSize     = axisLabSize_main,
+                  titleLabSize    = titleLabSize_main,
+                  subtitleLabSize = subtitleLabSize_main,
+                  captionLabSize  = captionLabSize_main,
+                  legendIconSize  = legendIconSize_main,
+                  legendLabSize   = legendLabSize_main,
+                  encircleSize    = 1,
+                  cutoffLineType  = 'blank',
+                  vline           = c(0),
+                  #vlineType       = 'solid',
+                  cutoffLineWidth = cutoffLineWidth_main,
+                  pointSize       = pointSize_main,
+                  vlineWidth      = vlineWidth_main,
+                  caption         = "",
+                  legendLabels    = c("NS", "NS", "NS", "1% FDR"),
+                  colCustom       = keyvals_2_4_flipped[!is.na(keyvals_2_4_flipped)], 
+                  colAlpha        = colAlpha_main,
+                  gridlines.minor = gridlines.minor_main,
+                  gridlines.major = gridlines.major_main,
+                  borderWidth     = borderWidth_main,
+                  #drawConnectors = TRUE,
+                  #pointSize = c(ifelse(qlf_rna$table$PValue< fdr5_nominalp_RNA, 1, 0.2)),
+                  #widthConnectors = 0.5,
+                  #colConnectors = 'black',
+  )
+
+volcano_2_vs_4_flipped
+
+
+
+################################################################################
+
+volcano_2_vs_4_main
+
 volcano_2_vs_4_main = 
-  volcano_2_vs_4 + 
+  volcano_2_vs_4_flipped + 
   theme(axis.ticks      = element_line(colour = "black", size = 0.3),
         legend.position = "none",
         plot.subtitle   = element_text(hjust = 0.5)) + 
@@ -1065,3 +1098,30 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 
 
 save_plot_pdf( "volcano_supp.pdf", volcano_plot_supp, width = 5, height = 3 )
+
+
+################################################################################
+
+# We save the DESEQ2 results to tables
+
+csv_col_names = c("transcript", "TE_log2FoldChange", 
+                  "TE_padj",    "RNA_log2FoldChange", 
+                  "RNA_padj",   
+                  "TE_significance",
+                  "RNA_significance")
+
+colnames(combined_table_GV_vs_MII) = csv_col_names
+colnames(combined_table_MII_vs_1)  = csv_col_names
+colnames(combined_table_1_vs_2)    = csv_col_names
+colnames(combined_table_2_vs_4)    = csv_col_names
+colnames(combined_table_4_vs_8)    = csv_col_names
+
+
+write.csv( combined_table_GV_vs_MII  , row.names = FALSE,  file = "deseq2_results/GV_MII_deseq2.csv",    quote = FALSE  )
+write.csv( combined_table_MII_vs_1   , row.names = FALSE,  file = "deseq2_results/MII_1cell_deseq2.csv", quote = FALSE)
+write.csv( combined_table_1_vs_2     , row.names = FALSE,   file = "deseq2_results/cell1_2_deseq2.csv",   quote = FALSE  )
+write.csv( combined_table_2_vs_4     , row.names = FALSE,   file = "deseq2_results/cell2_4_deseq2.csv",   quote = FALSE )
+write.csv( combined_table_4_vs_8     , row.names = FALSE,   file = "deseq2_results/cell4_8_deseq2.csv",   quote = FALSE )
+
+
+View(combined_table_MII_vs_1)

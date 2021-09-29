@@ -1,6 +1,6 @@
 
 source("./volcano_plots.R")
-source("./differential_analysis.R")
+#source("./differential_analysis.R")
 ################################################################################
 ####### Page Layout
 
@@ -70,3 +70,16 @@ figure_layout = plot_grid(figure_left,
 
 save_plot_pdf("diff_figure_layout.pdf", figure_layout, width = unit(7.20, "in"), height = unit(9, "in"))
 
+
+figure_right = plot_grid(volcano_main_plot, 
+                         separator,
+                         separator,
+                         ncol = 1,
+                         rel_heights = c(1, 0.6, 2))
+
+figure_layout_volcano = plot_grid(separator,
+                          figure_right,
+                          ncol = 2,
+                          rel_widths = c(1, 2.8))
+
+save_plot_pdf("diff_figure_layout_volcano.pdf", figure_layout_volcano, width = unit(7.20, "in"), height = unit(9, "in"))

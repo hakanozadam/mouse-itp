@@ -36,7 +36,7 @@ FIGURE_FONT    = "helvetica"
 
 
 ribo_orange = rgb(228,88,10 , maxColorValue = 255)
-rna_blue   = rgb(55,135,192, maxColorValue = 255)
+rna_blue    = rgb(55,135,192, maxColorValue = 255)
 
 ################################################################################
 
@@ -826,7 +826,8 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
       ) +
       scale_y_continuous( limits = c(0, ymax) , expand = c(0, 0), breaks = ybreaks ) + 
       scale_fill_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) +  
-      labs(title = gene)
+      labs(title = gene) + 
+      ylab("Normalized Count")
     
     return(p)
   }
@@ -837,7 +838,7 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
 
 ### Higher in MII
 Lbr_barplot = 
-  plot_cpm_across_conditions(all_counts, "Lbr", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Lbr", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Lbr_barplot
 
 Lbr_pointplot = 
@@ -846,8 +847,9 @@ Lbr_pointplot
 
 
 Cept1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Cept1", stages = c("1cell", "MII"), plot_type = "barplot" ) 
+  plot_cpm_across_conditions(all_counts, "Cept1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5 ) 
 Cept1_barplot
+
 
 Cept1_pointplot = 
   plot_cpm_across_conditions(all_counts, "Cept1", stages = c("1cell", "MII"), plot_type = "point" ) 
@@ -855,7 +857,7 @@ Cept1_pointplot
 
 
 H1f8_barplot = 
-  plot_cpm_across_conditions(all_counts, "H1f8", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 6 ) 
+  plot_cpm_across_conditions(all_counts, "H1f8", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 8 ) 
 H1f8_barplot
 
 H1f8_pointplot = 
@@ -864,7 +866,7 @@ H1f8_pointplot
 
 
 Taldo1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5 ) 
 Taldo1_barplot
 
 Taldo1_pointplot = 
@@ -874,7 +876,7 @@ Taldo1_pointplot
 ## Higher in 1cell
 
 Anapc5_barplot = 
-  plot_cpm_across_conditions(all_counts, "Anapc5", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Anapc5", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Anapc5_barplot
 
 Anapc5_pointplot = 
@@ -883,7 +885,7 @@ Anapc5_pointplot
 
 
 Spry4_barplot = 
-  plot_cpm_across_conditions(all_counts, "Spry4", stages = c("1cell", "MII"), plot_type = "barplot" , ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Spry4", stages = c("1cell", "MII"), plot_type = "barplot" , ymax = 4 ) 
 Spry4_barplot
 
 Spry4_pointplot = 
@@ -892,7 +894,7 @@ Spry4_pointplot
 
 
 Mapk1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2.2 ) 
 Mapk1_barplot
 
 Mapk1_pointplot = 
@@ -905,7 +907,7 @@ Mapk1_pointplot
 ## High in MII
 
 Gdf9_barplot = 
-  plot_cpm_across_conditions(all_counts, "Gdf9", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5.1 ) 
+  plot_cpm_across_conditions(all_counts, "Gdf9", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 6.5 ) 
 Gdf9_barplot
 
 Gdf9_pointplot = 
@@ -913,7 +915,7 @@ Gdf9_pointplot =
 Gdf9_pointplot
 
 Amfr_barplot = 
-  plot_cpm_across_conditions(all_counts, "Amfr", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Amfr", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Amfr_barplot
 
 Amfr_pointplot = 
@@ -922,7 +924,7 @@ Amfr_pointplot
 
 
 Pdcd6_barplot = 
-  plot_cpm_across_conditions(all_counts, "Pdcd6", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Pdcd6", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4.4 ) 
 Pdcd6_barplot
 
 Pdcd6_pointplot = 
@@ -931,7 +933,7 @@ Pdcd6_pointplot
 
 
 Tada2a_barplot = 
-  plot_cpm_across_conditions(all_counts, "Tada2a", stages = c("1cell", "MII"), plot_type = "barplot", ymax=2 ) 
+  plot_cpm_across_conditions(all_counts, "Tada2a", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3.2 ) 
 Tada2a_barplot
 
 Tada2a_pointplot = 
@@ -940,7 +942,7 @@ Tada2a_pointplot
 
 ## Higher in 1cell
 Abcf3_barplot = 
-  plot_cpm_across_conditions(all_counts, "Abcf3", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2.05 ) 
+  plot_cpm_across_conditions(all_counts, "Abcf3", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Abcf3_barplot
 
 Abcf3_pointplot = 
@@ -949,7 +951,7 @@ Abcf3_pointplot
 
 
 Smarca4_barplot = 
-  plot_cpm_across_conditions(all_counts, "Smarca4", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Smarca4", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
 Smarca4_barplot
 
 Smarca4_pointplot = 
@@ -958,7 +960,7 @@ Smarca4_pointplot
 
 
 Mapk1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2.3 ) 
 Mapk1_barplot
 
 Mapk1_pointplot = 
@@ -967,7 +969,7 @@ Mapk1_pointplot
 
 
 Rybp_barplot = 
-  plot_cpm_across_conditions(all_counts, "Rybp", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 1.2 ) 
+  plot_cpm_across_conditions(all_counts, "Rybp", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
 Rybp_barplot
 
 Rybp_pointplot = 
@@ -1135,7 +1137,7 @@ Pcm1
 
 Ptk2 = 
   plot_cpm_across_conditions(all_counts, "Ptk2", 
-                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
 Ptk2
 
 # Rock1 = 
@@ -1144,10 +1146,10 @@ Ptk2
 # Rock1
 
 
-#Hnrnpa2b1 = 
-#  plot_cpm_across_conditions(all_counts, "Hnrnpa2b1", 
-#                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
-#Hnrnpa2b1
+Hnrnpa2b1 = 
+  plot_cpm_across_conditions(all_counts, "Hnrnpa2b1", 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+Hnrnpa2b1
 
 Qk = 
   plot_cpm_across_conditions(all_counts, "Qk", 
@@ -1226,5 +1228,118 @@ Calr
 
 Ythdf2 = 
   plot_cpm_across_conditions(all_counts, "Ythdf2", 
-                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 5 ) 
+                             stages = c("1cell", "2cell"), plot_type = "point", ymax = 3 ) 
 Ythdf2
+
+Camsap1 = 
+  plot_cpm_across_conditions(all_counts, "Camsap1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
+Camsap1
+
+Cep120 = 
+  plot_cpm_across_conditions(all_counts, "Cep120", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
+Cep120
+
+Numa1 = 
+  plot_cpm_across_conditions(all_counts, "Numa1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
+Numa1
+
+Ezh2 = 
+  plot_cpm_across_conditions(all_counts, "Ezh2", 
+                           stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+Ezh2
+
+
+
+
+generate_blank_plot = function(bg = "white"){
+  
+  this_background = element_blank()
+  
+  if(bg != "white"){
+    this_background = element_rect(fill = bg)
+  }  
+  
+  df <- data.frame()
+  p = ggplot(df) + geom_point() + 
+    xlim(0, 4) + ylim(0, 100) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = this_background,
+      axis.title.x     = element_blank(),
+      axis.title.y     = element_blank(),
+      axis.text.x      = element_blank(),
+      axis.text.y      = element_blank(),
+      axis.ticks.x     = element_blank(),
+      plot.background  = element_blank(),
+      axis.ticks.y     = element_blank()
+    ) 
+  return(p)
+}
+
+point_legend_1 = get_legend(Apc)
+point_legend_2 = get_legend(Ythdf2)
+
+separator = generate_blank_plot()
+
+selected_genes_point_plots = 
+  plot_grid( point_legend_1,
+             point_legend_2,
+             separator,
+             Apc       + theme(legend.position = "none"),
+             Kit       + theme(legend.position = "none"),
+             Ptk2      + theme(legend.position = "none"),
+             Ythdf2    + theme(legend.position = "none"),
+             Hnrnpa2b1 + theme(legend.position = "none"),
+             rel_widths = c(1,1,0.3,1,1,1,1,1),
+             nrow = 1)
+
+
+
+save_plot_pdf("selected_genes_point_plots.pdf", selected_genes_point_plots, 
+              width = unit(7.2, "in"), height = unit(2, "in") )
+
+APC_related_genes_point_plots = plot_grid(
+  Camsap1 + theme(legend.position = "none"),
+  Cep120 + theme(legend.position = "none"),
+  Numa1 + theme(legend.position = "none"),
+  Ezh2 + theme(legend.position = "none"),
+  nrow = 1
+)
+
+save_plot_pdf("APC_related_genes_point_plots.pdf", APC_related_genes_point_plots, 
+              width = unit(5.2, "in"), height = unit(2, "in") )
+
+
+
+
+Ncoa6 = 
+  plot_cpm_across_conditions(all_counts, "Ncoa6", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
+Ncoa6
+
+Brd2 = 
+  plot_cpm_across_conditions(all_counts, "Brd2", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 3.2 ) 
+Brd2
+
+save_plot_pdf("Brd2.pdf", Brd2, 
+              width = unit(3, "in"), height = unit(2.4, "in") )
+
+
+Alkhb5 =   plot_cpm_across_conditions(all_counts, "Alkbh5", 
+                                        stages = c("1cell", "2cell"), plot_type = "point", ymax = 3.2 ) 
+
+Alkhb5
+
+Alkhb5_bar =   plot_cpm_across_conditions(all_counts, "Alkbh5", 
+                                      stages = c("1cell", "2cell"), plot_type = "barplot", ymax = 3.2 ) 
+
+Alkhb5_bar
+
+save_plot_pdf("Alkhb5.pdf", Alkhb5, 
+              width = unit(3, "in"), height = unit(2.4, "in") )
+
