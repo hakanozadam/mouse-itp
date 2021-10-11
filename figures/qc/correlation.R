@@ -15,7 +15,7 @@ source('./rename_experiments.R')
 human_ribo_file = '../../../../itp/human-itp_v4.ribo'
 mouse_ribo_file = '../../../mouse-itp_v5.ribo'
 
-mouse_rnaseq_count_file = '../../../cds_counts.csv.gz'
+mouse_rnaseq_count_file = '../../cds_counts.csv.gz'
 
 human = Ribo(human_ribo_file, rename_default)
 mm    = Ribo(mouse_ribo_file, rename = rename_default)
@@ -842,143 +842,225 @@ Lbr_barplot =
 Lbr_barplot
 
 Lbr_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Lbr", stages = c("1cell", "MII"), plot_type = "point" ) 
+  plot_cpm_across_conditions(all_counts, "Lbr", 
+                             stages    = c("1cell", "MII"), 
+                             plot_type = "point", ymax = 4 ) 
 Lbr_pointplot
 
 
 Cept1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Cept1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5 ) 
+  plot_cpm_across_conditions(all_counts, "Cept1", 
+                             stages = c("1cell", "MII"), 
+                             plot_type = "barplot", ymax = 5 ) 
 Cept1_barplot
 
-
 Cept1_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Cept1", stages = c("1cell", "MII"), plot_type = "point" ) 
+  plot_cpm_across_conditions(all_counts, "Cept1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
 Cept1_pointplot
 
 
 H1f8_barplot = 
-  plot_cpm_across_conditions(all_counts, "H1f8", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 8 ) 
+  plot_cpm_across_conditions(all_counts, "H1f8", 
+                             stages = c("1cell", "MII"), 
+                             plot_type = "barplot", ymax = 8 ) 
 H1f8_barplot
 
 H1f8_pointplot = 
-  plot_cpm_across_conditions(all_counts, "H1f8", stages = c("1cell", "MII"), plot_type = "point", ymax = 6 ) 
+  plot_cpm_across_conditions(all_counts, "H1f8", stages = c("1cell", "MII"), plot_type = "point", ymax = 8 ) 
 H1f8_pointplot
 
 
 Taldo1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5 ) 
+  plot_cpm_across_conditions(all_counts, "Taldo1", 
+                             stages = c("1cell", "MII"), 
+                             plot_type = "barplot", ymax = 5 ) 
 Taldo1_barplot
 
 Taldo1_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
 Taldo1_pointplot
 
-## Higher in 1cell
-
-Anapc5_barplot = 
-  plot_cpm_across_conditions(all_counts, "Anapc5", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
-Anapc5_barplot
-
-Anapc5_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Anapc5", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
-Anapc5_pointplot
-
-
-Spry4_barplot = 
-  plot_cpm_across_conditions(all_counts, "Spry4", stages = c("1cell", "MII"), plot_type = "barplot" , ymax = 4 ) 
-Spry4_barplot
-
-Spry4_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Spry4", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
-Spry4_pointplot
-
-
-Mapk1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2.2 ) 
-Mapk1_barplot
-
-Mapk1_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
-Mapk1_pointplot
-
-
-#### Remaining Genes
-
-## High in MII
-
 Gdf9_barplot = 
-  plot_cpm_across_conditions(all_counts, "Gdf9", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 6.5 ) 
+  plot_cpm_across_conditions(all_counts, "Gdf9", 
+                             stages = c("1cell", "MII"), 
+                             plot_type = "barplot", ymax = 8 ) 
 Gdf9_barplot
 
 Gdf9_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Gdf9", stages = c("1cell", "MII"), plot_type = "point", ymax = 6 ) 
+  plot_cpm_across_conditions(all_counts, "Gdf9", 
+                             stages    = c("1cell", "MII"), 
+                             plot_type = "point", 
+                             ymax      = 8 ) 
 Gdf9_pointplot
 
 Amfr_barplot = 
-  plot_cpm_across_conditions(all_counts, "Amfr", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
+  plot_cpm_across_conditions(all_counts, "Amfr", 
+                             stages = c("1cell", "MII"), 
+                             plot_type = "barplot", ymax = 4 ) 
 Amfr_barplot
 
 Amfr_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Amfr", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Amfr", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
 Amfr_pointplot
 
 
 Pdcd6_barplot = 
-  plot_cpm_across_conditions(all_counts, "Pdcd6", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4.4 ) 
+  plot_cpm_across_conditions(all_counts, "Pdcd6", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 5 ) 
 Pdcd6_barplot
 
 Pdcd6_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Pdcd6", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Pdcd6", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
 Pdcd6_pointplot
 
 
 Tada2a_barplot = 
-  plot_cpm_across_conditions(all_counts, "Tada2a", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3.2 ) 
+  plot_cpm_across_conditions(all_counts, "Tada2a", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Tada2a_barplot
 
 Tada2a_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Tada2a", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Tada2a", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
 Tada2a_pointplot
 
+
 ## Higher in 1cell
+
+Anapc5_barplot = 
+  plot_cpm_across_conditions(all_counts, "Anapc5", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
+Anapc5_barplot
+
+Anapc5_pointplot = 
+  plot_cpm_across_conditions(all_counts, "Anapc5", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
+Anapc5_pointplot
+
+
+Spry4_barplot = 
+  plot_cpm_across_conditions(all_counts, "Spry4", 
+                             stages = c("1cell", "MII"), plot_type = "barplot" , ymax = 4 ) 
+Spry4_barplot
+
+Spry4_pointplot = 
+  plot_cpm_across_conditions(all_counts, "Spry4", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 5) 
+Spry4_pointplot
+
+
+Mapk1_barplot = 
+  plot_cpm_across_conditions(all_counts, "Mapk1", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+Mapk1_barplot
+
+Mapk1_pointplot = 
+  plot_cpm_across_conditions(all_counts, "Mapk1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+Mapk1_pointplot
+
+
 Abcf3_barplot = 
-  plot_cpm_across_conditions(all_counts, "Abcf3", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
+  plot_cpm_across_conditions(all_counts, "Abcf3", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 4 ) 
 Abcf3_barplot
 
 Abcf3_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Abcf3", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Abcf3", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 4 ) 
 Abcf3_pointplot
 
 
 Smarca4_barplot = 
-  plot_cpm_across_conditions(all_counts, "Smarca4", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Smarca4", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
 Smarca4_barplot
 
 Smarca4_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Smarca4", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Smarca4", stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
 Smarca4_pointplot
 
 
 Mapk1_barplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 2.3 ) 
+  plot_cpm_across_conditions(all_counts, "Mapk1", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
 Mapk1_barplot
 
 Mapk1_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Mapk1", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Mapk1", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
 Mapk1_pointplot
 
 
 Rybp_barplot = 
-  plot_cpm_across_conditions(all_counts, "Rybp", stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
+  plot_cpm_across_conditions(all_counts, "Rybp", 
+                             stages = c("1cell", "MII"), plot_type = "barplot", ymax = 3 ) 
 Rybp_barplot
 
 Rybp_pointplot = 
-  plot_cpm_across_conditions(all_counts, "Rybp", stages = c("1cell", "MII"), plot_type = "point", ymax = 2 ) 
+  plot_cpm_across_conditions(all_counts, "Rybp", 
+                             stages = c("1cell", "MII"), plot_type = "point", ymax = 3 ) 
 Rybp_pointplot
 
+################################################################################
+
+pointplot_legend = get_legend(Lbr_pointplot)
+
+supp_control_genes_mii_1cell = 
+  plot_grid(Lbr_pointplot     + theme(legend.position = "none"),
+            Cept1_pointplot   + theme(legend.position = "none"),
+            H1f8_pointplot    + theme(legend.position = "none"),
+            Taldo1_pointplot  + theme(legend.position = "none"),
+            Gdf9_pointplot    + theme(legend.position = "none"),
+            Amfr_pointplot    + theme(legend.position = "none"),
+            Pdcd6_pointplot   + theme(legend.position = "none"),
+            Tada2a_pointplot  + theme(legend.position = "none"),
+            Anapc5_pointplot  + theme(legend.position = "none"),
+            Spry4_pointplot   + theme(legend.position = "none"),
+            Mapk1_pointplot   + theme(legend.position = "none"),
+            Abcf3_pointplot   + theme(legend.position = "none"),
+            Smarca4_pointplot + theme(legend.position = "none"),
+            Rybp_pointplot    + theme(legend.position = "none"), 
+            pointplot_legend,
+            ncol = 5)
 
 
+supp_control_genes_mii_1cell
 
+save_plot_pdf("supp_control_genes_mii_1cell_poin_plots.pdf", 
+              supp_control_genes_mii_1cell,
+              width = 6, height = 5)
+
+
+supp_barplot_legend = get_legend(Lbr_barplot)
+
+supp_control_genes_mii_1cell_barplots = 
+  plot_grid(Lbr_barplot     + theme(legend.position = "none"),
+            Cept1_barplot   + theme(legend.position = "none"),
+            H1f8_barplot    + theme(legend.position = "none"),
+            Taldo1_barplot  + theme(legend.position = "none"),
+            Gdf9_barplot    + theme(legend.position = "none"),
+            Amfr_barplot    + theme(legend.position = "none"),
+            Pdcd6_barplot   + theme(legend.position = "none"),
+            Tada2a_barplot  + theme(legend.position = "none"),
+            Anapc5_barplot  + theme(legend.position = "none"),
+            Spry4_barplot   + theme(legend.position = "none"),
+            Mapk1_barplot   + theme(legend.position = "none"),
+            Abcf3_barplot   + theme(legend.position = "none"),
+            Smarca4_barplot + theme(legend.position = "none"),
+            Rybp_barplot    + theme(legend.position = "none"), 
+            supp_barplot_legend,
+            ncol = 5)
+
+
+supp_control_genes_mii_1cell_barplots
+
+save_plot_pdf("supp_control_genes_mii_1cell_bar_plots.pdf", 
+              supp_control_genes_mii_1cell_barplots,
+              width = 6, height = 5)
 ## Supp Grid
 
 legend_of_genes_accross_stages_supp_figure_bar = get_legend(Gdf9_barplot)
@@ -1343,3 +1425,180 @@ Alkhb5_bar
 save_plot_pdf("Alkhb5.pdf", Alkhb5, 
               width = unit(3, "in"), height = unit(2.4, "in") )
 
+################################################################################
+
+
+
+plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax = 4, plot_type = "point") { 
+  # counts is a numeric matrix of raw read counts + gene_ids
+  # gene to be plotted. Formatted as "Obox2"
+  # Stages are 1cell, 2cell, MII, GV, etc
+  set.seed(3)
+  colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
+  
+  # A monkey patch for the y-axis aesthetics
+  ybreaks = waiver()
+  
+  if(ymax < 4){
+    ybreaks = 1:ymax
+  }
+  
+  if (stages[1] == "all" )  {  
+    normalizedcounts = NormalizeData(counts[,-1], 
+                                     scale = 10000, 
+                                     normalization.method = "CLR", 
+                                     margin = 2)
+  } 
+  else { 
+    selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
+    normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+                                     normalization.method = "CLR", 
+                                     margin = 2)
+  }
+  
+  tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+  tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+  tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+  tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+  
+  p =
+    ggplot(tidy_norm, 
+           aes( x =  strip_extension(as.character(gene)), y = value) ) + 
+    # stat_summary(aes( shape = stage, color = method), fun.data = "mean_se", size = 1, 
+    #              position = position_jitterdodge(jitter.width = 0.2, dodge.width = 1), 
+    #              show.legend = FALSE, inherit.aes = FALSE) +
+    geom_jitter(aes( shape = stage, color = method),
+                position = position_jitterdodge(jitter.width = 0.2, dodge.width = 1),
+                size = 2 ) +
+    # scale_color_manual(values =  c('#089099', '#d12959')) + 
+    theme_bw()+
+    theme(
+      axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      legend.text       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+    ) + 
+    scale_y_continuous( limits = c(0, ymax) , breaks = ybreaks ) + 
+    scale_color_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) + 
+    scale_shape_manual(values = c(4, 16, 3, 6)) + 
+    ylab("Normalized Count") + xlab("") 
+  
+  if(plot_type == "point"){
+    return(p)
+  }
+  else if (plot_type == "barplot"){
+    mean_se_tidy = tidy_norm %>% group_by(stage, method) %>%
+      summarise(mean = mean(value), se = se(value))
+    
+    p =
+      ggplot(mean_se_tidy, aes(x=stage , y=mean,  fill=method)) + 
+      geom_bar(position=position_dodge(), stat="identity", width = 0.6) +
+      geom_errorbar(aes(ymin=mean-se, ymax=mean+se),
+                    width=.25, # Width of the error bars
+                    position=position_dodge(.9)) + 
+      theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            panel.border     = element_blank(),
+            panel.grid       = element_blank(),
+            panel.background = element_blank(),
+            axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            legend.title     = element_blank(),
+            legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            legend.key.size  = unit(0.15, 'in'),
+            legend.position  = "none", 
+            axis.line.y      = element_line(colour = "black", size = 0.35),
+      ) +
+      scale_y_continuous( limits = c(0, ymax) , expand = c(0, 0), breaks = ybreaks ) + 
+      scale_fill_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) +  
+      #labs(title = gene) + 
+      ylab("Normalized Count") + 
+      xlab(gene)
+    
+    return(p)
+  }
+  else { 
+    print("Incorrect plot type")}
+  
+}
+
+plot_gv_versus_mii = function(counts, gene, ymax){
+  return( plot_cpm_across_conditions_ribo(counts, gene, 
+                                          stages = c("MII", "GV"), 
+                                          plot_type = "barplot", ymax = ymax )  )
+}
+
+
+
+# For the main figure
+Bub1b = plot_gv_versus_mii(rcw, "Bub1b", ymax = 6 ) 
+Cdc20 = plot_gv_versus_mii(rcw, "Cdc20", ymax = 4 )
+Dcp1a = plot_gv_versus_mii(rcw, "Dcp1a", ymax = 5 )
+
+Cdc27 = plot_gv_versus_mii(rcw, "Cdc27", ymax = 4 ) 
+Cdc40 = plot_gv_versus_mii(rcw, "Cdc40", ymax = 3 ) 
+Lin7c = plot_gv_versus_mii(rcw, "Lin7c", ymax = 3 ) 
+Mos   = plot_gv_versus_mii(rcw, "Mos", ymax = 3 ) 
+Pcm1  = plot_gv_versus_mii(rcw, "Pcm1", ymax = 4 ) 
+Pum2 = plot_gv_versus_mii(rcw, "Pum2", ymax = 3 ) 
+Suz12 = plot_gv_versus_mii(rcw, "Suz12", ymax = 3 ) 
+
+# High in GV vs MII
+Cpeb1 = plot_gv_versus_mii(rcw, "Cpeb1", ymax = 4 ) 
+Eif4a3 = plot_gv_versus_mii(rcw, "Eif4a3", ymax = 3 ) 
+Rpl5 = plot_gv_versus_mii(rcw, "Rpl5", ymax = 5 )
+
+
+Fzr1  = plot_gv_versus_mii(rcw, "Fzr1", ymax = 3 ) 
+Rpl26 = plot_gv_versus_mii(rcw, "Rpl26", ymax = 3 ) 
+Rpl36 = plot_gv_versus_mii(rcw, "Rpl36", ymax = 2 ) 
+Rps17 = plot_gv_versus_mii(rcw, "Rps17", ymax = 3 ) 
+Actb = plot_gv_versus_mii(rcw, "Actb", ymax = 3 ) 
+Cd151 = plot_gv_versus_mii(rcw, "Cd151", ymax = 2 ) 
+Gapdh = plot_gv_versus_mii(rcw, "Gapdh", ymax = 1 ) 
+Mapk3 = plot_gv_versus_mii(rcw, "Mapk3", ymax = 3 ) 
+Med7 = plot_gv_versus_mii(rcw, "Med7", ymax = 2 ) 
+Miox = plot_gv_versus_mii(rcw, "Miox", ymax = 4 ) 
+Paip2 = plot_gv_versus_mii(rcw, "Paip2", ymax = 4 ) 
+Pfdn5 = plot_gv_versus_mii(rcw, "Pfdn5", ymax = 3 ) 
+Qars = plot_gv_versus_mii(rcw, "Qars", ymax = 4 ) 
+Rimkla = plot_gv_versus_mii(rcw, "Rimkla", ymax = 2 )
+Stx5a  = plot_gv_versus_mii(rcw, "Stx5a", ymax = 3 )
+Tinf2 = plot_gv_versus_mii(rcw, "Tinf2", ymax = 3 )
+
+main_figure_gv_mii = plot_grid(Bub1b, Cdc20, Dcp1a , 
+                               Cpeb1, Eif4a3, Rpl5,
+                               nrow = 1)
+
+save_plot_pdf("gv_vs_mii_main.pdf", main_figure_gv_mii, height = 1.25, width = 5)
+
+supp_figure_gv_mii = plot_grid(Cdc27 ,
+                               Cdc40 , 
+                               Lin7c ,
+                               Mos   ,
+                               Pcm1  ,
+                               Pum2 ,
+                               Suz12 ,
+                               Fzr1  ,
+                               Rpl26 ,
+                               Rpl36 ,
+                               Rps17 ,
+                               Actb ,
+                               Cd151 ,
+                               Gapdh ,
+                               Mapk3 ,
+                               Med7 ,
+                               Miox ,
+                               Paip2 ,
+                               Pfdn5 ,
+                               Qars ,
+                               Rimkla ,
+                               Stx5a  ,
+                               Tinf2 ,
+                               ncol = 8) 
+
+supp_figure_gv_mii
+
+save_plot_pdf("supp_figure_gv_mii.pdf", supp_figure_gv_mii, height = 3.75, width = 6.7)

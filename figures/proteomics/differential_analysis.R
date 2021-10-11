@@ -15,7 +15,7 @@ source('../qc/rename_experiments.R')
 human_ribo_file = '../../../../itp/human-itp_v4.ribo'
 mouse_ribo_file = '../../../mouse-itp_v5.ribo'
 
-mouse_rnaseq_count_file = '../../../cds_counts.csv.gz'
+mouse_rnaseq_count_file = '../../cds_counts.csv.gz'
 
 human = Ribo(human_ribo_file, rename_default)
 mm    = Ribo(mouse_ribo_file, rename = rename_default)

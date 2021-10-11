@@ -1,15 +1,15 @@
 #SNP Figure
 
-riboseq_overall_percentage_file = "../snp/snp_dataframes/riboseq_snp_percentages.csv"
-rnaseq_overall_percentage_file  = "../snp/snp_dataframes/rnaseq_snp_percentages.csv"
+riboseq_overall_percentage_file = "../../snp/notebooks/snp_dataframes/riboseq_snp_percentages.csv"
+rnaseq_overall_percentage_file  = "../../snp/notebooks/snp_dataframes/rnaseq_snp_percentages.csv"
 
-overall_ribo_to_rna_ratios_file = "../snp/snp_dataframes/refined_ribo_to_rna_ratios.csv"
-overall_ribo_to_rna_binary_file = "../snp/snp_dataframes/refined_ribo_to_rna_binary_significance.csv"
+overall_ribo_to_rna_ratios_file = "../../snp/notebooks/snp_dataframes/refined_ribo_to_rna_ratios.csv"
+overall_ribo_to_rna_binary_file = "../../snp/notebooks/snp_dataframes/refined_ribo_to_rna_binary_significance.csv"
 
 
 
-detailed_riboseq_count_file             = "../snp/snp_dataframes/riboseq_detailed_snps.csv.gz"
-detailed_rnaseq_count_file              = "../snp/snp_dataframes/rnaseq_detailed_snps.csv.gz"
+detailed_riboseq_count_file             = "../../snp/notebooks/snp_dataframes/riboseq_detailed_snps.csv.gz"
+detailed_rnaseq_count_file              = "../../snp/notebooks/snp_dataframes/rnaseq_detailed_snps.csv.gz"
 
 output_folder           = "./pdfs"
 
@@ -20,17 +20,16 @@ library(ggplot2)
 library(tidyr)
 library(dplyr)
 library(reshape2)
+library(ggpubr)
 library(cowplot)
 library(RColorBrewer)
 
 library(Cairo)
 
+
+
 #Heatmap related packages
 library(pheatmap)
-
-# We don't need the following two libraries.
-#library(seriation)
-#library(dendextend)
 
 ################################################################################
 #########                  C O L O R I N G                             #########
@@ -58,7 +57,12 @@ PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_OTHER_COLOR,
 #MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
 #MAIN_PERCENTAGE_ERRORBAR_COLOR = "#413bb8"
 
-FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
+#FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
+
+TWOCELL_BACKGROUND_COLOR = "#d9d9d9"
+TWOCELL_BACKGROUND_COLOR  = "gray95"
+FOURCELL_BACKGROUND_COLOR = "gray90"
+EIGHTCELL_BACKGROUND_COLOR = "gray80"
 
 COUNT_NORMALIZATION_FACTOR = 10000
 
@@ -70,56 +74,24 @@ RATIO_RNA_COLOUR  = "navy"
 
 PERCENTAGE_DASHED_COLOR = "#088f99"
 
+heatmap_ribo_orange = rgb(228,88,10 , maxColorValue = 255)
+heatmap_ribo_blue   = rgb(55,135,192, maxColorValue = 255)
+
 ################################################################################
 #########                 F O N T   S I Z E S                          #########
 
 FONT_LABEL_SIZE = 8
-FONT_TITLE_SIZE = 10
+FONT_TITLE_SIZE = 9
 
 PDF_resolution = 600
 FIGURE_FONT = "helvetica"
 
+DETAILED_BARPLOT_FONT_SIZE = 7
+GENE_NAME_FONT_SIZE        = 8
+
 ################################################################################
 ##### Experiments
 
-
-
-# rename_experiments = function(raw_names){
-#   plain_names = unlist(lapply ( strsplit(  raw_names, split = "-" ), "[[", 3) )
-#   
-#   uniq_names = unique( plain_names )
-#   
-#   enumerator = c()
-#   
-#   for(n in uniq_names){
-#     this_count = length( grep( n, plain_names )  )
-#     enumerator = c(enumerator, 1:this_count)
-#   }
-#   
-#   actual_names = paste( plain_names, enumerator, sep = "-" ) 
-#   
-#   return(actual_names)
-# }
-
-
-
-
-# rename_experiments_2 = function(raw_names){
-#   plain_names = unlist(lapply ( strsplit(  raw_names, split = "-" ), "[[", 3) )
-#   
-#   uniq_names = unique( plain_names )
-#   
-#   enumerator = c()
-#   
-#   for(n in uniq_names){
-#     this_count = length( grep( n, uniq_names )  )
-#     enumerator = c(enumerator, 1:this_count)
-#   }
-#   
-#   actual_names = paste( plain_names, enumerator, sep = "-" ) 
-#   
-#   return(actual_names)
-# }
 
 
 make_name_mapper = function(experiment_names){
@@ -180,13 +152,6 @@ rename_genes = function(gene_names, split = "."){
   return(new_names)
 }
 
-
-# rename_genes = function(gene_names){
-#   new_names = unlist(lapply ( strsplit(  gene_names, split = ".", fixed = TRUE ), "[[", 1) )
-#   return(new_names)
-# }
-
-
 ################################################################################
 
 ##### PERCENTAGES SUPPLEMENTARY
@@ -236,6 +201,7 @@ ggplot(data=riboseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = 
         axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
         legend.title     = element_blank(),
         legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.key.size  = unit(0.15, 'in'),
         )  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
@@ -261,11 +227,12 @@ ggplot(data=rnaseq_overall_percentages, aes(x=Experiment, y=Percentage, fill = f
         axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
         axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
         legend.title     = element_blank(),
-        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE))  + 
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.key.size  = unit(0.15, 'in'),)  + 
   scale_fill_manual(values = PERCENTAGE_BARPLOT_COLORS ) + 
   geom_hline(yintercept = 50, linetype="dotted", 
              color = PERCENTAGE_DASHED_COLOR, size=0.6) + 
-  labs(title = "Allele Percentages")
+  labs(title = "Allele Percentages of RNA-Seq")
 
 
 supplementary_allele_percentages_rnaseq
@@ -324,7 +291,7 @@ ggplot(data=percentage_averages, aes(x=stage, y=average_percentage, fill = exper
   
   guides(fill=guide_legend(title="")) + 
   
-  labs(title = "Percentage of paternal alleles", 
+  labs(title = "", 
        x     = "Stage", 
        y     = "Percentage")
 
@@ -391,14 +358,14 @@ corrected_percentage_averages$stage = factor( corrected_percentage_averages$stag
 
 main_paternal_percentage_figure = 
 ggplot(data=corrected_percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
-  geom_bar(position = "dodge", stat="identity", alpha = 0.6 ) +
+  geom_bar(position = "dodge", stat="identity", alpha = 0.8 ) +
   geom_errorbar( aes(  x    = stage, 
                        ymin = average_percentage - sd_percentage, 
                        ymax = average_percentage + sd_percentage,
                        color = (experiment_type)), 
                  width    = 0.4, 
                  alpha    = 1, 
-                 size     = 1.3,
+                 size     = 0.4,
                  position = position_dodge(width = 0.8)) + 
   
   theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
@@ -410,18 +377,62 @@ ggplot(data=corrected_percentage_averages, aes(x=stage, y=average_percentage, fi
         axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
         axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
         legend.title     = element_blank(),
-        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.line.y      = element_line(colour = "black", size = 0.35), 
+        legend.key.size  = unit(0.18, "in"),
+        legend.position  = c(0.3,0.8)) + 
   
-  scale_fill_manual( name = "experiment_type", values = c(RATIO_RIBO_COLOUR,
-                                RATIO_RNA_COLOUR) ) + 
-  scale_color_manual(name = "experiment_type",  values = c(RATIO_RIBO_COLOUR,
-                                RATIO_RNA_COLOUR) ) + 
-  labs(title = "Percentages of paternal alleles", 
+  scale_y_continuous( expand = c(0, 0
+                                 ), limits = c(-0.5, 50) ) +
+  scale_fill_manual( name = "experiment_type", values = c(heatmap_ribo_orange,
+                                                          heatmap_ribo_blue) ) + 
+  scale_color_manual(name = "experiment_type",  values = c(heatmap_ribo_orange,
+                                                           heatmap_ribo_blue) ) + 
+  labs(title = "", 
        x     = "Stage", 
        y     = "Percentage")
 
 main_paternal_percentage_figure
 
+
+
+standalone_paternal_percentage_figure = 
+  ggplot(data=corrected_percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
+  geom_bar(position = "dodge", stat="identity", alpha = 0.8 ) +
+  geom_errorbar( aes(  x    = stage, 
+                       ymin = average_percentage - sd_percentage, 
+                       ymax = average_percentage + sd_percentage,
+                       color = (experiment_type)), 
+                 width    = 0.4, 
+                 alpha    = 1, 
+                 size     = 0.4,
+                 position = position_dodge(width = 0.8)) + 
+  
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+        panel.border     = element_blank(),
+        panel.grid       = element_blank(),
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.line.y      = element_line(colour = "black", size = 0.35), 
+        legend.key.size  = unit(0.18, "in"),
+        ) + 
+  
+  scale_y_continuous( expand = c(0, 0
+  ), limits = c(-0.5, 50) ) +
+  scale_fill_manual( name = "experiment_type", values = c(RATIO_RIBO_COLOUR,
+                                                          RATIO_RNA_COLOUR) ) + 
+  scale_color_manual(name = "experiment_type",  values = c(RATIO_RIBO_COLOUR,
+                                                           RATIO_RNA_COLOUR) ) + 
+  labs(title = "Paternal Allele Percentages", 
+       x     = "Stage", 
+       y     = "Percentage")
+
+standalone_paternal_percentage_figure
 
 ################################################################################
 ################################################################################
@@ -441,8 +452,11 @@ heatmap_binary                 = t(heatmap_binary_raw[-1,])
 # Adapted from https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
 paletteLength = 100
 
+
+
 #myColor       = colorRampPalette(c("navy", "white", "orange"))(paletteLength)
-myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+#myColor       = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
+myColor       = colorRampPalette(c(heatmap_ribo_blue, "white", heatmap_ribo_orange  ))(paletteLength)
 #myColor       = colorRampPalette(c("navy", "white", "#f8971f"))(paletteLength)
 # length(breaks) == length(paletteLength) + 1
 # use floor and ceiling to deal with even/odd length pallettelengths
@@ -453,39 +467,72 @@ myBreaks <- c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 
               seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
 
 
+clustering_order = c(
+  'Nop14',
+  'Tmppe', 
+  'Slc13a2',
+  'Ppp2ca',
+  'Srpk1',
+  'Cbx3',
+  'Ncoa3',
+  'Cdk1',
+  'Baz1a',
+  'Dyrk3',
+  'Lclat1',
+  'Lyar',
+  'Umps',
+  'Tsen2',
+  'Ccnh',
+  
+  'Folr1',
+  'Pa2g4',
+  'Zfp296',
+  'Mrps9',
+  'Eif3d',
+  'Nin',
+  'Ddx21',
+  'Bcat1',
+  'Mysm1'
+)
+
+ordered_heatmap_df =  heatmap_df[match(clustering_order,  row.names(heatmap_df) ), ]
+
+
+
+NUMBER_OF_HEATMAP_CLUSTERS = 4
 ### Trimmed down
 ### For the main figure
-main_heatmap_figure = 
-pheatmap( heatmap_df , 
+old_main_heatmap_figure = 
+pheatmap( t( ordered_heatmap_df) , 
         # clustering_method = "median",
         #clustering_distance_rows = "correlation",
         #clustering_method = "centroid",
         #clustering_method = "complete",
         clustering_method = "ward.D",
-        show_rownames     = FALSE,
-        cutree_rows       = 4,
-
-        cellwidth         = 40,
+        show_rownames     = TRUE,
+        cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS,
+        cellwidth         = 15,
         treeheight_row    = 0,
         treeheight_col    = 0,
         cluster_cols      = FALSE, 
+        cluster_rows      = FALSE,
         color             = myColor,
         breaks            = myBreaks,
         na_col            = "white",
-        angle_col         = 0,
-        labels_col        = c("1cell", "2cell", "4cell", "8cell"),
-        main              = "Paternal Ratio Difference",
-        fontsize          = 10,
+        angle_col         = 90,
+        labels_row        = c("1cell", "2cell", "4cell", "8cell"),
+        main              = "",
+        fontsize          = 9,
         fontsize_col      = FONT_LABEL_SIZE,
-        fontsize_row      = 8,
-        fontsize_number   = FONT_LABEL_SIZE
+        fontsize_row      = 6,
+        fontsize_number   = FONT_LABEL_SIZE,
         )
 
-main_heatmap_figure
+old_main_heatmap_figure
 
 #### Detailed with row names
 #### For the supplementary Figure
-supplementary_heatmap_figure = 
+standalone_heatmap_figure = 
 pheatmap( heatmap_df , 
           #clustering_method = "centroid",
           #clustering_method = "median",
@@ -494,8 +541,8 @@ pheatmap( heatmap_df ,
           legend_breaks     = c(-1,  -0.5, 0, 0.5, 1),
           legend            = T,
           show_rownames     = TRUE,
-          cellwidth         = 40,
-          cutree_rows       = 4,
+          cellwidth         = 25,
+          cutree_rows       = NUMBER_OF_HEATMAP_CLUSTERS,
           treeheight_row    = 0,
           cluster_cols      = FALSE, 
           color             = myColor,
@@ -505,13 +552,175 @@ pheatmap( heatmap_df ,
           labels_col        = c("1cell", "2cell", "4cell", "8cell"),
           main              = "Paternal Ratio Difference",
           display_numbers   = heatmap_binary,
-          fontsize          = 10,
+          fontsize          = 9,
           fontsize_col      = FONT_LABEL_SIZE,
-          fontsize_row      = 8,
+          fontsize_row      = 7,
           fontsize_number   = FONT_LABEL_SIZE
           )
 
-supplementary_heatmap_figure
+standalone_heatmap_figure
+
+
+standalone_heatmap_figure_no_stars = 
+  pheatmap( heatmap_df , 
+            #clustering_method = "centroid",
+            #clustering_method = "median",
+            #clustering_method = "complete",
+            clustering_method = "ward.D",
+            legend_breaks     = c(-1,  -0.5, 0, 0.5, 1),
+            legend            = T,
+            show_rownames     = TRUE,
+            cellwidth         = 25,
+            cutree_rows       = NUMBER_OF_HEATMAP_CLUSTERS,
+            treeheight_row    = 0,
+            cluster_cols      = FALSE, 
+            color             = myColor,
+            breaks            = myBreaks,
+            na_col            = "white",
+            angle_col         = 0,
+            labels_col        = c("1cell", "2cell", "4cell", "8cell"),
+            main              = "Paternal Ratio Difference",
+            fontsize          = 9,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 7,
+            fontsize_number   = FONT_LABEL_SIZE
+  )
+
+standalone_heatmap_figure_no_stars
+
+
+################################################################################
+####   N E W   V E R S I O N   O F   T H E   M A I N   H E A T M A P   #########
+
+selected_snps_pseudo_count = 1
+
+riboseq_paternal_ratios_selected = 
+  detailed_riboseq_table %>%
+    filter( group %in% c( '2cell', '4cell', '8cell') ) %>%
+    filter(transcript %in% clustering_order) %>%
+    group_by( group, transcript ) %>%
+    summarise( paternal_ratio =  ( sum(paternal) ) / (sum( paternal + maternal) + 1*selected_snps_pseudo_count ) )
+
+rnaseq_paternal_ratios_selected = 
+  detailed_rnaseq_table %>%
+  filter( group %in% c( '2cell', '4cell', '8cell') ) %>%
+  filter(transcript %in% clustering_order) %>%
+  group_by( group, transcript ) %>%
+  summarise( paternal_ratio =  ( sum(paternal)) / (sum( paternal + maternal) + 1*selected_snps_pseudo_count ) )
+
+riboseq_paternal_ratios_selected_wide_unordered = 
+  dcast( riboseq_paternal_ratios_selected,  
+         transcript ~ group ,
+         value.var = "paternal_ratio" )
+
+rnaseq_paternal_ratios_selected_wide_unordered = 
+  dcast( rnaseq_paternal_ratios_selected,  
+         transcript ~ group ,
+         value.var = "paternal_ratio" )
+
+riboseq_paternal_ratios_selected_wide = 
+  riboseq_paternal_ratios_selected_wide_unordered[match( clustering_order, riboseq_paternal_ratios_selected_wide_unordered$transcript), ]
+rnaseq_paternal_ratios_selected_wide = 
+rnaseq_paternal_ratios_selected_wide_unordered[match( clustering_order, rnaseq_paternal_ratios_selected_wide_unordered$transcript), ]
+
+grey_color_map = colorRampPalette(c("white", "green" ,"black"  ))(paletteLength)
+
+RColorBrewer::brewer.pal(9, "BuGn")
+
+grey_color_map = colorRampPalette( RColorBrewer::brewer.pal(9, "BuGn") )(paletteLength)
+
+grey_color_map = colorRampPalette( RColorBrewer::brewer.pal(9, "Greys") )(paletteLength)
+
+riboseq_paternal_ratios_heatmap = 
+  pheatmap( t( riboseq_paternal_ratios_selected_wide[, -1]) , 
+            # clustering_method = "median",
+            #clustering_distance_rows = "correlation",
+            #clustering_method = "centroid",
+            #clustering_method = "complete",
+            clustering_method = "ward.D",
+            show_rownames     = TRUE,
+            cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS,
+            cellwidth         = 15,
+            treeheight_row    = 0,
+            treeheight_col    = 0,
+            cluster_cols      = FALSE, 
+            cluster_rows      = FALSE,
+            color             = grey_color_map,
+            legend_breaks            = c(0, 0.5, 1),
+            breaks = seq(0,1, length.out = 100),
+            na_col            = "white",
+            angle_col         = 90,
+            labels_row        = c( "2cell", "4cell", "8cell"),
+            labels_col        = riboseq_paternal_ratios_selected_wide[,1], 
+            main              = "",
+            fontsize          = 9,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 6,
+            fontsize_number   = FONT_LABEL_SIZE,
+  )
+
+
+rnaseq_paternal_ratios_heatmap = 
+  pheatmap( t( rnaseq_paternal_ratios_selected_wide[, -1]) , 
+            # clustering_method = "median",
+            #clustering_distance_rows = "correlation",
+            #clustering_method = "centroid",
+            #clustering_method = "complete",
+            clustering_method = "ward.D",
+            show_rownames     = TRUE,
+            cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS,
+            cellwidth         = 15,
+            treeheight_row    = 0,
+            treeheight_col    = 0,
+            cluster_cols      = FALSE, 
+            cluster_rows      = FALSE,
+            color             = grey_color_map,
+            legend_breaks            = c(0, 0.5, 1),
+            breaks = seq(0,1, length.out = 100), 
+            na_col            = "white",
+            angle_col         = 90,
+            labels_row        = c( "2cell", "4cell", "8cell"),
+            labels_col        = rnaseq_paternal_ratios_selected_wide[, 1], 
+            main              = "",
+            fontsize          = 9,
+            fontsize_col      = FONT_LABEL_SIZE,
+            fontsize_row      = 6,
+            fontsize_number   = FONT_LABEL_SIZE,
+  )
+
+
+
+ribo_rna_paternal_ratios_combined = cbind( riboseq_paternal_ratios_selected_wide, rnaseq_paternal_ratios_selected_wide[, -1] )
+View(ribo_rna_paternal_ratios_combined)
+
+
+## We can use the clustering here for hte paper.
+pheatmap( t( ribo_rna_paternal_ratios_combined[, -1]) , 
+          # clustering_method = "median",
+          clustering_distance_cols = "correlation",
+          #clustering_method = "centroid",
+          #clustering_method = "complete",
+          #clustering_method = "ward.D",
+          show_rownames     = TRUE,
+          cutree_cols       = NUMBER_OF_HEATMAP_CLUSTERS + 2,
+          cellwidth         = 15,
+          treeheight_row    = 0,
+          treeheight_col    = 0,
+          cluster_cols      = TRUE, 
+          cluster_rows      = FALSE,
+          color             = grey_color_map,
+          legend_breaks            = c(0, 0.5, 1),
+          breaks = seq(0,1, length.out = 100), 
+          na_col            = "white",
+          angle_col         = 90,
+          labels_row        = c( "2cell", "4cell", "8cell", "2cell", "4cell", "8cell"),
+          labels_col        = ribo_rna_paternal_ratios_combined[, 1], 
+          main              = "",
+          fontsize          = 9,
+          fontsize_col      = FONT_LABEL_SIZE,
+          fontsize_row      = 6,
+          fontsize_number   = FONT_LABEL_SIZE,
+)
 
 ################################################################################
 ################################################################################
@@ -663,18 +872,7 @@ format_y_axis = function(x){
   return( sprintf("%.0f", x) )
 }
 
-make_y_axis = function(ymax){
-  this_multiplier    = floor(ymax / 5)
-  
-  if( (ymax %% 5) >= 1 ) {
-    this_multiplier = this_multiplier + 1
-  } 
-  
-  yticks = seq(0, 5*this_multiplier, 5)
-  
-  return(yticks)
-  
-}
+
 
 adjust_ymax = function( y ){
   this_multiplier    = floor(y / 5)
@@ -690,6 +888,24 @@ adjust_ymax = function( y ){
   return( 5*this_multiplier)
 }
 
+
+make_y_axis = function(ymax){
+  if(ymax == 5){
+    result = c(0, 5)
+  }
+  else if(ymax %% 2 == 0){
+    result = c(0, ymax / 2, ymax)
+  } 
+  else if(ymax %% 3 == 0){
+    result = c(0, ymax / 3, 2*( ymax / 3 ) , ymax)
+  } 
+  else{
+    result = c(0, ymax)
+  }
+  
+  return(result)
+}
+
 ################################################################################
 
 
@@ -698,7 +914,8 @@ generate_legend_unit = function(gene, experiment_type){
   gene_data = 
     detailed_table_with_dummies %>%
     filter( transcript == gene & type == experiment_type ) %>%
-    filter( group == "2cell" | group == "4cell" | group == "8cell")
+    filter( group == "2cell" | group == "4cell" | group == "8cell") %>%
+    filter(paternal_per_k > 0 | maternal_per_k > 0)
   
   number_of_snps = length( unique(gene_data$position  ) )
   
@@ -714,7 +931,7 @@ generate_legend_unit = function(gene, experiment_type){
              aes(x    = x, 
                  y    = y, 
                  fill = factor(position, levels = sort(unique( df$position  ) )  )  )  )  + 
-    geom_bar(stat="identity", width= 0.8, color = "black") + 
+    geom_bar(stat="identity", width= 0.8, color = "black", size = 0.3) + 
     theme(
       panel.border     = element_blank(),
       panel.grid       = element_blank(),
@@ -729,17 +946,20 @@ generate_legend_unit = function(gene, experiment_type){
       axis.ticks.y=element_blank(),
       plot.background = element_blank(),
       axis.text.y = element_blank(),
-      plot.title = element_text(color = title_colors[[experiment_type]], size=10, face="bold", hjust = 0.5),
+      plot.title = element_text(color = title_colors[[experiment_type]], size=7, face="bold", hjust = 0.5),
     ) + 
     scale_fill_manual(values = barplot_colors)  + 
-    ggtitle(title_texts[[experiment_type]])
+    #ggtitle(title_texts[[experiment_type]])
+    ggtitle( paste( title_texts[[experiment_type]], as.character(number_of_snps), sep = " " ) )
   
   #if(experiment_type == "rna"){
   #  p = p + scale_y_reverse()
   #}
   
-  return(p)
+  return(p + rotate())
 }
+
+generate_legend_unit("Ncoa3", "ribo")
 
 generate_legend = function(gene){
   p_ribo = generate_legend_unit(gene, experiment_type = "ribo")
@@ -750,15 +970,15 @@ generate_legend = function(gene){
                            nrow = 1,
                            rel_widths = c(0.2, 1 , 0.2, 1 ) )
   this_legend     = plot_grid(this_blank_pad, this_legend_pre, this_blank_pad,
-                              ncol = 1, rel_heights = c(1, 0.6, 1)) 
+                              ncol = 1, rel_heights = c(0.01, 1, 0.01)) 
   
   return(this_legend)
 }
 
 snp_detailed_legend = generate_legend("Nin")
 
-snp_detailed_legend
-generate_legend("Nin")
+snp_detailed_legend 
+generate_legend("Ncoa3")
 
 ################################################################################
 
@@ -772,7 +992,95 @@ detailed_table_with_dummies %>%
   filter( sum(paternal_per_k + maternal_per_k) > 0  )
 
 
+################################################################################
+################################################################################
+###### Adding color values to the SNP table
 
+get_snp_positions_of_gene = function(gene){
+  this_df = detailed_table_with_dummies %>% 
+    filter(experiment == "4cell-1" & type == "ribo" ) %>%
+    filter(transcript == gene)
+  
+  return( sort(this_df$position) )
+}
+
+a = get_snp_positions_of_gene("Ncoa3")
+a
+
+sort(a$position)
+
+produce_color_map_for_gene_positions = function( gene_positions, type){
+  
+  if(type == "ribo"){
+    this_color_name = "Oranges"
+  }
+  else if(type == "rna"){
+    this_color_name = "Blues"
+  } 
+  else{
+    print("Error! Wrong Type!")
+    return(NULL)
+  }
+  
+  number_of_snps                 = length(gene_positions)
+  this_ribo_color_palette        = (colorRampPalette(brewer.pal(9,this_color_name))( number_of_snps + 5 )[-seq( 1,  5) ])
+  names(this_ribo_color_palette) = gene_positions
+  
+  return( rev(this_ribo_color_palette) )
+}
+
+get_gene_vector = function(){
+  this_df = detailed_table_with_dummies %>% 
+    filter(experiment == "4cell-1" & type == "ribo" ) %>%
+    summarise(transcript)
+    
+  return( sort(unique(this_df$transcript)) )
+  
+}
+
+produce_color_hash_for_gene = function(gene, type){
+  
+  snp_positions  = get_snp_positions_of_gene(gene)
+  this_color_map = produce_color_map_for_gene_positions(snp_positions, type)
+    
+  return(this_color_map)
+}
+
+a = produce_color_hash_for_gene("Nin", "ribo")
+a
+
+
+k = produce_color_map_for_gene_positions(a, "rna")
+
+typeof(k)
+
+b = 
+  detailed_table_with_dummies %>% 
+  filter(experiment == "2cell-1" & type == "rna" ) %>%
+  filter(transcript == "Ncoa3")
+
+sort(b$position)
+
+c = 
+  detailed_table_with_dummies %>% 
+  filter(experiment == "8cell-1" & type == "rna" ) %>%
+  filter(transcript == "Ncoa3")
+
+sorted_snp_positions = sort(c$position)
+length(sorted_snp_positions)
+
+number_of_snps           = length( sorted_snp_positions  )
+
+this_blues_color_palette = colorRampPalette(brewer.pal(9,"Blues"))( number_of_snps + 5 )[-seq( 1,  5) ]
+
+this_ribo_color_mapper = vector("list", number_of_snps)
+
+names(this_ribo_color_mapper) = sorted_snp_positions
+
+for(i in 1:number_of_snps){
+  this_ribo_color_mapper[i] = this_ribo_color_palette[i]
+}
+this_ribo_color_mapper
 ################################################################################
 ### U N I T     P L O T 
 
@@ -781,8 +1089,7 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
   bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
   
   y_scale_expand = c(0,0)
-  
-  ymax = adjust_ymax(ymax)
+  ymax           = adjust_ymax(ymax)
   
   gene_data = 
     detailed_table_with_dummies %>%
@@ -803,6 +1110,12 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
   
   if(experiment_group == "4cell"){
     background_canvas = element_rect(fill = FOURCELL_BACKGROUND_COLOR)
+  }
+  else if(experiment_group == "2cell"){
+    background_canvas = element_rect(fill = TWOCELL_BACKGROUND_COLOR)  
+  }
+  else if(experiment_group == "8cell"){
+    background_canvas = element_rect(fill = EIGHTCELL_BACKGROUND_COLOR)  
   }
   else{
     background_canvas = element_rect(fill = "white")
@@ -835,10 +1148,117 @@ unit_plot = function(gene, experiment_type, experiment_group, allele_type, ymax)
       axis.text.x = element_blank(),
       axis.ticks.x=element_blank(),
       plot.background = background_canvas,
-      axis.text.y = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.text.y = element_text(family = FIGURE_FONT, face = "plain", size = DETAILED_BARPLOT_FONT_SIZE),
       # axis.ticks.y=element_blank()
     ) +
     scale_fill_manual(values = barplot_colors) 
+  
+  if(experiment_type == "ribo"){
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(position = "right", 
+                                              labels   = format_y_axis, 
+                                              breaks   = yticks,
+                                              limits   = c(ymax, 0) , 
+                                              expand   = y_scale_expand ) 
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous(position = "right", 
+                                                 labels   = format_y_axis, 
+                                                 breaks   = yticks,
+                                                 limits   = c(0, ymax) , 
+                                                 expand   = y_scale_expand )
+    }
+  } 
+  else{
+    if(allele_type == "maternal"){
+      this_plot = this_plot + scale_y_reverse(labels = format_y_axis, 
+                                              limits = c(ymax, 0), 
+                                              breaks   = yticks,
+                                              expand = y_scale_expand )
+    }
+    else{
+      this_plot = this_plot + scale_y_continuous( labels = format_y_axis, 
+                                                  limits = c(0, ymax),
+                                                  breaks   = yticks,
+                                                  expand = y_scale_expand  )
+    }
+  }
+  
+  return(this_plot)
+}
+
+################################################################################
+################################################################################
+unit_plot_alternative = function(gene, experiment_type, experiment_group, allele_type, ymax){
+  ## We won't use this
+  ## We generate the fill colors for each transcript anually
+  ## for sanity check reaosns
+  bar_palettes = list( ribo = "Oranges", rna = "Blues"  )
+  
+  y_scale_expand = c(0,0)
+  ymax           = adjust_ymax(ymax)
+  
+  gene_data = 
+    detailed_table_with_dummies %>%
+    filter(group == "2cell" | group == "4cell" | group == "8cell") %>%
+    filter(transcript == gene) %>% 
+    group_by(position) %>%
+    #filter( sum(paternal_per_k + maternal_per_k) > 0  ) %>%
+    filter( type == experiment_type ) %>%
+    filter( group == experiment_group)
+  
+  number_of_snps = length( unique(gene_data$position  ) )
+  
+  #paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps + 5 )[-seq( 1,  5) ]
+  #paternal_color_palette = colorRampPalette(brewer.pal(9,bar_palettes[[experiment_type]]))( number_of_snps  ) 
+  this_fill_colors = produce_color_hash_for_gene(gene, experiment_type)
+  
+  yticks = make_y_axis(ymax)
+  
+  if(experiment_group == "4cell"){
+    background_canvas = element_rect(fill = FOURCELL_BACKGROUND_COLOR)
+  }
+  else if(experiment_group == "2cell"){
+    background_canvas = element_rect(fill = TWOCELL_BACKGROUND_COLOR)  
+  }
+  else if(experiment_group == "8cell"){
+    background_canvas = element_rect(fill = EIGHTCELL_BACKGROUND_COLOR)  
+  }
+  else{
+    background_canvas = element_rect(fill = "white")
+  }
+  
+  
+  if(allele_type == "paternal"){
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = paternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  ) 
+  }else{
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = maternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  
+  this_plot = 
+    plot_base + 
+    geom_bar(stat="identity", width= 1) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      # plot.margin      = margin(5.5, 5.5, 0, 5.5),
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      plot.background = background_canvas,
+      axis.text.y = element_text(family = FIGURE_FONT, face = "plain", size = DETAILED_BARPLOT_FONT_SIZE),
+      # axis.ticks.y=element_blank()
+    ) +
+    scale_fill_manual(values = this_fill_colors) 
   
   if(experiment_type == "ribo"){
     if(allele_type == "maternal"){
@@ -914,75 +1334,15 @@ plot_experiment_group(gene = "Nin", experiment_group = "8cell")
 plot_snp_gene_detailed = function(gene){
 # This is the main function that plots the snps in detail  
 
-  
   plot_2cell_raw = plot_experiment_group(gene = gene, experiment_group = "2cell")
   
-  title_2cell = ggdraw() + 
-    draw_label(
-      "2cell",
-      fontfamily = 'helvetica',
-      size = FONT_LABEL_SIZE
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 0)
-    )
-  
-  plot_2cell = plot_grid(
-    title_2cell, plot_2cell_raw,
-    ncol = 1,
-    # rel_heights values control vertical title margins
-    rel_heights = c(0.05, 2)
-  )
-  
-  
   plot_4cell_raw =  plot_experiment_group(gene = gene, experiment_group = "4cell")  
-
-  title_4cell = ggdraw() + 
-    draw_label(
-      "4cell",
-      fontfamily = 'helvetica',
-      size = FONT_LABEL_SIZE
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 0)
-    )
-  
-  plot_4cell = plot_grid(
-    title_4cell, plot_4cell_raw,
-    ncol = 1,
-    # rel_heights values control vertical title margins
-    rel_heights = c(0.05, 2)
-  )  
   
   plot_8cell_raw = plot_experiment_group(gene = gene, experiment_group = "8cell")
 
-  title_8cell = ggdraw() + 
-    draw_label(
-      "8cell",
-      fontfamily = 'helvetica',
-      size = FONT_LABEL_SIZE
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 0)
-    )
-  
-  plot_8cell = plot_grid(
-    title_8cell, plot_8cell_raw,
-    ncol = 1,
-    # rel_heights values control vertical title margins
-    rel_heights = c(0.05, 2)
-  )  
-  
-  
   paternal_label = ggdraw() + 
     draw_label(
-      "paternal count",
+      "paternal c.",
       fontface   = 'plain',
       fontfamily = 'helvetica',
       size       = FONT_LABEL_SIZE,
@@ -994,7 +1354,7 @@ plot_snp_gene_detailed = function(gene){
   
   maternal_label = ggdraw() + 
     draw_label(
-      "maternal count",
+      "maternal c.",
       fontface   = 'plain',
       fontfamily = 'helvetica',
       size       = FONT_LABEL_SIZE,
@@ -1008,27 +1368,36 @@ plot_snp_gene_detailed = function(gene){
     
   separator_1         = generate_blank_plot()
   
-  snp_detailed_legend = generate_legend(gene)
+  # OLD WORKING
+  #snp_detailed_legend = generate_legend(gene)
   
-  raw_plot = plot_grid( x_label,    plot_2cell,  separator_1, 
-                        plot_4cell, separator_1, 
-                        plot_8cell, separator_1, snp_detailed_legend,
-                        rel_widths  = c(0.2, 1, 0.2, 1, 0.2, 1, 0.1, 0.4)  , 
-                        rel_heights =  c(0.8, 1, 1, 1, 1, 1, 1, 0.01),
-                        ncol        = 8  )
+  # raw_plot = plot_grid( x_label,    plot_2cell,  separator_1, 
+  #                       plot_4cell, separator_1, 
+  #                       plot_8cell, separator_1, snp_detailed_legend,
+  #                       rel_widths  = c(0.2, 1, 0.2, 1, 0.2, 1, 0.1, 0.4)  , 
+  #                       rel_heights =  c(0.8, 1, 1, 1, 1, 1, 1, 0.01),
+  #                       ncol        = 8  )
+  
+  
+  raw_plot = plot_grid( x_label,    plot_2cell_raw,  separator_1, 
+                        plot_4cell_raw, separator_1, 
+                        plot_8cell_raw,
+                        rel_widths  = c(0.2, 1, 0.02, 1, 0.02, 1 )  , 
+                        rel_heights =  c(0.8, 1, 1, 1, 1, 1),
+                        ncol        = 6  )
   
   title_main = ggdraw() + 
     draw_label(
       gene,
       fontface   = 'plain',
-      size       = FONT_TITLE_SIZE ,
+      size       = GENE_NAME_FONT_SIZE ,
       fontfamily = 'helvetica',
-    ) +
-    theme(
-      # add margin on the left of the drawing canvas,
-      # so title is aligned with left edge of first plot
-      plot.margin = margin(0, 0, 0, 0)
-    )
+    ) 
+    # theme(
+    #   # add margin on the left of the drawing canvas,
+    #   # so title is aligned with left edge of first plot
+    #   plot.margin = margin(0, 0, 0, 0)
+    # )
   
   this_plot = plot_grid(
     title_main, raw_plot,
@@ -1037,7 +1406,7 @@ plot_snp_gene_detailed = function(gene){
     rel_heights = c(0.05, 1)
   )
   
-  return(this_plot)
+  return(raw_plot)
 }
 
 plot_snp_gene_detailed(gene = "Ncoa3")  
@@ -1060,6 +1429,7 @@ plot_snp_gene_detailed(gene = "Cacna1b")
 ################################################################################
 
 compute_sd_of_ratios = function(paternal_counts, total_counts){
+  #
   paternal_mean = mean(paternal_counts)
   total_mean    = mean(total_counts)
   
@@ -1074,7 +1444,7 @@ compute_sd_of_ratios = function(paternal_counts, total_counts){
                          (total_sd/ total_mean)**2 - 
                          2*(this_cov/ (paternal_mean* total_mean) )  )
   
-  return(this_sd)
+  return(this_sd / sqrt(length(paternal_counts)))
 }
 
 
@@ -1125,6 +1495,8 @@ find_paternal_per_k_ratios = function(df){
 
 ################################################################################
 
+scale_decimal_digit <- function(x) sprintf("%.1f", x)
+
 plot_snp_ratios = function(gene, ymax = 0){
   gene_data_main = 
     detailed_table %>% 
@@ -1142,6 +1514,17 @@ plot_snp_ratios = function(gene, ymax = 0){
   ribo_ratios = find_paternal_per_k_ratios( gene_data_ribo )
   rna_ratios  = find_paternal_per_k_ratios( gene_data_rna )
   
+  max_ratio = max( c(ribo_ratios, rna_ratios)  )
+  
+  y_breaks = waiver()
+  
+  # if(max_ratio > 0.8){
+  #   y_breaks = c(0, 0.5 , 1)
+  # }
+  # else{
+  #   y_breaks = waiver()
+  # }
+  
   ribo_sd = determine_propogated_sd( gene_data_ribo  )
   rna_sd  = determine_propogated_sd(  gene_data_rna )
   
@@ -1152,24 +1535,30 @@ plot_snp_ratios = function(gene, ymax = 0){
   
   p = ggplot(data=plot_df, 
              aes(x    = stage, y = paternal_ratios, group = type )  )  +
-    geom_point( aes(colour = type, shape = type), position = position_dodge(width = 0.1), size = 4 ) +
+    geom_point( aes(colour = type, shape = type), position = position_dodge(width = 0.1), size = 1.8 ) +
     geom_line(aes(linetype=type, colour = type), position = position_dodge(width = 0.1) ) + 
     scale_linetype_manual(values=c("solid", "dashed")) + 
-    geom_errorbar(aes(ymin=paternal_ratios-sd, ymax=paternal_ratios+sd, color = type), position = position_dodge(width = 0.1), width = 0.1 ) + 
+    geom_errorbar(aes(ymin=paternal_ratios-sd, ymax=paternal_ratios+sd, color = type), position = position_dodge(width = 0.1), width = 0.1, size=0.4 ) + 
     scale_colour_manual(values = c(RATIO_RIBO_COLOUR, RATIO_RNA_COLOUR)   ) + 
     theme(
       panel.border      = element_blank(),
       panel.grid        = element_blank(),
-      plot.title        = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+      plot.title        = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = GENE_NAME_FONT_SIZE),
       panel.background  = element_blank(),
       axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
       axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
       axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-      axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-      legend.title      = element_blank(),
-      legend.text        = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)
+      #axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+      axis.title.x      = element_blank(),
+      legend.position   = "none",
+      axis.line         = element_line(colour = "black", size = 0.35), 
+      #legend.title      = element_blank(),
+      #legend.text        = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)
     ) +
-    labs(title = gene, y = "paternal ratio") 
+    labs(title = gene, y = "paternal ratio") +
+    scale_x_discrete( expand = c(0.05, 0.05)) +
+    scale_y_continuous( breaks = y_breaks, labels = scale_decimal_digit)
+
   
   if(ymax > 0){
     p = p + ylim(c(0, ymax))
@@ -1178,11 +1567,17 @@ plot_snp_ratios = function(gene, ymax = 0){
   return(p)
 }
 
+plot_snp_ratios("Lyar")
+
 plot_snp_ratios("Ncoa3")
 
 plot_snp_ratios("Top1")
 
 plot_snp_ratios("Top2a")
+
+plot_snp_ratios("Rpa1")
+
+plot_snp_ratios("Tpx2")
 
 ################################################################################
 ################################################################################
@@ -1193,7 +1588,7 @@ plot_snp_ratios("Top2a")
 
 top_snp_pick_count = 50
 
-snp_totals_2cell = 
+snp_totals_2cell_ribo = 
 detailed_riboseq_table %>%
   filter(group == '2cell'  ) %>%
   group_by(transcript) %>%
@@ -1202,7 +1597,7 @@ detailed_riboseq_table %>%
   arrange(desc( transcript_sum) )
 
 
-snp_totals_4cell = 
+snp_totals_4cell_ribo = 
   detailed_riboseq_table %>%
   filter(group == '4cell'  ) %>%
   group_by(transcript) %>%
@@ -1210,7 +1605,7 @@ snp_totals_4cell =
   filter(transcript_sum >= 10) %>%
   arrange(desc( transcript_sum) )
 
-snp_totals_8cell = 
+snp_totals_8cell_ribo = 
   detailed_riboseq_table %>%
   filter(group == '8cell'  ) %>%
   group_by(transcript) %>%
@@ -1218,9 +1613,38 @@ snp_totals_8cell =
   filter(transcript_sum >= 10) %>%
   arrange(desc( transcript_sum) )
 
-transcripts_with_at_least_10_reads = intersect(snp_totals_8cell$transcript, snp_totals_4cell$transcript)
-transcripts_with_at_least_10_reads = intersect(transcripts_with_at_least_10_reads, snp_totals_2cell$transcript)
+transcripts_with_at_least_10_reads_ribo = intersect(snp_totals_8cell_ribo$transcript, snp_totals_4cell_ribo$transcript)
+transcripts_with_at_least_10_reads_ribo = intersect(transcripts_with_at_least_10_reads_ribo, snp_totals_2cell_ribo$transcript)
 
+snp_totals_2cell_rna = 
+  detailed_rnaseq_table %>%
+  filter(group == '2cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+
+snp_totals_4cell_rna = 
+  detailed_rnaseq_table %>%
+  filter(group == '4cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+snp_totals_8cell_rna = 
+  detailed_rnaseq_table %>%
+  filter(group == '8cell'  ) %>%
+  group_by(transcript) %>%
+  summarise(transcript_sum = sum(paternal + maternal)   ) %>%
+  filter(transcript_sum >= 10) %>%
+  arrange(desc( transcript_sum) )
+
+transcripts_with_at_least_10_reads_rna = intersect(snp_totals_8cell_rna$transcript, snp_totals_4cell_rna$transcript)
+transcripts_with_at_least_10_reads_rna = intersect(transcripts_with_at_least_10_reads_rna, snp_totals_2cell_rna$transcript)
+
+length(top_transcripts_combined)
 
 # We decided not to exclude those transcripts
 # mii_0_paternal_transcripts = 
@@ -1233,22 +1657,22 @@ transcripts_with_at_least_10_reads = intersect(transcripts_with_at_least_10_read
 #       filter( paternal_ratio < 0.05 )
 #       ) $transcript )
 
-
 #top_transcripts_combined = intersect(transcripts_with_at_least_10_reads, mii_0_paternal_transcripts)
-top_transcripts_combined = transcripts_with_at_least_10_reads
+top_transcripts_combined = intersect(transcripts_with_at_least_10_reads_ribo, transcripts_with_at_least_10_reads_rna)
 
+top_snps_pseudo_count = 0
 
 top_snps_df_ribo = detailed_riboseq_table %>%
   filter( group %in% c('1cell', '2cell', '4cell', '8cell') ) %>%
   filter(transcript %in% top_transcripts_combined) %>%
   group_by( group, transcript ) %>%
-  mutate( paternal_ratio = sum(paternal) / sum( paternal + maternal) )
+  mutate( paternal_ratio =  ( sum(paternal) + top_snps_pseudo_count) / (sum( paternal + maternal) + 2*top_snps_pseudo_count ) )
 
 top_snps_df_rna = detailed_rnaseq_table %>%
   filter( group %in% c('1cell', '2cell', '4cell', '8cell') ) %>%
   filter(transcript %in% top_transcripts_combined) %>%
   group_by( group, transcript ) %>%
-  mutate( paternal_ratio = sum(paternal) / sum( paternal + maternal) )
+  mutate( paternal_ratio =  ( sum(paternal) + top_snps_pseudo_count) / (sum( paternal + maternal) + 2*top_snps_pseudo_count ) )
 
 
 top_snps_paternal_ratios_ribo = 
@@ -1303,9 +1727,9 @@ top_snps_paternal_ratios_rna_wide[is.na(top_snps_paternal_ratios_rna_wide) ] = 0
 
 
 
-difference_heatmap_color = colorRampPalette(c(RATIO_RNA_COLOUR, "white", RATIO_RIBO_COLOUR))(paletteLength)
-ribo_heatmap_color       = colorRampPalette(c("white", RATIO_RIBO_COLOUR))(paletteLength)
-rna_heatmap_color        = colorRampPalette(c("white", RATIO_RNA_COLOUR))(paletteLength)
+difference_heatmap_color = colorRampPalette(c(heatmap_ribo_blue, "white", heatmap_ribo_orange))(paletteLength)
+ribo_heatmap_color       = colorRampPalette(c("white", heatmap_ribo_orange))(paletteLength)
+rna_heatmap_color        = colorRampPalette(c("white", heatmap_ribo_blue))(paletteLength)
 
 difference_heatmap_breaks = c(seq( -1 ,              0, length.out = ceiling(paletteLength/2) + 1), 
               seq( 1 /paletteLength, 1, length.out = floor(paletteLength/2)))
@@ -1327,6 +1751,9 @@ for(g in prop_test_intersect_top_snps){
 }
 
 
+supp_heatmap_cell_width = 20
+heatmap_title_size = 7
+
 ### ribo_paternal_percentage
 top_snps_paternal_ratio_ribo_plot = 
 pheatmap( top_snps_paternal_ratios_ribo_wide , 
@@ -1337,8 +1764,8 @@ pheatmap( top_snps_paternal_ratios_ribo_wide ,
           clustering_method = "ward.D",
           show_rownames     = TRUE,
           display_numbers   = top_snp_markers,
-          cellwidth         = 40,
-          #treeheight_row    = 100,
+          cellwidth         = supp_heatmap_cell_width,
+          treeheight_row    = 35,
           treeheight_col    = 0,
           cluster_cols      = FALSE, 
           cluster_rows      = TRUE, 
@@ -1348,9 +1775,10 @@ pheatmap( top_snps_paternal_ratios_ribo_wide ,
           angle_col         = 0,
           labels_col        = c( "2cell", "4cell", "8cell"),
           main              = "Paternal Ratio Ribo",
-          fontsize          = 10,
+          fontsize          = heatmap_title_size,
+          legend_breaks     = c(0, 0.5, 1),
           fontsize_col      = FONT_LABEL_SIZE,
-          fontsize_row      = 8,
+          fontsize_row      = 7,
           fontsize_number   = FONT_LABEL_SIZE
 )
 
@@ -1367,8 +1795,8 @@ pheatmap( top_snps_paternal_ratios_rna_wide[ribo_heatmap_row_order, ] ,
           show_rownames     = TRUE,
           display_numbers   = top_snp_markers[ribo_heatmap_row_order, ],
           #cutree_rows       = 4,
-          cellwidth         = 40,
-          treeheight_row    = 50,
+          cellwidth         = supp_heatmap_cell_width,
+          treeheight_row    = 20,
           treeheight_col    = 0,
           cluster_cols      = FALSE, 
           cluster_rows      = FALSE, 
@@ -1378,9 +1806,10 @@ pheatmap( top_snps_paternal_ratios_rna_wide[ribo_heatmap_row_order, ] ,
           angle_col         = 0,
           labels_col        = c( "2cell", "4cell", "8cell"),
           main              = "Paternal Ratio RNA",
-          fontsize          = 10,
+          fontsize          = heatmap_title_size,
+          legend_breaks     = c(0, 0.5, 1), 
           fontsize_col      = FONT_LABEL_SIZE,
-          fontsize_row      = 8,
+          fontsize_row      = 7,
           fontsize_number   = FONT_LABEL_SIZE,
           number_color      = RATIO_RIBO_COLOUR 
           
@@ -1399,7 +1828,7 @@ top_snps_paternal_ratio_difference_plot =
             show_rownames     = TRUE,
             #cutree_rows       = 4,
             display_numbers   = top_snp_markers[ribo_heatmap_row_order, ],
-            cellwidth         = 40,
+            cellwidth         = supp_heatmap_cell_width,
             treeheight_row    = 0,
             treeheight_col    = 0,
             cluster_cols      = FALSE, 
@@ -1410,13 +1839,11 @@ top_snps_paternal_ratio_difference_plot =
             angle_col         = 0,
             labels_col        = c( "2cell", "4cell", "8cell"),
             main              = "Paternal Ratio Difference",
-            fontsize          = 10,
+            fontsize          = heatmap_title_size,
             fontsize_col      = FONT_LABEL_SIZE,
-            fontsize_row      = 8,
+            fontsize_row      = 7,
             fontsize_number   = FONT_LABEL_SIZE
   )
-
-
 
 
 supplementary_heatmap_grid_plot = 
@@ -1428,6 +1855,8 @@ supplementary_heatmap_grid_plot =
 
 supplementary_heatmap_grid_plot
 
+
+#save_plot_pdf( "heatmap_highly_translated_genes.pdf", supplementary_heatmap_grid_plot, width = 7.25, height = 7.25  )
 
 
 ################################################################################
@@ -1461,28 +1890,223 @@ combine_gene_detail_and_ratio_plots = function(gene){
   row_spacer = generate_blank_plot()
   
   this_plot = plot_grid(line_plot, row_spacer, detailed_plot, 
-                        rel_heights = c(1,0.05,1),
-                        ncol = 1,
-                        align = "h")
+                        rel_heights = c(0.9 ,0.05,1),
+                        ncol = 1)
   
   return(this_plot)
 }
 
-combine_gene_detail_and_ratio_plots("Ncoa3")
+################################################################################
+### G E N E S    F O R   T H E   M A I N F I G U R E
+
+ncoa3_detailed_plot = combine_gene_detail_and_ratio_plots("Ncoa3")
+ncoa3_detailed_plot
+#save_plot_pdf("ncoa3.pdf", ncoa3_detailed_plot, width = 3.5, height = 3.5)
+
+eif3d_detailed_plot = combine_gene_detail_and_ratio_plots("Eif3d")
+eif3d_detailed_plot
+#save_plot_pdf("eif3d.pdf", eif3d_detailed_plot, width = 3.5, height = 3.5)
+
+hsp90ab1_detailed_plot = combine_gene_detail_and_ratio_plots("Hsp90ab1")
+hsp90ab1_detailed_plot
+#save_plot_pdf("hsp90ab1.pdf", hsp90ab1_detailed_plot, width = 3.5, height = 3.5)
+
+folr1_detailed_plot = combine_gene_detail_and_ratio_plots("Folr1")
+folr1_detailed_plot
+#save_plot_pdf("folr1.pdf", folr1_detailed_plot, width = 3.5, height = 3.5)
+################################################################################
+
+################################################################################
+###             SNP Legends for the main figure                             ####
+
+snp_legend_width  = 2
+snp_legend_height = 0.5
+
+ncoa3_snp_legend = generate_legend("Ncoa3")
+ncoa3_snp_legend
+save_plot_pdf("ncoa3_legend.pdf", ncoa3_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+eif3d_snp_legend = generate_legend("Eif3d")
+eif3d_snp_legend
+save_plot_pdf("eif3d_legend.pdf", eif3d_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+
+hsp90ab1_snp_legend = generate_legend("Hsp90ab1")
+hsp90ab1_snp_legend
+save_plot_pdf("hsp90ab1_legend.pdf", hsp90ab1_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+folr1_snp_legend = generate_legend( "Folr1" )
+folr1_snp_legend
+save_plot_pdf("folr1_legend.pdf", folr1_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+
+supp_legend_genes = c("Cdk1", "Baz1a", "Lclat1", "Umps", "Mrps9", "Nin",
+                      "Aff1", "Pttg1")
+
+for(g in supp_legend_genes){
+  this_legend_p = generate_legend( g )
+  this_file     = paste( g, "legend.pdf", sep = "_"  )
+  save_plot_pdf(this_file, this_legend_p, width = snp_legend_width, height = snp_legend_height)
+}
+
+
+################################################################################
+###             SNP Legends for the supp figure                             ####
+
+
+################################################################################
+#########      M A I N    S N P   F I G U R E   L A Y O U T         ############
+
+schematic_label = ggdraw() + 
+  draw_label(
+    "Schematic",
+    fontface   = 'plain',
+    fontfamily = 'helvetica',
+    size       = FONT_LABEL_SIZE,
+    angle      = 45
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+main_top = plot_grid(schematic_label,  main_paternal_percentage_figure , ncol = 2, rel_widths = c(2.5, 1) )
+
+main_middle = plot_grid( 
+          hsp90ab1_detailed_plot, ncoa3_detailed_plot,
+           eif3d_detailed_plot, folr1_detailed_plot,
+          ncol = 2)
+
+#main_bottom = main_heatmap_figure[[4]]
+main_bottom = riboseq_paternal_ratios_heatmap[[4]]
+
+main_snp_plot = plot_grid(main_top,  main_bottom, main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
+
+
+
+
+main_snp_plot_ribo = plot_grid(main_top,  riboseq_paternal_ratios_heatmap[[4]], main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
+
+save_plot_pdf( "main_snp_plot_ribo.pdf", main_snp_plot_ribo, width = 7.2, height = 9  )
+
+main_snp_plot_rna = plot_grid(main_top,  rnaseq_paternal_ratios_heatmap[[4]], main_middle,  ncol = 1, rel_heights = c(1, 1, 4))
+
+save_plot_pdf( "main_snp_plot_rna.pdf", main_snp_plot_rna, width = 7.2, height = 9  )
+
+################################################################################
+#####  P a t e r n a l    A l l e l e     P e r c e n t a g e s
+
+save_plot_pdf("paternal_percentage.pdf", 
+              standalone_paternal_percentage_figure, 
+              width = 3.5, height = 3)
+
+################################################################################
+#####     H e a t m a p s 
+
+standalone_heatmap_figure_no_stars
+standalone_heatmap_figure
+
+save_plot_pdf("standalone_heatmap_no_stars.pdf", 
+              standalone_heatmap_figure_no_stars, 
+              width = 3, height = 3.5 * 2)
+
+save_plot_pdf("standalone_heatmap.pdf", 
+              standalone_heatmap_figure, 
+              width = 3, height = 3.5 * 2)
+
+
+
+save_plot_pdf( "heatmap_highly_translated_genes.pdf", supplementary_heatmap_grid_plot, width = 7.2, height = 9  )
 
 ################################################################################
 
-save_plot_pdf("supplementary_allele_percentages_ribo.pdf", supplementary_allele_percentages_ribo)
 
-save_plot_pdf("supplementary_allele_percentages_rnaseq.pdf", supplementary_allele_percentages_rnaseq)
+################################################################################
+## Supplementary Allele Percentages Figures
 
-save_plot_pdf("main_paternal_percentage_figure.pdf", main_paternal_percentage_figure)
+save_plot_pdf("supplementary_allele_percentages_ribo.pdf", supplementary_allele_percentages_ribo,
+              width = 3.5, height = 4)
 
-save_plot_pdf("main_heatmap_figure.pdf", main_heatmap_figure)
+save_plot_pdf("supplementary_allele_percentages_rnaseq.pdf", supplementary_allele_percentages_rnaseq,
+              width = 3.5, height = 4)
 
-save_plot_pdf("supplementary_heatmap_figure.pdf", supplementary_heatmap_figure, width = 5, height = 12)
+################################################################################
 
-save_plot_pdf("supplementary_heatmap_grid_plot.pdf", supplementary_heatmap_grid_plot, width = 15, height = 12)
+# Higher paternal Ratio in 4-8 cells
+nop14_plot   = combine_gene_detail_and_ratio_plots("Nop14") 
+tmppe_plot   = combine_gene_detail_and_ratio_plots("Tmppe") 
+slc13a2_plot = combine_gene_detail_and_ratio_plots("Slc13a2") 
+
+# Higher paternal Ratio in 8 cells
+mrps9_plot = combine_gene_detail_and_ratio_plots("Mrps9") 
+tsen2_plot = combine_gene_detail_and_ratio_plots("Tsen2") 
+ccnh_plot  = combine_gene_detail_and_ratio_plots("Ccnh") 
+
+detailed_plot_page_1 = 
+  plot_grid(nop14_plot, tmppe_plot,
+            slc13a2_plot, mrps9_plot,
+            tsen2_plot, ccnh_plot,
+            ncol = 2, align = "hv")
+
+
+
+# Higher paternal Ratio in 4 cells
+cdk1_plot   = combine_gene_detail_and_ratio_plots("Cdk1") 
+baz1a_plot  = combine_gene_detail_and_ratio_plots("Baz1a") 
+
+# Lower paternal Ratio in 8 cells
+dyrk3_plot  = combine_gene_detail_and_ratio_plots("Dyrk3") 
+lclat1_plot  = combine_gene_detail_and_ratio_plots("Lclat1") 
+lyar_plot  = combine_gene_detail_and_ratio_plots("Lyar") 
+umps_plot  = combine_gene_detail_and_ratio_plots("Umps") 
+
+detailed_plot_page_2 = 
+  plot_grid( cdk1_plot, baz1a_plot,
+             dyrk3_plot, lclat1_plot,
+             lyar_plot, umps_plot,
+             ncol = 2, align = "hv")
+
+detailed_plot_page_2
+
+# Lower paternal Ratio in 4-8 cells
+
+ppp2ca_plot  = combine_gene_detail_and_ratio_plots("Ppp2ca") 
+srpk1_plot    = combine_gene_detail_and_ratio_plots("Srpk1") 
+cbx3_plot  = combine_gene_detail_and_ratio_plots("Cbx3") 
+
+# Lower paternal Ratio in 4 cells
+pa2g4_plot   = combine_gene_detail_and_ratio_plots("Pa2g4") 
+zfp296_plot  = combine_gene_detail_and_ratio_plots("Zfp296") 
+nin_plot     = combine_gene_detail_and_ratio_plots("Nin") 
+
+detailed_plot_page_3 = 
+  plot_grid( ppp2ca_plot, srpk1_plot ,
+             cbx3_plot , pa2g4_plot,
+             zfp296_plot, nin_plot,
+             ncol = 2, align = "hv")
+
+
+
+ddx21_plot     = combine_gene_detail_and_ratio_plots("Ddx21") 
+bcat1_plot     = combine_gene_detail_and_ratio_plots("Bcat1") 
+mysm1_plot     = combine_gene_detail_and_ratio_plots("Mysm1") 
+
+
+pttg1_plot     = combine_gene_detail_and_ratio_plots("Pttg1") 
+npm1_plot     = combine_gene_detail_and_ratio_plots("Npm1")
+aff1_plot     = combine_gene_detail_and_ratio_plots("Aff1")
+
+detailed_plot_page_4 = 
+  plot_grid( ddx21_plot, bcat1_plot,
+             mysm1_plot, pttg1_plot,
+             npm1_plot, aff1_plot,
+             ncol = 2, align = "hv")
+
+#detailed_plot_page_4
+
+save_plot_pdf( "detailed_plot_page_1.pdf", detailed_plot_page_1, width = 7.2, height = 8.9  )
+save_plot_pdf( "detailed_plot_page_2.pdf", detailed_plot_page_2, width = 7.2, height = 8.9  )
+save_plot_pdf( "detailed_plot_page_3.pdf", detailed_plot_page_3, width = 7.2, height = 8.9  )
+save_plot_pdf( "detailed_plot_page_4.pdf", detailed_plot_page_4, width = 7.2, height = 8.9  )
 
 ################################################################################
 
@@ -1491,58 +2115,105 @@ combine_gene_detail_and_ratio_plots("Cdt1")
 
 #################################################
 
-interesting_genes = c(
-  "Ncoa3", # !!! High paternal ratio at 4cell stage, good reproducibility
-  "Rpl38", #-> Small effect size; large counts
-  "Tsr1",  #  -> rRNA accumulation associated; strange behavior that doesn’t follow the clear patterns
-  "Rps6",  # -> Lagging translation with large counts; paternal activation by 2-cell stage; paternal translation slowly starts at 4-cell and matches by 8-cell stage
-  "Eef1b2",  #-> Same story of translation lagging the RNA expression. 
-  "Polr1e",
-  "Eif3d", # -> Lagged translation
-  "Rpl21", #-> Not super interesting but maybe lower translation of the paternal copy
-  "Eif3g", #-> RNA degraded in the GV to MII transition; both copies activated by 2-cell stage; translation of maternal copy looks higher in 4-cell stage but likely not a great one to highlight. 
-  "Ltv1", # -> Lagged; ribosome biogenesis factor
-  "Rpl28", # -> Much stronger translation of the paternal copy
-  "Eif4b", # -> Lagging
-  "Ddx21", # -> Lagging translation
-  "Rpl28", # ->Lagging translation
-  "Znhit3", # -> Lagging translation; implicated in pre-ribosomal RNA processing
-  "Eprs", # !!!-> Paternal copy seems to be lowly tranlsated consistently at both 4- and 8- cell stage
-  "Lyar", # -> Nucleolar gene
+# 
+# 
+# combine_gene_detail_and_ratio_plots("Rpa1")
+# 
+# combine_gene_detail_and_ratio_plots("Slc6a8")
+# 
+# 
+# ncoa_plot = combine_gene_detail_and_ratio_plots("Ncoa3") 
+# nin_plot = combine_gene_detail_and_ratio_plots("Nin") 
+# lyar_plot = combine_gene_detail_and_ratio_plots("Lyar")
+# top1_plot = combine_gene_detail_and_ratio_plots("Top1")
+# tpx2_plot = combine_gene_detail_and_ratio_plots("Tpx2")
+# mcm7_plot = combine_gene_detail_and_ratio_plots("Mcm7")
+# rpl38_plot = combine_gene_detail_and_ratio_plots("Rpl38")
+# kdm5b_plot = combine_gene_detail_and_ratio_plots("Kdm5b")
+# ppat_plot = combine_gene_detail_and_ratio_plots("Ppat")
+# 
 
-  "Tpx2", # - Maternal gene with lagging translation of paternal copy; involved in cell cycle
-  "Pa2g4", #  - Not maternal; involved in proliferation; interesting asymmetric transcription activation at 2cell stage which reaches 50:50 in RNA by 4-cell but translation lags
-  "Nin", # - Maternal gene; decent read counts; member of pericentriolar matrix
-  "Cdc42", # -> lagging translation
-  "Mcm7", # !!! Paternal is consistently high at 4 and 8 cell stages
-  "Cdk1", # Higher paternal reads at 4 cell stage
-  "Ccnb1",
-  "Ccnh", # Very high paternal ratio at 8 cell stage
-  "Brca2", # -> Might be more interesting in a stage-specific manner
-  "Cct6a", #-> Consistently high translation of the paternal copy starting at 2-cell (Note: paternal ratios are almost equal at cell)
-  "Dnmt1", #!!! -> Maternal transcript but small expression from paternal copy with exclusive translation of the paternal copy
-  "Pgd", # Not much known about in the context of development but has robust counts: Maybe not super interesting, high var.
-  "Ppat", # Seems like there are a number of metabolic enzymes in the list but nothing super obvious in terms of known biology
-  "Pemt",
-  "Folr1", # -> Good counts but there is a fetal version Folr2. Shouldn’t that be more abundant?
-  "Zfp296",
-  "Lclat1", # Paternal ratio decreases at 8cell
-  "Stip1",
-  "Gpd1l", ## Almost same ratios on all cases
-  "Top1", # Almost same ratios
-  "Rsl1d1", #Almost same ratios, decent counts
-  "Pttg1", # Almost same ratios, large counts
-  "Kdm5b", # goes flat in both cases. High variation though
-  "Slc16a6",  # goes flat in both cases. High variation though
-  "Cdt1" # Same behavior in both cases
-)
+################################################################################
+### t-test for the aggregated paternal ratios
 
-### Save gene plots into pdf files
+aggregated_riboseq_counts =
+detailed_riboseq_table %>% 
+  filter(group %in% c("4cell", "8cell")) %>%
+  group_by(experiment) %>%
+  summarise(aggregated_maternal_raw = sum(maternal),
+            aggregated_paternal_raw = sum(paternal))
 
-for(g in interesting_genes){
-  this_file = paste( "gene_", g, ".pdf", sep = ""  )
-  save_plot_pdf(this_file, combine_gene_detail_and_ratio_plots(g), width = 12, height = 12)
-}
+View(aggregated_riboseq_counts)
+
+ribo_2cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("2cell-1", "2cell-2", "2cell-3") )
+
+rna_2cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("2cell-1", "2cell-2", "2cell-3", "2cell-4") )
+
+ribo_4cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("4cell-1", "4cell-2", "4cell-3") )
+
+ribo_8cell_paternal_percentages = 
+  corrected_ribo_percentages %>%
+  filter( Experiment %in% c("8cell-1", "8cell-2", "8cell-3", "8cell-4") )
+
+rna_4cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("4cell-1", "4cell-2") )
+
+rna_8cell_paternal_percentages = 
+  corrected_rna_percentages %>%
+  filter( Experiment %in% c("8cell-1", "8cell-2", "8cell-3", "8cell-4") )
 
 
+result_t_test_2cell = 
+  t.test(ribo_2cell_paternal_percentages$Percentage, rna_2cell_paternal_percentages$Percentage)
+print(paste("2cell comparison p-value is", result_t_test_2cell$p.value, sep = " " ))
 
+result_t_test_4cell = 
+    t.test(ribo_4cell_paternal_percentages$Percentage, rna_4cell_paternal_percentages$Percentage)
+print(paste("4cell comparison p-value is", result_t_test_4cell$p.value, sep = " " ))
+
+result_t_test_8cell = 
+  t.test(ribo_8cell_paternal_percentages$Percentage, rna_8cell_paternal_percentages$Percentage)
+print(paste("8cell comparison p-value is", result_t_test_8cell$p.value, sep = " " ))
+
+
+################################################################################
+### Sanity Checks on our filtering
+
+# The intersections should produce empty sets in each case.
+
+ribo_t = 
+  detailed_riboseq_table %>%
+  filter(group %in% c("2cell", "4cell", "8cell")) %>%
+  group_by(group, transcript) %>%
+  summarise( maternal_total = sum(maternal), paternal_total = sum(paternal) )
+
+rna_t = 
+  detailed_rnaseq_table %>%
+  filter(group %in% c("2cell", "4cell", "8cell")) %>%
+  group_by(group, transcript) %>%
+  summarise( maternal_total = sum(maternal), paternal_total = sum(paternal) )
+
+ribo_intr_genes =  ribo_t %>% filter(maternal_total ==2 & paternal_total >= 8)
+rna_intr_genes =  rna_t %>% filter(maternal_total ==2 & paternal_total >= 8)
+
+ribo_intr_genes_2cells = (ribo_intr_genes %>% filter(group == "2cell"))$transcript
+rna_intr_genes_2cells  = (rna_intr_genes %>% filter(group == "2cell"))$transcript
+
+intersect(ribo_intr_genes_2cells, rna_intr_genes_2cells)
+
+ribo_intr_genes_4cells = (ribo_intr_genes %>% filter(group == "4cell"))$transcript
+rna_intr_genes_4cells  = (rna_intr_genes %>% filter(group == "4cell"))$transcript
+
+intersect(ribo_intr_genes_4cells, rna_intr_genes_4cells)
+
+ribo_intr_genes_8cells = (ribo_intr_genes %>% filter(group == "8cell"))$transcript
+rna_intr_genes_8cells  = (rna_intr_genes %>% filter(group == "8cell"))$transcript
+
+intersect(ribo_intr_genes_8cells, rna_intr_genes_8cells)
