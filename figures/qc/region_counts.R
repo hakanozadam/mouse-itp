@@ -353,7 +353,7 @@ plot_bar_with_error_bars = function(df,
             legend.title     = element_blank(),
             legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
             legend.key.size  = unit(0.12, 'inches')) + 
-      labs(title= plot_title, fill="Region", x="Stage", y="Average percentage") + 
+      labs(title= plot_title, fill="Region", x="Stage", y="Mean percentage") + 
       scale_y_continuous(limits = c(0, 100), expand = c(0,0)) + 
       scale_fill_manual("legend", 
                         values = c("UTR5" = UTR5_BLUE, "UTR3" = UTR3_GREEN, "CDS" = CDS_GREEN), 
@@ -633,7 +633,12 @@ human_region_total_counts_and_lengths =
   mutate( replicate_count = length( unique( experiment )  ) ) 
 
 
-
+human_region_total_counts_and_lengths = 
+  human_region_total_counts_and_lengths %>% 
+  mutate(total_length = sum(UTR5 + CDS + UTR3)) %>%
+  mutate( UTR5_w_ratio = (UTR5 / total_length) * total_count,
+          CDS_w_ratio  = (CDS / total_length) * total_count,
+          UTR3_w_ratio = (UTR3 / total_length) * total_count )
 
 
 human_region_len_percentages_pre = 
@@ -665,3 +670,38 @@ human_region_len_percentage_barplot =
 save_plot_pdf("mouse_region_len_percentage_barplot_supp.pdf", mouse_region_len_percentage_barplot, width = 3.54, height = 3.54*1.5)
 
 save_plot_pdf("human_region_len_percentage_barplot_supp.pdf", human_region_len_percentage_barplot, width = 3.54, height = 1.9)
+
+# Barplots with Errorbars for Human Data
+
+human_region_len_percentages_with_error = 
+  human_region_len_percentages %>%
+  group_by(group) %>%
+  mutate( replicate_count = length( unique( experiment )  ) ) %>%
+  group_by(group, region) %>%
+  mutate(average_percentage = mean(percentage) ) %>%
+  mutate(standard_error = sd(percentage) / sqrt(replicate_count) )
+
+human_region_len_percentages_with_error_bars = 
+  plot_bar_with_error_bars(human_region_len_percentages_with_error,
+                           "Weighted region lengths")
+
+human_region_percentages_with_error_bars = 
+  plot_bar_with_error_bars(human_region_percentages,
+                           "RPF distribution")
+
+legend_of_human_region_counts_comperative_plot = get_legend(human_region_percentages_with_error_bars)
+
+human_region_counts_comperative_plot = 
+  plot_grid( human_region_percentages_with_error_bars + theme(legend.position = "none"),
+             human_region_len_percentages_with_error_bars + theme(legend.position = "none"),
+             legend_of_human_region_counts_comperative_plot,
+             ncol = 3,
+             rel_widths = c(1,1,0.4))
+
+save_plot_pdf("human_region_lengths_with_error_bars.pdf", 
+              human_region_len_percentages_with_error_bars, 
+              width = 2.1, height = 2.6)
+
+save_plot_pdf("human_region_counts_comparative_error_bars.pdf", 
+              human_region_counts_comperative_plot, 
+              width = 4.2, height = 2.6)
