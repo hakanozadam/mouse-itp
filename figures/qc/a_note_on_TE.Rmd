@@ -1,0 +1,72 @@
+---
+title: "A Note on Translation Efficiency"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Reproducibility Via Translation Efficiency (TE)
+
+We investigate reproducibility of our samples using TE.
+
+## Definition of TE
+
+For a given gene g, let $Ribo_g^{S}$\ be the ribosome occupancy in the sample S and
+$RNA_g^{R}$\ be the expression of g from the RNA-Seq sample R. 
+We define the translation efficiency of g in the sample S as
+
+$$
+   TE_{g}^{S} = \frac{Ribo_g^{S}}{RNA_{g}^{R}}
+$$
+## Using Different RNA-Seq samples for comparing Translation Efficiencies
+
+If we use different RNA-Seq samples for different ribosome profiling experiments, 
+then, $RNA_g^{R}$\ becomes a random variable. Then, the variance of the translation efficiency becomes
+
+$$
+\begin{align}
+   \mbox{var}( log( TE_{g}^{S} ) ) &= \mbox{var}( log( \frac{Ribo_g^{S}}{RNA_{g}^{R}} ) ) \\ 
+                           &= \mbox{var}(  log(Ribo_{g}^{S}) - log(RNA_{g}^{R})  ) \\
+                           &= \mbox{var}(log(Ribo_{g}^{S}) + \mbox{var}(log(RNA_{g}^{R})) + cov(log(Ribo_{g}^{S}), log(RNA_{g}^{R}))
+\end{align}
+$$
+Therefore, the variation of translation efficiency not only comes from our ribosome profiling samples
+but also from RNA-Seq samples. So, reproducibility results based on TE,
+always contain an additional variance coming from RNA-Seq.
+
+
+## TE in 100 Cell and 10 M Cell Samples from the same RNA-Seq
+
+To avoid the variance from RNA-Seq, we fix a RNA-Seq sample, $R$, 
+and compute our TE values accordingly. Let $S_{1}$\ and $S_{2}$\ be
+two ribosome profiling samples. For a gene G,
+
+
+
+```{r includelib, echo=FALSE,warning=FALSE}
+library(Seurat)
+library(ribor)
+library(reshape2)
+library(edgeR)
+library(smatr)
+library(pheatmap)
+library(RColorBrewer)
+library(ggpubr)
+library(cowplot)
+library(dplyr)
+
+source('./rename_experiments.R')
+
+human_ribo_file = '../../../../itp/human-itp_v4.ribo'
+mouse_ribo_file = '../../../mouse-itp_v5.ribo'
+
+mouse_rnaseq_count_file = '../../raw_mouse_rnaseq_cds_counts.csv.gz'
+
+human = Ribo(human_ribo_file, rename_default)
+mm    = Ribo(mouse_ribo_file, rename = rename_default)
+
+```
+
+

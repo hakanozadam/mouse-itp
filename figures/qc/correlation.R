@@ -15,7 +15,7 @@ source('./rename_experiments.R')
 human_ribo_file = '../../../../itp/human-itp_v4.ribo'
 mouse_ribo_file = '../../../mouse-itp_v5.ribo'
 
-mouse_rnaseq_count_file = '../../cds_counts.csv.gz'
+mouse_rnaseq_count_file = '../../raw_mouse_rnaseq_cds_counts.csv.gz'
 
 human = Ribo(human_ribo_file, rename_default)
 mm    = Ribo(mouse_ribo_file, rename = rename_default)
@@ -37,6 +37,12 @@ FIGURE_FONT    = "helvetica"
 
 ribo_orange = rgb(228,88,10 , maxColorValue = 255)
 rna_blue    = rgb(55,135,192, maxColorValue = 255)
+
+AXIS_THICKNESS  = 0.35
+
+basic_text_element = element_text(family = FIGURE_FONT, 
+                                  face   = "plain", 
+                                  size   = FONT_LABEL_SIZE)
 
 ################################################################################
 
@@ -775,6 +781,7 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
   tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
   tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
   tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+  tidy_norm$method = factor(tidy_norm$method, levels = c("RNAseq", "Ribo")  )
   
   p =
     ggplot(tidy_norm, 
@@ -795,7 +802,7 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
       legend.text       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
     ) + 
     scale_y_continuous( limits = c(0, ymax) , breaks = ybreaks ) + 
-    scale_color_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) + 
+    scale_color_manual(values = c("RNAseq" = rna_blue, "Ribo" = ribo_orange)) + 
     scale_shape_manual(values = c(4, 16, 3, 6)) + 
     ylab("Normalized Count") + xlab("") 
   
@@ -822,10 +829,11 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
             axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
             legend.title     = element_blank(),
             legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.line.y      = element_line(colour = "black", size = 0.35),
             legend.key.size  = unit(0.15, 'in'),
       ) +
       scale_y_continuous( limits = c(0, ymax) , expand = c(0, 0), breaks = ybreaks ) + 
-      scale_fill_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) +  
+      scale_fill_manual(values = c( "RNAseq" = rna_blue, "Ribo" = ribo_orange)) +  
       labs(title = gene) + 
       ylab("Normalized Count")
     
@@ -835,6 +843,13 @@ plot_cpm_across_conditions = function(counts, gene, stages = c("all"), ymax = 4,
     print("Incorrect plot type")}
 }
 
+plot_gv_versus_mii_ribo_rna = function(counts, gene, ymax){
+  return( plot_cpm_across_conditions(counts, gene, 
+                                     stages = c("GV", "MII"), 
+                                     plot_type = "barplot", ymax = ymax )  )
+}
+
+plot_gv_versus_mii_ribo_rna(all_counts, "Cpeb1", ymax = 4 )
 
 ### Higher in MII
 Lbr_barplot = 
@@ -876,6 +891,10 @@ Taldo1_barplot =
                              stages = c("1cell", "MII"), 
                              plot_type = "barplot", ymax = 5 ) 
 Taldo1_barplot
+
+plot_cpm_across_conditions(all_counts, "Taldo1", 
+                           stages = c("GV", "MII"), 
+                           plot_type = "barplot", ymax = 5 ) 
 
 Taldo1_pointplot = 
   plot_cpm_across_conditions(all_counts, "Taldo1", stages = c("1cell", "MII"), plot_type = "point", ymax = 5 ) 
@@ -1602,3 +1621,148 @@ supp_figure_gv_mii = plot_grid(Cdc27 ,
 supp_figure_gv_mii
 
 save_plot_pdf("supp_figure_gv_mii.pdf", supp_figure_gv_mii, height = 3.75, width = 6.7)
+
+################################################################################
+
+plot_gv_versus_mii_ribo_rna = function(counts, gene, ymax){
+  return( plot_cpm_across_conditions(counts, gene, 
+                                          stages = c("GV", "MII"), 
+                                          plot_type = "barplot", ymax = ymax )  )
+}
+
+
+compute_TE_of_gene = function(counts, gene, stages = c("GV", "MII")){
+  set.seed(3)
+  colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
+  
+  selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
+  normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+                                   normalization.method = "CLR", 
+                                   margin = 2)
+  
+  count_data = normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ]
+  
+  tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+  tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+  tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+  tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+  tidy_norm$method = factor(tidy_norm$method, levels = c("RNAseq", "Ribo")  )
+  
+  average_dt = tidy_norm %>% group_by(stage, method) %>%  summarise(average = mean(value))
+  
+  ribo_averages = average_dt %>% filter(method == "Ribo")
+  rna_averages  = average_dt %>% filter(method == "RNAseq")
+  
+  TE = ribo_averages$average / rna_averages$average
+  
+  TE_ratio = TE[1] / TE[2]
+  
+  return(TE_ratio)
+}
+
+
+compute_TE_of_gene(all_counts, "Cpeb1")
+
+find_TE_ratios = function(counts, genes, stages = c("GV", "MII") ){
+  
+  TE_ratios = c()
+  
+  for(g in genes){
+    this_TE_ratio = compute_TE_of_gene(counts, g, stages) 
+    TE_ratios     = c( TE_ratios, this_TE_ratio  )
+  }
+  
+  return(TE_ratios)
+}
+
+plot_TE_ratios = function(counts, genes, stages = c("GV", "MII"), y_min = -4, y_max = 4){
+  
+  TE_ratios = find_TE_ratios(counts, genes, stages)
+  TE_ratios = log2(TE_ratios) 
+  this_df   = data.frame( genes= genes, TE_ratios = TE_ratios )
+  this_df$genes = factor(x = genes, levels = genes)
+  
+  this_plot = 
+    ggplot(data = this_df,
+           aes( x = genes, y = TE_ratios ) ) + 
+    geom_point( size = 1, colour = "#98569c" ) + 
+    geom_hline(yintercept = 0, linetype = "dashed" ) + 
+    labs(title = "TE Ratios", y = "Log2(GV/MII)", x = "Gene") + 
+    theme(
+      panel.border      = element_blank(),
+      panel.grid        = element_blank(),
+      plot.title        = element_text(hjust  = 0.5, 
+                                       family = FIGURE_FONT, 
+                                       face   = "plain", 
+                                       size   = FONT_TITLE_SIZE),
+      panel.background  = element_blank(),
+      axis.text.y       = basic_text_element,
+      axis.text.x       = element_text(family = FIGURE_FONT, 
+                                       face   = "plain", 
+                                       size   = FONT_LABEL_SIZE,
+                                       angle = 90, vjust = 0.5, hjust=1),
+      axis.title.y      = basic_text_element,
+      axis.title.x      = basic_text_element,
+      legend.position   = c(0.8, 0.2),
+      axis.line         = element_line(colour = "black", size = AXIS_THICKNESS), 
+      legend.title      = element_blank(),
+      legend.text       = basic_text_element,
+      legend.key.size   = unit(0.15, units = "in") ) + 
+    scale_y_continuous( expand = c(0,0) , limits = c(y_min, y_max ) ) 
+    #ylim( c(0, ceiling( max(TE_ratios) )  ) ) 
+    
+  
+  return(this_plot)
+}
+
+main_TE_ratios_figure = 
+  plot_TE_ratios( all_counts, c( "Eif4a3", "Rpl5", "Mapk3", "Bub1b", "Cdc20", "Dcp1a"),
+                  y_min = -2, y_max = 2)
+
+supp_TE_ratios_figure = 
+  plot_TE_ratios( all_counts, 
+                  c(  "Cdc40", "Lin7c", "Mos", "Pcm1", "Pum2", "Suz12", "Cdc27",
+                      "Fzr1", "Cpeb1", "Rpl26", "Rpl36", "Actb", "Cd151",
+                      "Gapdh",  "Med7", "Miox", "Paip2", "Pfdn5",
+                      "Qars", "Rimkla", "Stx5a", "Tinf2"),
+                  y_min = -4, 
+                  y_max = 4)
+
+
+# Legend: Translation Efficiency Ratio. For each gene, 
+# we compute the translation efficiency (TE) via 
+# dividing mean ribosome occupancy by mean RNA expression.
+# For each gene, TE in GV divided by MII, in log2, are shown on the y-axis.
+
+save_plot_pdf("main_TE_ratios.pdf", main_TE_ratios_figure, height = 1.6, width = 1.6)
+
+save_plot_pdf("supp_TE_ratios.pdf", supp_TE_ratios_figure, height = 1.8, width = 5)
+
+## rr: Ribo & RNA
+
+# Cpeb1_rr  = plot_gv_versus_mii_ribo_rna(all_counts, "Cpeb1", ymax = 4 )
+# 
+# Eif4a3_rr = plot_gv_versus_mii_ribo_rna(all_counts, "Eif4a3", ymax = 5 )
+# 
+# Rpl5_rr   = plot_gv_versus_mii_ribo_rna(all_counts, "Rpl5", ymax = 6 )
+# 
+# Mapk3_rr  = plot_gv_versus_mii_ribo_rna(all_counts, "Mapk3", ymax = 5 )
+# 
+# Bub1b_rr  = plot_gv_versus_mii_ribo_rna(all_counts, "Bub1b", ymax = 6 )
+# 
+# Cdc20_rr  = plot_gv_versus_mii_ribo_rna(all_counts, "Cdc20", ymax = 5 )
+# 
+# Dcp1a_rr  = plot_gv_versus_mii_ribo_rna(all_counts, "Dcp1a", ymax = 5 )
+# 
+# main_gv_mi_ribo_rna_comparison_panel =
+#   plot_grid(
+#     Cpeb1_rr + theme( legend.position = "none"  ),
+#     Eif4a3_rr  + theme( legend.position = "none"  ),
+#     Rpl5_rr + theme( legend.position = "none"  ),
+#     Mapk3_rr + theme( legend.position = "none"  ),
+#     Bub1b_rr + theme( legend.position = "none"  ),
+#     Cdc20_rr + theme( legend.position = "none"  ),
+#     Dcp1a_rr + theme( legend.position = "none"  ),
+#     nrow = 1
+#   )
+
