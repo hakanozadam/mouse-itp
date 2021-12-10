@@ -20,32 +20,34 @@ We define the translation efficiency of g in the sample S as
 $$
    TE_{g}^{S} = \frac{Ribo_g^{S}}{RNA_{g}^{R}}
 $$
-## Using Different RNA-Seq samples for comparing Translation Efficiencies
+
+## Using Different RNA-Seq samples for comparing Translation Efficiencies 
 
 If we use different RNA-Seq samples for different ribosome profiling experiments, 
-then, $RNA_g^{R}$\ becomes a random variable. Then, the variance of the translation efficiency becomes
+then, $RNA_g^{R}$\ becomes a random variable.
+This is because, RNA-Seq data is coming from sampling and sequencing which involves random errors.  
+Then, the variance of the translation efficiency becomes
 
 $$
-\begin{align}
+\begin{aligned}
    \mbox{var}( log( TE_{g}^{S} ) ) &= \mbox{var}( log( \frac{Ribo_g^{S}}{RNA_{g}^{R}} ) ) \\ 
                            &= \mbox{var}(  log(Ribo_{g}^{S}) - log(RNA_{g}^{R})  ) \\
                            &= \mbox{var}(log(Ribo_{g}^{S}) + \mbox{var}(log(RNA_{g}^{R})) + cov(log(Ribo_{g}^{S}), log(RNA_{g}^{R}))
-\end{align}
+\end{aligned}
 $$
 Therefore, the variation of translation efficiency not only comes from our ribosome profiling samples
-but also from RNA-Seq samples. So, reproducibility results based on TE,
-always contain an additional variance coming from RNA-Seq.
+but also from RNA-Seq samples. The above equality shows that reproducibility results based on TE,
+always contain an additional variance coming from RNA-Seq. 
+In published datasets, it is noted in [1] that the variance $\mbox{var}(log(RNA_{g}^{R}))$, 
+coming from RNA-Seq can be high as RNA-Seq samples are not perfectly correlated. 
 
 
-## TE in 100 Cell and 10 M Cell Samples from the same RNA-Seq
-
-To avoid the variance from RNA-Seq, we fix a RNA-Seq sample, $R$, 
-and compute our TE values accordingly. Let $S_{1}$\ and $S_{2}$\ be
-two ribosome profiling samples. For a gene G,
+[1] \textit{\small \textit{Weinberg DE, Shah P, Eichhorn SW, Hussmann JA, Plotkin JB, Bartel DP. Improved Ribosome-Footprint and mRNA Measurements Provide Insights into Dynamics and Regulation of Yeast Translation. Cell Rep. 2016 Feb 23;14(7):1787-1799. doi: 10.1016/j.celrep.2016.01.043. Epub 2016 Feb 11. PMID: 26876183; PMCID: PMC4767672.} }
 
 
 
-```{r includelib, echo=FALSE,warning=FALSE}
+
+```{r includelib, echo=FALSE,warning=FALSE,message=FALSE}
 library(Seurat)
 library(ribor)
 library(reshape2)
@@ -67,6 +69,295 @@ mouse_rnaseq_count_file = '../../raw_mouse_rnaseq_cds_counts.csv.gz'
 human = Ribo(human_ribo_file, rename_default)
 mm    = Ribo(mouse_ribo_file, rename = rename_default)
 
+min_len = 29
+max_len = 35
+```
+
+## Reproducibility of TE
+
+We now compute TEs in our  samples and investigate how they differ between replicates.
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+# RIBO
+ribo_rc <- get_region_counts(mm,
+                             experiment = mm@experiments,
+                             range.lower = min_len,
+                             range.upper = max_len,
+                             length      = TRUE,
+                             transcript  = FALSE,
+                             tidy = F,
+                             alias       = TRUE,
+                             region      = c("CDS"), 
+                             compact = F)
+
+rcw = dcast(ribo_rc, transcript ~ experiment) 
+
 ```
 
 
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+## RNASEQ
+
+mouse_rna_cds = read.csv(mouse_rnaseq_count_file)
+colnames(mouse_rna_cds)  = gsub(colnames(mouse_rna_cds), pattern = ".", fixed = T, replacement = "-")
+
+for (id in 1:length(mouse_rna_cds$transcript)) { 
+  mouse_rna_cds$transcript[id] = rename_default(mouse_rna_cds$transcript[id])
+}
+
+mouse_rna_cds = mouse_rna_cds[,-11]
+
+pseudocount = 8
+
+all_counts_raw = merge(mouse_rna_cds, rcw, by = "transcript")
+all_counts = cpm(all_counts_raw[, -1]) + 8
+```
+
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+count_threshold = 64
+
+
+
+gv_ribo_idx = c(42:46) 
+gv_rna_id   = 16
+
+gv_ribo_counts = all_counts[,gv_ribo_idx ]
+
+gv_rna_counts      = all_counts[, gv_rna_id ]
+
+mii_ribo_idx = c( 23:26, 47  )
+mii_rna_id = 20
+
+mii_ribo_counts     = all_counts[, mii_ribo_idx ]
+mii_rna_counts      = all_counts[, mii_rna_id ] 
+
+one_cell_ribo_idx = c(27:31 )
+one_cell_rna_id  = 4
+
+one_cell_ribo_counts     = all_counts[, one_cell_ribo_idx  ]
+one_cell_rna_counts      = all_counts[, one_cell_rna_id]
+
+```
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+gv_TE_1 = gv_ribo_counts[,1] / gv_rna_counts
+gv_TE_2 = gv_ribo_counts[,2] / gv_rna_counts
+gv_TE_3 = gv_ribo_counts[,3] / gv_rna_counts
+gv_TE_4 = gv_ribo_counts[,4] / gv_rna_counts
+gv_TE_5 = gv_ribo_counts[,5] / gv_rna_counts
+
+mii_TE_1 = mii_ribo_counts[,1] / mii_rna_counts
+mii_TE_2 = mii_ribo_counts[,2] / mii_rna_counts
+mii_TE_3 = mii_ribo_counts[,3] / mii_rna_counts
+mii_TE_4 = mii_ribo_counts[,4] / mii_rna_counts
+mii_TE_5 = mii_ribo_counts[,5] / mii_rna_counts
+
+one_cell_TE_1 = one_cell_ribo_counts[,1] / one_cell_rna_counts
+one_cell_TE_2 = one_cell_ribo_counts[,2] / one_cell_rna_counts
+one_cell_TE_3 = one_cell_ribo_counts[,3] / one_cell_rna_counts
+one_cell_TE_4 = one_cell_ribo_counts[,4] / one_cell_rna_counts
+one_cell_TE_5 = one_cell_ribo_counts[,5] / one_cell_rna_counts
+```
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+#These plots give us a good idea about picking a threshold
+
+#plot(density( log2(gv_ribo_counts_pre[,3]) ))
+#plot(density( log2(gv_ribo_counts_pre[,4]) ))
+#plot(density( log2(gv_ribo_counts_pre[,5]) ))
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+gv_ratio_3_4 = log2(gv_TE_3 / gv_TE_4)
+gv_ratio_3_4 = gv_ratio_3_4[ is.finite(gv_ratio_3_4)  ]
+
+hist(gv_ratio_3_4, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: GV-3 / GV-4") 
+
+gv_2fold_count = sum(gv_ratio_3_4 > -1 & gv_ratio_3_4 < 1 )
+
+gv_2fold_percentage = 100 * (gv_2fold_count / length(gv_ratio_3_4) )
+
+print( paste(gv_2fold_percentage, "% of the genes changed less than two-fold.") )
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+mii_ratio_2_3 = log2( mii_TE_2 / mii_TE_3)
+mii_ratio_2_3 = mii_ratio_2_3[ is.finite(mii_ratio_2_3)  ]
+
+hist(mii_ratio_2_3, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: MII-3 / MII-4") 
+
+mii_2fold_count = sum(mii_ratio_2_3 > -1 & mii_ratio_2_3 < 1 )
+
+mii_2fold_percentage = 100 * (mii_2fold_count / length(mii_ratio_2_3) )
+
+
+print( paste(mii_2fold_percentage, "% of the genes changed less than two-fold.") )
+```
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+onecell_ratio_2_5 = log2( one_cell_TE_2 / one_cell_TE_5)
+onecell_ratio_2_5 = onecell_ratio_2_5[ is.finite(onecell_ratio_2_5)  ]
+
+hist(onecell_ratio_2_5, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: 1cell-2 / 1cell-5") 
+
+onecell_2fold_count = sum(onecell_ratio_2_5 > -1 & onecell_ratio_2_5 < 1 )
+
+onecell_2fold_percentage = 100 * (onecell_2fold_count / length(onecell_ratio_2_5) )
+
+print( paste(onecell_2fold_percentage, "% of the genes changed less than two-fold.") )
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+human_rc <- get_region_counts(human,
+                             experiment = human@experiments,
+                             range.lower = min_len,
+                             range.upper = max_len,
+                             length      = TRUE,
+                             transcript  = FALSE,
+                             tidy = F,
+                             alias       = TRUE,
+                             region      = c("CDS"), 
+                             compact = F)
+
+human_rcw = dcast(human_rc, transcript ~ experiment)
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+
+human_counts = cpm(human_rcw[,-1]) + pseudocount
+
+human_TE_Monosome_1 = human_counts[,1]
+human_TE_Monosome_2 = human_counts[,2]
+human_TE_Monosome_3 = human_counts[,3]
+
+human_TE_100_1 = human_counts[,4] 
+human_TE_100_2 = human_counts[,5] 
+human_TE_100_3 = human_counts[,6] 
+
+```
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+#human_counts_pre = cpm(human_rcw[,-1]) 
+
+# human_TE_10M_1_pre = human_counts_pre[,1] 
+# human_TE_10M_2_pre = human_counts_pre[,2] 
+# human_TE_10M_3_pre = human_counts_pre[,3] 
+# 
+# plot(density(log2(human_TE_10M_1_pre)) )
+# plot(density(log2(human_TE_10M_2_pre)) )
+# plot(density(log2(human_TE_10M_3_pre)) )
+# 
+# 
+# plot(density(log2(human_counts_pre[,4])) )
+# plot(density(log2(human_counts_pre[,5])) )
+# plot(density(log2(human_counts_pre[,6])) )
+```
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+human_TE_ratio_100_3_1 = log2(human_TE_100_1 / human_TE_100_3 )
+human_TE_ratio_100_3_1 = human_TE_ratio_100_3_1[is.finite(human_TE_ratio_100_3_1)]
+
+hist(human_TE_ratio_100_3_1, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: 100cell-3 / 100cell-1") 
+
+hundred_cell_fold_count = sum(human_TE_ratio_100_3_1 > -1 & human_TE_ratio_100_3_1 < 1) 
+hundred_cell_fold_percentage = 100 * (hundred_cell_fold_count / length(human_TE_ratio_100_3_1) )
+print( paste(hundred_cell_fold_percentage, "% of the genes changed less than two-fold.") )
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+human_TE_ratio_Mono_2_3 = log2(human_TE_Monosome_2 / human_TE_Monosome_3 )
+human_TE_ratio_Mono_2_3 = human_TE_ratio_Mono_2_3[is.finite(human_TE_ratio_Mono_2_3)]
+
+hist(human_TE_ratio_Mono_2_3, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: Monosome-2 / Monosome-3") 
+
+human_Mono_fold_count = sum( human_TE_ratio_Mono_2_3 > -1 & human_TE_ratio_Mono_2_3 < 1 )
+
+human_Mono_2fold_percentage = 100 * (human_Mono_fold_count / length(human_TE_ratio_Mono_2_3) )
+print( paste(human_Mono_2fold_percentage, "% of the genes changed less than two-fold.") )
+
+```
+
+Finally, we average Monosome purification and 100-cell Ribo-ITP experiments and
+repeat the analysis.
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+human_TE_Monosome_average = (human_counts[,1] + human_counts[,2] + human_counts[,3]) / 3
+
+human_TE_100_average = (human_counts[,4] + human_counts[,5]  + human_counts[,6] ) / 3 
+ 
+
+
+human_TE_ratio_Mono_100 = log2(human_TE_Monosome_average / human_TE_100_average )
+
+human_TE_ratio_Mono_100 = human_TE_ratio_Mono_100[is.finite(human_TE_ratio_Mono_100)]
+
+hist(human_TE_ratio_Mono_100, breaks = 30, 
+     xlab = "log2(TE Ratio)", 
+     ylab = "# Genes", 
+     main = "Distribution of TE Ratios: Monosome-Average / 100 Average") 
+
+human_Mono_fold_count = sum( human_TE_ratio_Mono_100 > -1 & human_TE_ratio_Mono_100 < 1 )
+
+human_Mono_2fold_percentage = 100 * (human_Mono_fold_count / length(human_TE_ratio_Mono_100) )
+print( paste(human_Mono_2fold_percentage, "% of the genes changed less than two-fold.") )
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+
+```
