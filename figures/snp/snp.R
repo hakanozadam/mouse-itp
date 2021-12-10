@@ -262,38 +262,7 @@ percentage_averages = bind_rows( riboseq_percentage_averages, rnaseq_percentage_
 
 percentage_averages$stage = factor( percentage_averages$stage, levels = c("MII", "1cell", "2cell", "4cell", "8cell") )
 
-### We won't use this plot!!!!
-### See the corrected version below
-ggplot(data=percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
-  geom_bar(position = "dodge", stat="identity", alpha = 0.7 ) +
-  geom_errorbar( aes(  x    = stage, 
-                       ymin = average_percentage - sd_percentage, 
-                       ymax = average_percentage + sd_percentage), 
-                 width    = 0.4, 
-                 colour   = MAIN_PERCENTAGE_ERRORBAR_COLOR, 
-                 alpha    = 0.9, 
-                 size     = 1.3,
-                 position = position_dodge(width = 0.8)) + 
-  
-  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
-        panel.border     = element_blank(),
-        panel.grid       = element_blank(),
-        panel.background = element_blank(),
-        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        legend.title     = element_blank(),
-        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)) + 
-  
-  scale_fill_manual( values = c(MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR,
-                                MAIN_PERCENTAGE_RNASEQ_FILL_COLOR) ) + 
-  
-  guides(fill=guide_legend(title="")) + 
-  
-  labs(title = "", 
-       x     = "Stage", 
-       y     = "Percentage")
+
 
 ################################################################################
 
@@ -589,6 +558,96 @@ standalone_heatmap_figure_no_stars =
 standalone_heatmap_figure_no_stars
 
 
+
+################################################################################
+################################################################################
+################################################################################
+################################################################################
+########        G E N E  S P E C I F I C    P L O T S                   ########
+
+detailed_riboseq_table_raw = read.csv(detailed_riboseq_count_file)
+detailed_rnaseq_table_raw  = read.csv(detailed_rnaseq_count_file)
+
+detailed_riboseq_table_raw$experiment = rename_experiments( detailed_riboseq_table_raw$experiment  )
+detailed_riboseq_table_raw$transcript = rename_genes( detailed_riboseq_table_raw$transcript , split = "-" )
+
+detailed_rnaseq_table_raw$experiment = rename_experiments( detailed_rnaseq_table_raw$experiment  )
+detailed_rnaseq_table_raw$transcript = rename_genes( detailed_rnaseq_table_raw$transcript , split = "-" )
+
+detailed_riboseq_table_raw$group = unlist(  lapply( strsplit(detailed_riboseq_table_raw$experiment, "-")  , "[[", 1 )  )
+detailed_rnaseq_table_raw$group  = unlist(  lapply( strsplit(detailed_rnaseq_table_raw$experiment, "-")  , "[[", 1 )  )
+
+experiment_groups = unique( detailed_riboseq_table_raw$group )
+
+## Add counts per thousand to the dataframes
+detailed_riboseq_table = 
+  detailed_riboseq_table_raw %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
+  mutate(type = "ribo")
+
+
+detailed_rnaseq_table = 
+  detailed_rnaseq_table_raw %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
+  mutate(type = "rna")
+
+
+detailed_table = rbind(detailed_riboseq_table, detailed_rnaseq_table)
+
+###
+# To handle graphs easier, we add dummy experiments to 2,4,8 cell groups
+# so that they have equal (4) number of experiments.
+# The new experiments have 0 counts.
+detailed_riboseq_table_with_dummies =
+  detailed_riboseq_table %>%
+  filter(group == "2cell" | group == "4cell" | group == "8cell")
+
+tmp_dummy_entry = detailed_riboseq_table %>% 
+  filter( experiment == "2cell-1" ) %>%
+  mutate( experiment = "2cell-4" ) %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
+
+
+tmp_dummy_entry = detailed_riboseq_table %>% 
+  filter( experiment == "4cell-1" ) %>%
+  mutate( experiment = "4cell-4" ) %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
+
+
+
+detailed_rnaseq_table_with_dummies =
+  detailed_rnaseq_table %>%
+  filter(group == "2cell" | group == "4cell" | group == "8cell")
+
+tmp_dummy_entry = detailed_rnaseq_table %>%
+  filter(experiment == "4cell-1") %>%
+  mutate(experiment = "4cell-3") %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
+
+tmp_dummy_entry = detailed_rnaseq_table %>%
+  filter(experiment == "4cell-1") %>%
+  mutate(experiment = "4cell-4") %>%
+  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
+
+detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
+
+detailed_table_with_dummies = rbind(  detailed_riboseq_table_with_dummies, detailed_rnaseq_table_with_dummies )
+##############################################################
+
+
+
 ################################################################################
 ####   N E W   V E R S I O N   O F   T H E   M A I N   H E A T M A P   #########
 
@@ -722,92 +781,6 @@ pheatmap( t( ribo_rna_paternal_ratios_combined[, -1]) ,
           fontsize_number   = FONT_LABEL_SIZE,
 )
 
-################################################################################
-################################################################################
-################################################################################
-################################################################################
-########        G E N E  S P E C I F I C    P L O T S                   ########
-
-detailed_riboseq_table_raw = read.csv(detailed_riboseq_count_file)
-detailed_rnaseq_table_raw  = read.csv(detailed_rnaseq_count_file)
-
-detailed_riboseq_table_raw$experiment = rename_experiments( detailed_riboseq_table_raw$experiment  )
-detailed_riboseq_table_raw$transcript = rename_genes( detailed_riboseq_table_raw$transcript , split = "-" )
-
-detailed_rnaseq_table_raw$experiment = rename_experiments( detailed_rnaseq_table_raw$experiment  )
-detailed_rnaseq_table_raw$transcript = rename_genes( detailed_rnaseq_table_raw$transcript , split = "-" )
-
-detailed_riboseq_table_raw$group = unlist(  lapply( strsplit(detailed_riboseq_table_raw$experiment, "-")  , "[[", 1 )  )
-detailed_rnaseq_table_raw$group  = unlist(  lapply( strsplit(detailed_rnaseq_table_raw$experiment, "-")  , "[[", 1 )  )
-
-experiment_groups = unique( detailed_riboseq_table_raw$group )
-  
-## Add counts per thousand to the dataframes
-detailed_riboseq_table = 
-  detailed_riboseq_table_raw %>% 
-  group_by(experiment) %>%
-  mutate( experiment_total = sum(paternal + maternal) ) %>%
-  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
-          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
-  mutate(type = "ribo")
-
-
-detailed_rnaseq_table = 
-  detailed_rnaseq_table_raw %>% 
-  group_by(experiment) %>%
-  mutate( experiment_total = sum(paternal + maternal) ) %>%
-  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
-          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR ) %>%
-  mutate(type = "rna")
-
-
-detailed_table = rbind(detailed_riboseq_table, detailed_rnaseq_table)
-
-###
-# To handle graphs easier, we add dummy experiments to 2,4,8 cell groups
-# so that they have equal (4) number of experiments.
-# The new experiments have 0 counts.
-detailed_riboseq_table_with_dummies =
-  detailed_riboseq_table %>%
-  filter(group == "2cell" | group == "4cell" | group == "8cell")
-
-tmp_dummy_entry = detailed_riboseq_table %>% 
-                    filter( experiment == "2cell-1" ) %>%
-                    mutate( experiment = "2cell-4" ) %>%
-                    mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
-
-detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
-
-
-tmp_dummy_entry = detailed_riboseq_table %>% 
-  filter( experiment == "4cell-1" ) %>%
-  mutate( experiment = "4cell-4" ) %>%
-  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
-
-detailed_riboseq_table_with_dummies = rbind(detailed_riboseq_table_with_dummies, tmp_dummy_entry)
-
-
-
-detailed_rnaseq_table_with_dummies =
-  detailed_rnaseq_table %>%
-  filter(group == "2cell" | group == "4cell" | group == "8cell")
-
-tmp_dummy_entry = detailed_rnaseq_table %>%
-  filter(experiment == "4cell-1") %>%
-  mutate(experiment = "4cell-3") %>%
-  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
-
-detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
-
-tmp_dummy_entry = detailed_rnaseq_table %>%
-  filter(experiment == "4cell-1") %>%
-  mutate(experiment = "4cell-4") %>%
-  mutate( paternal = 0, maternal = 0 , paternal_per_k = 0, maternal_per_k = 0 )
-
-detailed_rnaseq_table_with_dummies = rbind( detailed_rnaseq_table_with_dummies, tmp_dummy_entry )
-
-detailed_table_with_dummies = rbind(  detailed_riboseq_table_with_dummies, detailed_rnaseq_table_with_dummies )
-##############################################################
 
 get_gene_percentages = function(this_df, this_gene){
   ## Add percentage column to the table
@@ -980,6 +953,8 @@ snp_detailed_legend = generate_legend("Nin")
 snp_detailed_legend 
 generate_legend("Ncoa3")
 
+mysm1_legend = generate_legend("Mysm1")
+nop14_legend = generate_legend("Nop14")
 ################################################################################
 
 this_gene = "Ncoa3"
@@ -1939,6 +1914,14 @@ folr1_snp_legend = generate_legend( "Folr1" )
 folr1_snp_legend
 save_plot_pdf("folr1_legend.pdf", folr1_snp_legend, width = snp_legend_width, height = snp_legend_height)
 
+
+mysm1_snp_legend = generate_legend("Mysm1")
+mysm1_snp_legend
+save_plot_pdf("mysm1_legend.pdf", mysm1_snp_legend, width = snp_legend_width, height = snp_legend_height)
+
+nop14_snp_legend = generate_legend("Nop14")
+nop14_snp_legend
+save_plot_pdf("nop14_legend.pdf", nop14_snp_legend, width = snp_legend_width, height = snp_legend_height)
 
 supp_legend_genes = c("Cdk1", "Baz1a", "Lclat1", "Umps", "Mrps9", "Nin",
                       "Aff1", "Pttg1")

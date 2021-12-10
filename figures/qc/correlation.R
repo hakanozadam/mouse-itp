@@ -1630,6 +1630,172 @@ plot_gv_versus_mii_ribo_rna = function(counts, gene, ymax){
                                           plot_type = "barplot", ymax = ymax )  )
 }
 
+################################################################################
+
+find_TE_ratio = function(df, sampling_rounds = 1000){
+  ribo_df = df %>% filter(method == "Ribo")
+  rna_df  = df %>% filter(method == "RNAseq")
+  
+  ribo_mii = ( ribo_df  %>% filter(stage == "MII") )$value 
+  rna_mii  = ( rna_df  %>% filter(stage == "MII") )$value 
+  ribo_gv  = ( ribo_df  %>% filter(stage == "GV") )$value 
+  rna_gv   = ( rna_df  %>% filter(stage == "GV") )$value 
+  
+  TE_GV  = mean(ribo_gv) / mean(rna_gv, na.rm = TRUE)
+  TE_MII = mean(ribo_mii) / mean(rna_mii, na.rm = TRUE)
+  
+  actual_ratio = (TE_GV / TE_MII)
+  
+  #######
+  
+  TEs_from_sampling = c()
+  
+  for(i in 1:sampling_rounds){
+    sampled_ribo_mii = sample(ribo_mii, replace = TRUE)
+    sampled_rna_mii  = sample(rna_mii, replace = TRUE)
+    sampled_ribo_gv  = sample(ribo_gv, replace = TRUE)
+    sampled_rna_gv   = sample(rna_gv, replace = TRUE)
+    
+    sampled_TE_GV  = mean(sampled_ribo_gv, na.rm = TRUE) / mean(sampled_rna_gv, na.rm = TRUE)
+    sampled_TE_MII = mean(sampled_ribo_mii, na.rm = TRUE) / mean(sampled_rna_mii, na.rm = TRUE)
+    
+    sampled_TE = sampled_TE_GV / sampled_TE_MII
+    
+    TEs_from_sampling = c(TEs_from_sampling, sampled_TE)
+  }
+  
+  this_quantile = quantile(TEs_from_sampling, c(0.05, 0.95), na.rm = TRUE, type = 3 )
+  
+  if(this_quantile[1] == -Inf ){
+    this_quantile[1] = actual_ratio - (this_quantile[2] - actual_ratio)
+  }
+  
+  if(this_quantile[2] == Inf){
+    this_quantile[2] = actual_ratio + ( actual_ratio - this_quantile[1] )
+  }
+  
+  return( c(actual_ratio, this_quantile) )
+}
+
+
+compute_TE_of_gene_and_bootstrap = function(counts, gene, stages = c("GV", "MII"), conf_int = c(0.05, 0.95)){
+  set.seed(3)
+  colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
+  
+  selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
+  normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+                                   normalization.method = "CLR", 
+                                   margin = 2)
+  
+  count_data = normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ]
+  
+  tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+  tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+  tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+  tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+  tidy_norm$method = factor(tidy_norm$method, levels = c("RNAseq", "Ribo")  )
+  
+  average_dt = tidy_norm %>% group_by(stage, method) %>%  summarise(average = mean(value))
+  
+  ribo_averages = average_dt %>% filter(method == "Ribo")
+  rna_averages  = average_dt %>% filter(method == "RNAseq")
+  
+  TE_with_conf_int = find_TE_ratio(tidy_norm)
+  
+
+  return(TE_with_conf_int)
+}
+
+
+
+a = compute_TE_of_gene_and_bootstrap(all_counts, "Cpeb1")
+
+compute_TE_of_gene_and_bootstrap(all_counts, "Lin7c")
+#find_TE_ratio(a)
+
+
+find_TE_ratios_and_bootstrap = function(counts, genes, stages = c("GV", "MII") ){
+  
+  TE_ratios = c()
+  e_min     = c()
+  e_max     = c()
+  
+  for(g in genes){
+    this_TE_ratio = compute_TE_of_gene_and_bootstrap(counts, g) 
+    TE_ratios     = c( TE_ratios, this_TE_ratio[1] )
+    e_min         = c(e_min, this_TE_ratio[2])
+    e_max         = c(e_max, this_TE_ratio[3])
+  }
+  
+  result_df = data.frame(TE_ratios = TE_ratios, e_min = e_min, e_max = e_max)
+  
+  return(result_df)
+}
+
+
+b = find_TE_ratios_and_bootstrap(all_counts, c("Cpeb1", "Rpl5") )
+
+plot_TE_ratios_with_error = function(counts, genes, stages = c("GV", "MII"), y_min = -4, y_max = 4){
+  
+  TE_ratios = find_TE_ratios_and_bootstrap(counts, genes)
+  TE_ratios = log2(TE_ratios) 
+  this_df   = TE_ratios
+  this_df$genes = factor(x = genes, levels = genes)
+  
+  this_plot = 
+    ggplot(data = this_df,
+           aes( x = genes, y = TE_ratios ) ) + 
+    geom_point( size = 1, colour = "#98569c" ) + 
+    geom_errorbar( aes(ymin=e_min, ymax=  e_max),
+                  width = 0.3, size = 0.4,  color = "#98569c" ) + 
+    geom_hline(yintercept = 0, linetype = "dashed" ) + 
+    labs(title = "TE Ratios", y = "Log2(GV/MII)", x = "Gene") + 
+    theme(
+      panel.border      = element_blank(),
+      panel.grid        = element_blank(),
+      plot.title        = element_text(hjust  = 0.5, 
+                                       family = FIGURE_FONT, 
+                                       face   = "plain", 
+                                       size   = FONT_TITLE_SIZE),
+      panel.background  = element_blank(),
+      axis.text.y       = basic_text_element,
+      axis.text.x       = element_text(family = FIGURE_FONT, 
+                                       face   = "plain", 
+                                       size   = FONT_LABEL_SIZE,
+                                       angle = 90, vjust = 0.5, hjust=1),
+      axis.title.y      = basic_text_element,
+      axis.title.x      = basic_text_element,
+      legend.position   = c(0.8, 0.2),
+      axis.line         = element_line(colour = "black", size = AXIS_THICKNESS), 
+      legend.title      = element_blank(),
+      legend.text       = basic_text_element,
+      legend.key.size   = unit(0.15, units = "in") ) + 
+    scale_y_continuous( expand = c(0,0) , limits = c(y_min, y_max ) ) 
+  #ylim( c(0, ceiling( max(TE_ratios) )  ) ) 
+  
+  
+  return(this_plot)
+}
+
+main_TE_ratios_figure_with_error = 
+  plot_TE_ratios_with_error( all_counts, c( "Eif4a3", "Rpl5", "Mapk3", "Bub1b", "Cdc20", "Dcp1a"),
+                  y_min = -3, y_max = 3)
+
+
+supp_TE_ratios_figure_with_error = 
+  plot_TE_ratios_with_error( all_counts, 
+                  c(  "Cdc40", "Lin7c", "Mos", "Pcm1", "Pum2", "Suz12", "Cdc27",
+                      "Fzr1", "Cpeb1", "Rpl26", "Rpl36", "Actb", "Cd151",
+                      "Gapdh",  "Med7", "Miox", "Paip2", "Pfdn5",
+                      "Qars", "Rimkla", "Stx5a", "Tinf2"),
+                  y_min = -4, 
+                  y_max = 4)
+
+save_plot_pdf("main_TE_ratios_with_error.pdf", main_TE_ratios_figure_with_error, height = 1.6, width = 1.6)
+
+save_plot_pdf("supp_TE_ratios_with_error.pdf", supp_TE_ratios_figure_with_error, height = 1.8, width = 5)
+
+################################################################################
 
 compute_TE_of_gene = function(counts, gene, stages = c("GV", "MII")){
   set.seed(3)
@@ -1662,6 +1828,8 @@ compute_TE_of_gene = function(counts, gene, stages = c("GV", "MII")){
 
 
 compute_TE_of_gene(all_counts, "Cpeb1")
+
+
 
 find_TE_ratios = function(counts, genes, stages = c("GV", "MII") ){
   
