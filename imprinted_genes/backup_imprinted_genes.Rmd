@@ -1,0 +1,490 @@
+---
+title: "Imprinted Genes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include,echo=FALSE,warning=FALSE}
+library(cowplot)
+library(ggplot2)
+library(dplyr)
+library(Cairo)
+library(edgeR)
+library(MatchIt)
+```
+
+```{r constants,echo=FALSE,warning=FALSE}
+CONSTANT_ADDITION = 1
+```
+
+
+```{r setwd,echo=FALSE,warning=FALSE}
+setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+```
+
+```{r filepaths,echo=FALSE,warning=FALSE}
+published_imprinted_gene_list_file = "./imprinted_gene_list_41467_2021_23510_MOESM4_ESM.csv"
+
+
+# Another imprinted gene list from
+# https://www.cell.com/cell/fulltext/S0092-8674(19)30106-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS0092867419301060%3Fshowall%3Dtrue#%20
+tucci_et_al_imprinted_gene_list_file = "./tucci_et_al_2019_mouse_imprinted_genes.csv"
+
+four_cell_all_snp_counts_file  = "./fourcell_all_snp_counts.csv.gz"
+eight_cell_all_snp_counts_file = "./eightcell_all_snp_counts.csv.gz" 
+
+ribo_rna_counts_file = "../cds_counts.csv.gz"
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+four_cell_all_snp_counts  = read.csv(four_cell_all_snp_counts_file)
+eight_cell_all_snp_counts = read.csv(eight_cell_all_snp_counts_file)
+
+four_cell_all_snp_counts$paternal_ratio  = (four_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION  ) / (four_cell_all_snp_counts$maternal_y + CONSTANT_ADDITION)
+eight_cell_all_snp_counts$paternal_ratio = (eight_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION) / (eight_cell_all_snp_counts$maternal_y + CONSTANT_ADDITION)
+```
+
+## Distribution of RNA Counts
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcel_rna_total = four_cell_all_snp_counts$paternal_y + four_cell_all_snp_counts$maternal_y
+
+eight_cell_rna_total = eight_cell_all_snp_counts$paternal_y + eight_cell_all_snp_counts$maternal_y
+
+hist( log2( fourcel_rna_total[fourcel_rna_total>=0 ] ) )
+
+hist( log2( eight_cell_rna_total[ eight_cell_rna_total >= 0 ] ) )
+
+hist( log2( fourcel_rna_total[fourcel_rna_total>=10 ] ) )
+
+hist( log2( eight_cell_rna_total[ eight_cell_rna_total >= 10 ] ) )
+
+```
+We pick genes with total snp count of at least 10
+
+```{r echo=FALSE,warning=FALSE}
+
+four_cell_snp_filtered  = four_cell_all_snp_counts[ (four_cell_all_snp_counts$paternal_y + four_cell_all_snp_counts$maternal_y) >= 10, ]
+
+eight_cell_snp_filtered = eight_cell_all_snp_counts[ (eight_cell_all_snp_counts$paternal_y + eight_cell_all_snp_counts$maternal_y) >= 10,]
+
+print(dim(four_cell_snp_filtered)  )
+print(dim(eight_cell_snp_filtered))
+
+hist( log2( four_cell_snp_filtered$paternal_ratio )  )
+hist( log2( eight_cell_snp_filtered$paternal_ratio )  )
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+TAIL_SIZE   = 0.05
+quant_probs = probs = c(TAIL_SIZE, 1 - TAIL_SIZE)
+
+fourcell_quantiles = quantile( four_cell_snp_filtered$paternal_ratio , quant_probs  )
+
+eightcell_quantiles = quantile( eight_cell_snp_filtered$paternal_ratio, quant_probs  )
+
+print("Quantiles are (4 and 8 cells)")
+print(fourcell_quantiles)
+print(eightcell_quantiles)
+
+fourcell_paternal_genes = four_cell_snp_filtered[ four_cell_snp_filtered$paternal_ratio >= fourcell_quantiles[2] , ]$gene
+fourcell_maternal_genes = four_cell_snp_filtered[ four_cell_snp_filtered$paternal_ratio <= fourcell_quantiles[1] , ]$gene
+
+print("Four cell paternal and maternal genes are:")
+print( c(length(fourcell_paternal_genes), length(fourcell_maternal_genes) )  )
+
+
+eightcell_paternal_genes = eight_cell_snp_filtered[ eight_cell_snp_filtered$paternal_ratio >= eightcell_quantiles[2] , ]$gene
+eightcell_maternal_genes = eight_cell_snp_filtered[ eight_cell_snp_filtered$paternal_ratio <= eightcell_quantiles[1] , ]$gene
+
+print("Eight cell paternal and maternal genes are:")
+print( c(length(eightcell_paternal_genes), length(eightcell_maternal_genes) )  )
+
+```
+
+# comparison of Our Imprinted Genes to the Published Ones
+
+Most of our imprinted genes agree with the published list of imprinted genes.
+
+```{r echo=FALSE,warning=FALSE}
+
+tucci_et_al_imprinted_gene_df_pre = read.csv(tucci_et_al_imprinted_gene_list_file)
+
+# get rid of the isoform-psecific entries
+tucci_et_al_imprinted_gene_df = tucci_et_al_imprinted_gene_df_pre[tucci_et_al_imprinted_gene_df_pre$ExpressedAllele %in% c("P", "M") ,]
+
+fourcell_tucci_merged = merge(four_cell_snp_filtered, tucci_et_al_imprinted_gene_df, by.x = "gene", by.y = "Gene")
+fourcell_tucci_merged$gene
+
+eightcell_tucci_merged = merge(eight_cell_snp_filtered, tucci_et_al_imprinted_gene_df, by.x = "gene", by.y = "Gene")
+eightcell_tucci_merged$gene
+```
+
+## Translation Efficiency of Imprinted Genes 
+
+```{r echo=FALSE,warning=FALSE}
+
+ribo_rna_counts = read.csv(ribo_rna_counts_file )
+
+ribo_rna_gene_names        = unlist(lapply( (strsplit(ribo_rna_counts$transcript, split = "-" ) ), "[[", 1  ) )
+ribo_rna_counts$transcript = ribo_rna_gene_names
+
+#ribo_rna_counts[-1]
+
+ribo_rna_counts_matrix_cpm = cpm( ribo_rna_counts[-1] )  
+ribo_rna_counts_cpm        = data.frame(transcript = ribo_rna_counts$transcript, ribo_rna_counts_matrix_cpm) 
+
+rnaseq_fourcell_averages  = ( ribo_rna_counts_cpm$X4cell.1.RNAseq + ribo_rna_counts_cpm$X4cell.2.RNAseq ) / 2
+rnaseq_eightcell_averages = ( ribo_rna_counts_cpm$X8cell.1.RNAseq + ribo_rna_counts_cpm$X8cell.2.RNAseq + ribo_rna_counts_cpm$X8cell.3.RNAseq + ribo_rna_counts_cpm$X8cell.4.RNAseq ) / 4
+ribo_fourcell_averages    = ( ribo_rna_counts_cpm$X4cell.1 + ribo_rna_counts_cpm$X4cell.2 + ribo_rna_counts_cpm$X4cell.3 ) / 3 
+ribo_eightcell_averages   = ( ribo_rna_counts_cpm$X8cell.1 + ribo_rna_counts_cpm$X8cell.2 + ribo_rna_counts_cpm$X8cell.3 + ribo_rna_counts_cpm$X8cell.4 ) / 4
+
+fourcell_TE  = ribo_fourcell_averages  / rnaseq_fourcell_averages
+eightcell_TE = ribo_eightcell_averages / rnaseq_eightcell_averages
+
+hist( log2(fourcell_TE)  )
+
+hist( log2(eightcell_TE)  )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+TE_df = data_frame( transcript = ribo_rna_counts$transcript, fourcell_TE = fourcell_TE, eightcell_TE = eightcell_TE  )
+
+fourcell_background_genes = setdiff( TE_df$transcript , union( fourcell_maternal_genes, fourcell_paternal_genes  ) )
+
+eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
+
+
+fourcell_paternal_TE   = TE_df[ TE_df$transcript %in% fourcell_paternal_genes,]$fourcell_TE
+fourcell_maternal_TE   = TE_df[ TE_df$transcript %in% fourcell_maternal_genes,]$fourcell_TE
+fourcell_background_TE = TE_df[ TE_df$transcript %in% fourcell_background_genes,]$fourcell_TE
+
+fourcell_paternal_rna  = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_paternal_genes    ]
+fourcell_matternal_rna  = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_maternal_genes    ]
+fourcell_background_rna = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_background_genes  ]
+
+fourcell_arranged_TE = c( fourcell_background_TE, fourcell_paternal_TE, fourcell_maternal_TE )
+
+fourcell_arranged_rna = c(fourcell_background_rna, fourcell_paternal_rna, fourcell_maternal_rna )
+
+fourcell_TE_labels = c(
+  rep("background", length(fourcell_background_TE)) ,
+  rep("paternal", length(fourcell_paternal_TE) ),
+  rep("maternal",  length(fourcell_maternal_TE) )
+)
+
+fourcell_TE_imprinted = c(
+  rep(0, length(fourcell_background_TE)) ,
+  rep(1, length(fourcell_paternal_TE) ),
+  rep(1,  length(fourcell_maternal_TE) )
+)
+
+fourcell_paternal_genes = TE_df[ TE_df$transcript %in% fourcell_paternal_genes,]$transcript
+fourcell_maternal_genes = TE_df[ TE_df$transcript %in% fourcell_maternal_genes,]$transcript
+fourcell_background_genes = TE_df[ TE_df$transcript %in% fourcell_background_genes,]$transcript
+
+fourcell_arranged_genes = c(
+  fourcell_background_genes,
+  fourcell_paternal_genes,
+  fourcell_maternal_genes
+)
+
+fourcell_TE_arranged_df = data.frame( type       = fourcell_TE_labels,
+                                      imprinted  = fourcell_TE_imprinted,
+                                      transcript = fourcell_arranged_genes,
+                                      TE         = fourcell_arranged_TE,
+                                      rna        = fourcell_arranged_rna )
+
+
+
+
+
+sample_fourcell = matchit(imprinted~rna, data = fourcell_TE_arranged_df )
+
+sample_fourcell
+
+
+matched_fourcell = match.data(sample_fourcell)
+
+matched_fourcell
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
+
+boxplot( log2(matched_fourcell$TE) ~ matched_fourcell$type )
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+
+
+wilcox.test( matched_fourcell[matched_fourcell$type == "background",]$TE, matched_fourcell[matched_fourcell$type == "maternal",]$TE  )
+
+wilcox.test( matched_fourcell[matched_fourcell$type == "background",]$TE, matched_fourcell[matched_fourcell$type == "paternal",]$TE  )
+
+wilcox.test( matched_fourcell[matched_fourcell$type == "paternal",]$TE, matched_fourcell[matched_fourcell$type == "maternal",]$TE  )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+hist( log2(matched_fourcell[matched_fourcell$type == "maternal",]$TE ) )
+
+hist( log2(matched_fourcell[matched_fourcell$type == "paternal",]$TE ) )
+hist( log2(matched_fourcell[matched_fourcell$type == "background",]$TE ) )
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+
+eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
+
+eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
+
+
+eightcell_paternal_TE   = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,]$eightcell_TE
+eightcell_maternal_TE   = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,]$eightcell_TE
+eightcell_background_TE = TE_df[ TE_df$transcript %in% eightcell_background_genes,]$eightcell_TE
+
+eightcell_paternal_rna  = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_paternal_genes    ]
+eightcell_maternal_rna  = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_maternal_genes    ]
+eightcell_background_rna = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_background_genes  ]
+
+eightcell_arranged_TE = c( eightcell_background_TE, eightcell_paternal_TE, eightcell_maternal_TE )
+
+eightcell_arranged_rna = c(eightcell_background_rna, eightcell_paternal_rna, eightcell_maternal_rna )
+
+eightcell_TE_labels = c(
+  rep("background", length(eightcell_background_TE)) ,
+  rep("paternal", length(eightcell_paternal_TE) ),
+  rep("maternal",  length(eightcell_maternal_TE) )
+)
+
+eightcell_TE_imprinted = c(
+  rep(0, length(eightcell_background_TE)) ,
+  rep(1, length(eightcell_paternal_TE) ),
+  rep(1,  length(eightcell_maternal_TE) )
+)
+
+eightcell_paternal_genes = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,]$transcript
+eightcell_maternal_genes = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,]$transcript
+eightcell_background_genes = TE_df[ TE_df$transcript %in% eightcell_background_genes,]$transcript
+
+eightcell_arranged_genes = c(
+  eightcell_background_genes,
+  eightcell_paternal_genes,
+  eightcell_maternal_genes
+)
+
+eightcell_TE_arranged_df = data.frame( type       = eightcell_TE_labels,
+                                      imprinted  = eightcell_TE_imprinted,
+                                      transcript = eightcell_arranged_genes,
+                                      TE         = eightcell_arranged_TE,
+                                      rna        = eightcell_arranged_rna )
+
+
+
+
+
+sample_eightcell = matchit(imprinted~rna, data = eightcell_TE_arranged_df )
+
+sample_eightcell
+
+
+matched_eightcell = match.data(sample_eightcell)
+
+matched_eightcell
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$imprinted )
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$type )
+
+boxplot( log2(matched_eightcell$TE) ~ matched_eightcell$type )
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "background",]$TE, matched_eightcell[matched_eightcell$type == "maternal",]$TE  )
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "background",]$TE, matched_eightcell[matched_eightcell$type == "paternal",]$TE  )
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "paternal",]$TE, matched_eightcell[matched_eightcell$type == "maternal",]$TE  )
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+hist( log2(matched_eightcell[matched_eightcell$type == "maternal",]$TE ) )
+
+hist( log2(matched_eightcell[matched_eightcell$type == "paternal",]$TE ) )
+hist( log2(matched_eightcell[matched_eightcell$type == "background",]$TE ) )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+eightcell_paternal_TE = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,  ]$eightcell_TE
+eightcell_maternal_TE = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,  ]$eightcell_TE
+eightcell_background_TE = TE_df[ TE_df$transcript %in% eightcell_background_genes,  ]$eightcell_TE
+
+eightcell_arranged_TE = c(eightcell_background_TE, eightcell_paternal_TE, eightcell_maternal_TE   )
+
+eightcell_TE_labels = c(
+  rep("background", length(eightcell_background_TE)) ,
+  rep("paternal", length(eightcell_paternal_TE) ),
+  rep("maternal",  length(eightcell_maternal_TE) )
+)
+
+eightcell_barplot_df = data.frame( type = eightcell_TE_labels,
+                                  TE = log2( eightcell_arranged_TE  )  )
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+  ggplot(fourcell_barplot_df, aes(x=type, y=TE)) + 
+    geom_boxplot() + 
+    ggtitle("4Cell")
+
+
+  ggplot(eightcell_barplot_df, aes(x=type, y=TE)) + 
+    geom_boxplot() + 
+    ggtitle("8Cell")
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+t.test( fourcell_maternal_TE[ !is.infinite(fourcell_maternal_TE)] , fourcell_background_TE[!is.infinite(fourcell_background_TE)] )
+
+t.test( eightcell_maternal_TE[ !is.infinite(eightcell_maternal_TE)  ], eightcell_background_TE[ !is.infinite(eightcell_background_TE)] )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+wilcox.test( fourcell_maternal_TE[ !is.infinite(fourcell_maternal_TE)] , fourcell_background_TE[!is.infinite(fourcell_background_TE)], alternative = "l" )
+
+wilcox.test( eightcell_maternal_TE[ !is.infinite(eightcell_maternal_TE)  ], eightcell_background_TE[ !is.infinite(eightcell_background_TE)], "l" )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+
+t.test( log2(fourcell_maternal_TE[ !is.infinite(fourcell_maternal_TE)] + 1/8 ) , log2(fourcell_background_TE[!is.infinite(fourcell_background_TE)]  + 1/8) )
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+TE_df = data_frame( transcript = ribo_rna_counts$transcript, fourcell_TE = fourcell_TE, eightcell_TE = eightcell_TE  )
+
+fourcell_background_genes = setdiff( TE_df$transcript , union( fourcell_maternal_genes, fourcell_paternal_genes  ) )
+
+eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
+
+
+fourcell_paternal_rna   = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_paternal_genes]
+fourcell_maternal_rna   = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_maternal_genes]
+fourcell_background_rna = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_background_genes]
+
+
+
+fourcell_arranged_rna = c( fourcell_background_rna, fourcell_paternal_rna, fourcell_maternal_rna )
+
+fourcell_rna_labels = c(
+  rep("background", length(fourcell_background_rna)) ,
+  rep("paternal", length(fourcell_paternal_rna) ),
+  rep("maternal",  length(fourcell_maternal_rna) )
+)
+
+fourcell_rna_labels_new = c(
+  rep(0, length(fourcell_background_rna)) ,
+  rep(1, length(fourcell_paternal_rna) ),
+  rep(1,  length(fourcell_maternal_rna) )
+)
+
+fourcell_barplot_rna_df_new = data.frame( type = fourcell_rna_labels_new,
+                                  rna =  fourcell_arranged_rna    )
+
+fourcell_barplot_rna_df = data.frame( type = fourcell_rna_labels,
+                                  TE = log2( fourcell_arranged_rna  )  )
+
+
+
+# eightcell_paternal_TE = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,  ]$eightcell_TE
+# eightcell_maternal_TE = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,  ]$eightcell_TE
+# eightcell_background_TE = TE_df[ TE_df$transcript %in% eightcell_background_genes,  ]$eightcell_TE
+# 
+# eightcell_arranged_TE = c(eightcell_background_TE, eightcell_paternal_TE, eightcell_maternal_TE   )
+# 
+# eightcell_TE_labels = c(
+#   rep("background", length(eightcell_background_TE)) ,
+#   rep("paternal", length(eightcell_paternal_TE) ),
+#   rep("maternal",  length(eightcell_maternal_TE) )
+# )
+# 
+# eightcell_barplot_df = data.frame( type = eightcell_TE_labels,
+#                                   TE = log2( eightcell_arranged_TE  )  )
+
+  ggplot(fourcell_barplot_rna_df, aes(x=type, y=TE)) + 
+    geom_boxplot() + 
+    ggtitle("4Cell")
+
+  
+#fourcell_barplot_rna_df 
+
+sample1 = matchit(type~rna, data = fourcell_barplot_rna_df_new )
+
+sample1
+
+```
+```{r echo=FALSE,warning=FALSE}
+
+newdata = match.data(sample1)
+
+boxplot( log2(newdata$rna) ~ newdata$type )
+
+```
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
