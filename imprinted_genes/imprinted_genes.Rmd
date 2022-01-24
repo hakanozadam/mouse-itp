@@ -26,7 +26,8 @@ CONSTANT_ADDITION = 1
 
 
 ```{r setwd,echo=FALSE,warning=FALSE}
-setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+#setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 ```
 
 ```{r filepaths,echo=FALSE,warning=FALSE}
@@ -42,7 +43,10 @@ eight_cell_all_snp_counts_file = "./eightcell_all_snp_counts.csv.gz"
 
 ribo_rna_counts_file = "../cds_counts.csv.gz"
 
-region_lengths_file = "../../mouse_itp_reference/transcriptome/appris_mouse_v2_filtered_regions.bed"
+#region_lengths_file = "../../mouse_itp_reference/transcriptome/appris_mouse_v2_filtered_regions.bed"
+
+region_lengths_file = "../appris_mouse_v2_filtered_regions.bed"
+ 
 
 ```
 
@@ -73,12 +77,23 @@ region_lengths = data.frame(gene = region_lengths_pre$gene, cds_length = cds_len
 [Santini et al ](https://www.nature.com/articles/s41467-021-23510-4#MOESM4) studies mouse embryos and provide a list of imprinted genes.
 However their list doesn't indicate any direction (maternal or paternal).
 
+We define **paternal ratio** as
+
+$$
+\frac{ \mbox{PATERNAL READS + CONSTANT} }{ \mbox{MATERNAL READS + PATERNAL READS + 2*CONSTANT}  }
+$$
+
+where constant is a positive integer. Namely, we are taking the ratio of paternal reads to the total reads after adding a constant to both maternal and paternal reads (hence the coefficinet 2 in the denominatior).
+
 ```{r echo=FALSE,warning=FALSE}
 four_cell_all_snp_counts  = read.csv(four_cell_all_snp_counts_file)
 eight_cell_all_snp_counts = read.csv(eight_cell_all_snp_counts_file)
 
-four_cell_all_snp_counts$paternal_ratio  = (four_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION  ) / (four_cell_all_snp_counts$maternal_y + CONSTANT_ADDITION)
-eight_cell_all_snp_counts$paternal_ratio = (eight_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION) / (eight_cell_all_snp_counts$maternal_y + CONSTANT_ADDITION)
+four_cell_all_snp_counts$paternal_ratio  = 
+  (four_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION  ) / (four_cell_all_snp_counts$maternal_y + four_cell_all_snp_counts$paternal_y + 2* CONSTANT_ADDITION)
+
+eight_cell_all_snp_counts$paternal_ratio = 
+  (eight_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION) / (eight_cell_all_snp_counts$maternal_y + eight_cell_all_snp_counts$paternal_y + 2*CONSTANT_ADDITION)
 
 published_nature_gen_df = read.csv(published_imprinted_gene_list_file)
 
@@ -174,7 +189,7 @@ print( c(length(eightcell_paternal_genes), length(eightcell_maternal_genes) )  )
 
 ## Comparison of Our Imprinted Genes to the Published Ones
 
-Most of our imprinted genes agree with the published list of imprinted genes.
+
 
 ```{r echo=FALSE,warning=FALSE}
 
@@ -474,246 +489,6 @@ wilcox.test( matched_eightcell_clr[matched_eightcell_clr$type == "paternal",]$TE
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## CPM Implementation (To be Retired)
-
-Initially, we used CPM normalization for our comparisons. We also obtained the same results.
-But we decided to use CLR normalization for consistency in the manuscript.
-
-```{r echo=FALSE,warning=FALSE}
-
-
-
-#ribo_rna_counts[-1]
-
-ribo_rna_counts_matrix_cpm = cpm( ribo_rna_counts[-1] )  
-ribo_rna_counts_cpm        = data.frame(transcript = ribo_rna_counts$transcript, ribo_rna_counts_matrix_cpm) 
-
-rnaseq_fourcell_averages  = ( ribo_rna_counts_cpm$X4cell.1.RNAseq + ribo_rna_counts_cpm$X4cell.2.RNAseq ) / 2
-rnaseq_eightcell_averages = ( ribo_rna_counts_cpm$X8cell.1.RNAseq + ribo_rna_counts_cpm$X8cell.2.RNAseq + ribo_rna_counts_cpm$X8cell.3.RNAseq + ribo_rna_counts_cpm$X8cell.4.RNAseq ) / 4
-ribo_fourcell_averages    = ( ribo_rna_counts_cpm$X4cell.1 + ribo_rna_counts_cpm$X4cell.2 + ribo_rna_counts_cpm$X4cell.3 ) / 3 
-ribo_eightcell_averages   = ( ribo_rna_counts_cpm$X8cell.1 + ribo_rna_counts_cpm$X8cell.2 + ribo_rna_counts_cpm$X8cell.3 + ribo_rna_counts_cpm$X8cell.4 ) / 4
-
-fourcell_TE  = ribo_fourcell_averages  / rnaseq_fourcell_averages
-eightcell_TE = ribo_eightcell_averages / rnaseq_eightcell_averages
-
-hist( log2(fourcell_TE)  )
-
-hist( log2(eightcell_TE)  )
-
-```
-
-```{r echo=FALSE,warning=FALSE}
-TE_df = data_frame( transcript = ribo_rna_counts$transcript, fourcell_TE = fourcell_TE, eightcell_TE = eightcell_TE  )
-
-fourcell_background_genes = setdiff( TE_df$transcript , union( fourcell_maternal_genes, fourcell_paternal_genes  ) )
-
-eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
-
-
-fourcell_paternal_TE   = TE_df[ TE_df$transcript %in% fourcell_paternal_genes,]$fourcell_TE
-fourcell_maternal_TE   = TE_df[ TE_df$transcript %in% fourcell_maternal_genes,]$fourcell_TE
-fourcell_background_TE = TE_df[ TE_df$transcript %in% fourcell_background_genes,]$fourcell_TE
-
-fourcell_paternal_rna  = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_paternal_genes    ]
-fourcell_maternal_rna  = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_maternal_genes    ]
-fourcell_background_rna = rnaseq_fourcell_averages[ TE_df$transcript %in% fourcell_background_genes  ]
-
-fourcell_arranged_TE = c( fourcell_background_TE, fourcell_paternal_TE, fourcell_maternal_TE )
-
-fourcell_arranged_rna = c(fourcell_background_rna, fourcell_paternal_rna, fourcell_maternal_rna )
-
-fourcell_TE_labels = c(
-  rep("background", length(fourcell_background_TE)) ,
-  rep("paternal", length(fourcell_paternal_TE) ),
-  rep("maternal",  length(fourcell_maternal_TE) )
-)
-
-fourcell_TE_imprinted = c(
-  rep(0, length(fourcell_background_TE)) ,
-  rep(1, length(fourcell_paternal_TE) ),
-  rep(1,  length(fourcell_maternal_TE) )
-)
-
-fourcell_paternal_genes = TE_df[ TE_df$transcript %in% fourcell_paternal_genes,]$transcript
-fourcell_maternal_genes = TE_df[ TE_df$transcript %in% fourcell_maternal_genes,]$transcript
-fourcell_background_genes = TE_df[ TE_df$transcript %in% fourcell_background_genes,]$transcript
-
-fourcell_arranged_genes = c(
-  fourcell_background_genes,
-  fourcell_paternal_genes,
-  fourcell_maternal_genes
-)
-
-fourcell_TE_arranged_df = data.frame( type       = fourcell_TE_labels,
-                                      imprinted  = fourcell_TE_imprinted,
-                                      transcript = fourcell_arranged_genes,
-                                      TE         = fourcell_arranged_TE,
-                                      rna        = fourcell_arranged_rna )
-
-
-
-
-
-sample_fourcell = matchit(imprinted~rna, data = fourcell_TE_arranged_df )
-
-sample_fourcell
-
-
-matched_fourcell = match.data(sample_fourcell)
-
-matched_fourcell
-
-boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
-
-boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
-
-boxplot( log2(matched_fourcell$TE) ~ matched_fourcell$type )
-
-```
-
-```{r echo=FALSE,warning=FALSE}
-
-
-
-wilcox.test( matched_fourcell[matched_fourcell$type == "background",]$TE, matched_fourcell[matched_fourcell$type == "maternal",]$TE  )
-
-wilcox.test( matched_fourcell[matched_fourcell$type == "background",]$TE, matched_fourcell[matched_fourcell$type == "paternal",]$TE  )
-
-wilcox.test( matched_fourcell[matched_fourcell$type == "paternal",]$TE, matched_fourcell[matched_fourcell$type == "maternal",]$TE  )
-
-```
-
-```{r echo=FALSE,warning=FALSE}
-
-hist( log2(matched_fourcell[matched_fourcell$type == "maternal",]$TE ) )
-
-hist( log2(matched_fourcell[matched_fourcell$type == "paternal",]$TE ) )
-hist( log2(matched_fourcell[matched_fourcell$type == "background",]$TE ) )
-```
-
-```{r echo=FALSE,warning=FALSE}
-
-
-eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
-
-eightcell_background_genes = setdiff( TE_df$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
-
-
-eightcell_paternal_TE   = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,]$eightcell_TE
-eightcell_maternal_TE   = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,]$eightcell_TE
-eightcell_background_TE = TE_df[ TE_df$transcript %in% eightcell_background_genes,]$eightcell_TE
-
-eightcell_paternal_rna  = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_paternal_genes    ]
-eightcell_maternal_rna  = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_maternal_genes    ]
-eightcell_background_rna = rnaseq_eightcell_averages[ TE_df$transcript %in% eightcell_background_genes  ]
-
-eightcell_arranged_TE = c( eightcell_background_TE, eightcell_paternal_TE, eightcell_maternal_TE )
-
-eightcell_arranged_rna = c(eightcell_background_rna, eightcell_paternal_rna, eightcell_maternal_rna )
-
-eightcell_TE_labels = c(
-  rep("background", length(eightcell_background_TE)) ,
-  rep("paternal", length(eightcell_paternal_TE) ),
-  rep("maternal",  length(eightcell_maternal_TE) )
-)
-
-eightcell_TE_imprinted = c(
-  rep(0, length(eightcell_background_TE)) ,
-  rep(1, length(eightcell_paternal_TE) ),
-  rep(1,  length(eightcell_maternal_TE) )
-)
-
-eightcell_paternal_genes = TE_df[ TE_df$transcript %in% eightcell_paternal_genes,]$transcript
-eightcell_maternal_genes = TE_df[ TE_df$transcript %in% eightcell_maternal_genes,]$transcript
-eightcell_background_genes = TE_df[ TE_df$transcript %in% eightcell_background_genes,]$transcript
-
-eightcell_arranged_genes = c(
-  eightcell_background_genes,
-  eightcell_paternal_genes,
-  eightcell_maternal_genes
-)
-
-eightcell_TE_arranged_df = data.frame( type       = eightcell_TE_labels,
-                                      imprinted  = eightcell_TE_imprinted,
-                                      transcript = eightcell_arranged_genes,
-                                      TE         = eightcell_arranged_TE,
-                                      rna        = eightcell_arranged_rna )
-
-
-
-
-
-sample_eightcell = matchit(imprinted~rna, data = eightcell_TE_arranged_df )
-
-sample_eightcell
-
-
-matched_eightcell = match.data(sample_eightcell)
-
-matched_eightcell
-
-boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$imprinted )
-
-boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$type )
-
-boxplot( log2(matched_eightcell$TE) ~ matched_eightcell$type )
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-
-
-wilcox.test( matched_eightcell[matched_eightcell$type == "background",]$TE, matched_eightcell[matched_eightcell$type == "maternal",]$TE  )
-
-wilcox.test( matched_eightcell[matched_eightcell$type == "background",]$TE, matched_eightcell[matched_eightcell$type == "paternal",]$TE  )
-
-wilcox.test( matched_eightcell[matched_eightcell$type == "paternal",]$TE, matched_eightcell[matched_eightcell$type == "maternal",]$TE  )
-
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-hist( log2(matched_eightcell[matched_eightcell$type == "maternal",]$TE ) )
-
-hist( log2(matched_eightcell[matched_eightcell$type == "paternal",]$TE ) )
-hist( log2(matched_eightcell[matched_eightcell$type == "background",]$TE ) )
-```
 
 
 
