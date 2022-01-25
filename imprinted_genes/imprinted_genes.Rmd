@@ -26,8 +26,9 @@ CONSTANT_ADDITION = 1
 
 
 ```{r setwd,echo=FALSE,warning=FALSE}
-setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
-#setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+
+#setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 ```
 
 ```{r filepaths,echo=FALSE,warning=FALSE}
@@ -43,11 +44,13 @@ eight_cell_all_snp_counts_file = "./eightcell_all_snp_counts.csv.gz"
 
 ribo_rna_counts_file = "../cds_counts.csv.gz"
 
+chrx_genes_file = "./chrx_genes.tsv"
+
 #region_lengths_file = "../../mouse_itp_reference/transcriptome/appris_mouse_v2_filtered_regions.bed"
 
 region_lengths_file = "../appris_mouse_v2_filtered_regions.bed"
  
-
+detailed_snp_file = "../snp/notebooks/snp_dataframes/rnaseq_detailed_snps.csv.gz"
 ```
 
 ```{r region_lengths,echo=FALSE,warning=FALSE}
@@ -146,18 +149,42 @@ We pick genes with total count of at least 10.
 
 ```{r echo=FALSE,warning=FALSE}
 
-four_cell_snp_filtered  = four_cell_all_snp_counts[ (four_cell_all_snp_counts$paternal_y + four_cell_all_snp_counts$maternal_y) >= 10, ]
+four_cell_snp_filtered_pre  = four_cell_all_snp_counts[ (four_cell_all_snp_counts$paternal_y + four_cell_all_snp_counts$maternal_y) >= 10, ]
 
-eight_cell_snp_filtered = eight_cell_all_snp_counts[ (eight_cell_all_snp_counts$paternal_y + eight_cell_all_snp_counts$maternal_y) >= 10,]
+eight_cell_snp_filtered_pre = eight_cell_all_snp_counts[ (eight_cell_all_snp_counts$paternal_y + eight_cell_all_snp_counts$maternal_y) >= 10,]
 
 print("Four cell SNP (>=10)  genes:")
-print(dim(four_cell_snp_filtered)[1]  )
+print(dim(four_cell_snp_filtered_pre)[1]  )
 print("Eight cell SNP (>=10)  genes:")
-print(dim(eight_cell_snp_filtered)[1])
+print(dim(eight_cell_snp_filtered_pre)[1])
 
-hist( log2( four_cell_snp_filtered$paternal_ratio )  )
-hist( log2( eight_cell_snp_filtered$paternal_ratio )  )
+hist( ( four_cell_snp_filtered_pre$paternal_ratio )  )
+hist( ( eight_cell_snp_filtered_pre$paternal_ratio )  )
 ```
+### Genes from the X Chromosome
+
+Note that we are excluding genes coming from the X chromosome
+
+```{r echo=FALSE,warning=FALSE}
+
+chrx_df = read.csv(chrx_genes_file, sep = "\t", header = F)
+
+chrx_genes = chrx_df[, 1]
+
+chrx_eight_cell_intersection_count = length( intersect(eight_cell_snp_filtered_pre$gene, chrx_genes) )
+chrx_four_cell_intersection_count  = length( intersect(four_cell_snp_filtered_pre$gene, chrx_genes) )
+
+print( c("Intersection with the 4cell expressed genes is", chrx_four_cell_intersection_count)  )
+print( c("Intersection with the 8cell expressed genes is", chrx_eight_cell_intersection_count)  )
+
+
+eight_cell_snp_filtered = eight_cell_snp_filtered_pre[!(eight_cell_snp_filtered_pre$gene %in% chrx_genes ) , ]
+four_cell_snp_filtered  = four_cell_snp_filtered_pre[ !(four_cell_snp_filtered_pre$gene %in% chrx_genes), ]
+
+
+```
+
+
 
 ```{r echo=FALSE,warning=FALSE}
 
@@ -186,6 +213,10 @@ print("Eight cell paternal and maternal genes are:")
 print( c(length(eightcell_paternal_genes), length(eightcell_maternal_genes) )  )
 
 ```
+
+
+
+
 
 ## Comparison of Our Imprinted Genes to the Published Ones
 
@@ -262,6 +293,9 @@ ribo_eightcell_averages_clr   = (clr_normalized_counts$X8cell.1 + clr_normalized
 fourcell_TE_clr  = ribo_fourcell_averages_clr / rnaseq_fourcell_averages_clr
 eightcell_TE_clr = ribo_eightcell_averages_clr / rnaseq_eightcell_averages_clr
 
+
+TE_df_clr = data.frame( transcript = ribo_rna_counts$transcript, fourcell_TE_clr = fourcell_TE_clr, eightcell_TE_clr = eightcell_TE_clr  )
+
 hist( log2(fourcell_TE_clr) )
 
 hist( log2(eightcell_TE_clr) )
@@ -270,7 +304,7 @@ hist( log2(eightcell_TE_clr) )
 
 ```{r echo=FALSE,warning=FALSE}
 
-TE_df_clr = data.frame( transcript = ribo_rna_counts$transcript, fourcell_TE_clr = fourcell_TE_clr, eightcell_TE_clr = eightcell_TE_clr  )
+
 
 fourcell_background_genes = setdiff( TE_df_clr$transcript , union( fourcell_maternal_genes, fourcell_paternal_genes  ) )
 
@@ -512,4 +546,330 @@ wilcox.test( matched_eightcell_clr[matched_eightcell_clr$type == "paternal",]$TE
 
 
 
+## Imprinted genes after Bootsrapping 
 
+We obtain the snp counts for individual experiments first. Next, we aggregate the counts by position and obtain counts for each experiment per gene.
+
+```{r echo=FALSE,warning=FALSE}
+
+experiments_fourcell  = c("20210607-RNAseq-4cell-cross-A", "20210607-RNAseq-4cell-cross-C")
+experiments_eightcell = c("20210607-RNAseq-8cell-cross-A", "20210607-RNAseq-8cell-cross-B", "20210607-RNAseq-8cell-cross-C", "20210607-RNAseq-8cell-cross-D") 
+
+detailed_snps = read.csv(detailed_snp_file, header = T)
+
+detailed_snps = detailed_snps[, 1:5]
+
+detailed_snps = detailed_snps[detailed_snps$experiment %in% c(experiments_fourcell, experiments_eightcell), ]
+
+detailed_snps = 
+  detailed_snps %>% group_by( experiment, transcript  ) %>%
+    summarise(paternal_total = sum(paternal), maternal_total = sum(maternal))
+
+detailed_snps = detailed_snps[ order(detailed_snps$transcript)  ,]
+
+colnames(detailed_snps) = c("experiment", "gene", "paternal", "maternal")
+
+detailed_snps$gene = unlist(lapply( strsplit(detailed_snps$gene, split = "-"), "[[", 1 ) )
+
+detailed_snps[1000:1020,]
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+detailed_fourcell_snps = detailed_snps[ detailed_snps$experiment %in% experiments_fourcell, ]
+detailed_fourcell_snps = detailed_fourcell_snps[ detailed_fourcell_snps$gene %in% four_cell_snp_filtered$gene,  ]
+
+detailed_eightcell_snps = detailed_snps[ detailed_snps$experiment %in% experiments_eightcell,  ]
+detailed_eightcell_snps = detailed_eightcell_snps[ detailed_eightcell_snps$gene %in% eight_cell_snp_filtered$gene,  ]
+
+
+
+compute_paternal_ratio = function(unit_df, paternal_threshold){
+  paternal_ratios        = (unit_df$paternal + CONSTANT_ADDITION) / (unit_df$paternal + unit_df$maternal + (2 * CONSTANT_ADDITION) )
+  unit_df$paternal_ratio = paternal_ratios
+  unit_df$is_paternal     = as.integer( paternal_ratios > paternal_threshold )
+  unit_df$is_maternal     = as.integer( paternal_ratios < (1 - paternal_threshold) )
+  
+  return(unit_df)
+}
+
+unit_sample = function( snp_df , paternal_threshold ){
+  experiments         = unique(snp_df$experiment)
+  sampled_experiments = sample( experiments, replace = T, size = length( experiments  ) )
+  
+  initial_df = snp_df[ snp_df$experiment == sampled_experiments[1], -1  ]
+  
+  #print(sampled_experiments)
+  
+  for (e in sampled_experiments[-1]){
+    this_df             = snp_df[ snp_df$experiment == e,   ]
+    initial_df$paternal = initial_df$paternal + this_df$paternal
+    initial_df$maternal = initial_df$maternal + this_df$maternal
+  }
+  
+  result = compute_paternal_ratio(initial_df, paternal_threshold)
+  
+  return(result)
+}
+
+bulk_sample = function( snp_df, paternal_threshold, rounds = 100  ){
+  experiments         = unique(snp_df$experiment)
+  
+  genes = snp_df[ snp_df$experiment == experiments[1],   ]$gene
+  
+  paternal_hits = rep(0, length(genes))
+  maternal_hits = rep(0, length(genes))
+  
+  for(i in 1:rounds){
+    this_sampling_df = unit_sample(snp_df, paternal_threshold = 0.7)
+    paternal_hits = paternal_hits + this_sampling_df$is_paternal
+    maternal_hits = maternal_hits + this_sampling_df$is_maternal
+  }
+  
+  result = data.frame( gene = genes, paternal = paternal_hits, maternal = maternal_hits  )
+  
+  
+  return(result)
+  
+}
+
+#a = unit_sample(detailed_eightcell_snps)
+#compute_paternal_ratio(a)
+
+
+#unit_sample(detailed_eightcell_snps, paternal_threshold = 0.7)
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+eightcell_bootstrap_df = bulk_sample(detailed_eightcell_snps, paternal_threshold = 0.7, rounds = 1000)
+fourcell_bootstrap_df  = bulk_sample(detailed_fourcell_snps, paternal_threshold  = 0.7, rounds = 1000) 
+
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+hist( eightcell_bootstrap_df$maternal   )
+
+hist( fourcell_bootstrap_df$maternal   )
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+BOOTSTRAP_THRESHOLD = 800
+
+eightcell_paternal_genes_bootstrap   = eightcell_bootstrap_df[eightcell_bootstrap_df$paternal > BOOTSTRAP_THRESHOLD, ]$gene 
+eightcell_maternal_genes_bootstrap   = eightcell_bootstrap_df[eightcell_bootstrap_df$maternal > BOOTSTRAP_THRESHOLD, ]$gene 
+eightcell_background_genes_bootstrap = setdiff( eightcell_bootstrap_df$gene , c(eightcell_paternal_genes_bootstrap, eightcell_maternal_genes_bootstrap) )
+
+fourcell_paternal_genes_bootstrap   = fourcell_bootstrap_df[fourcell_bootstrap_df$paternal > BOOTSTRAP_THRESHOLD, ]$gene
+fourcell_maternal_genes_bootstrap   = fourcell_bootstrap_df[fourcell_bootstrap_df$maternal > BOOTSTRAP_THRESHOLD, ]$gene
+fourcell_background_genes_bootstrap = setdiff( fourcell_bootstrap_df$gene , c(fourcell_paternal_genes_bootstrap, fourcell_maternal_genes_bootstrap) )
+
+
+print( c(  "Paternal Genes from 4cells and 8 cells are:", length(fourcell_paternal_genes_bootstrap), length(eightcell_paternal_genes_bootstrap) ) )
+print( c(  "Maternal Genes from 4cells and 8 cells are:", length(fourcell_maternal_genes_bootstrap), length(eightcell_maternal_genes_bootstrap) ) )
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+
+mymain = function(TE_df, rna_averages, gene_lengths, picker_name , paternal_genes, maternal_genes, background_genes){
+  paternal_TE = TE_df[ TE_df$transcript %in% paternal_genes,   ][picker_name][,1]
+  maternal_TE = TE_df[ TE_df$transcript %in% maternal_genes,   ][picker_name][,1]
+  bg_TE       = TE_df[ TE_df$transcript %in% background_genes, ][picker_name][,1]
+  
+  paternal_rna   = rna_averages[ TE_df$transcript %in% paternal_genes ]
+  maternal_rna   = rna_averages[ TE_df$transcript %in% maternal_genes ]
+  background_rna = rna_averages[ TE_df$transcript %in% background_genes ]
+  
+  arranged_TE =  c( bg_TE, paternal_TE, maternal_TE )
+  arrenged_rna = c( background_rna, paternal_rna, maternal_rna)
+  
+  TE_labels = c(
+      rep("background", length(bg_TE)) ,
+      rep("paternal", length(paternal_TE) ),
+      rep("maternal",  length(maternal_TE) )
+  )
+  
+  TE_imprinted = c(
+    rep(0, length(bg_TE)) ,
+    rep(1, length(paternal_TE) ),
+    rep(1,  length(maternal_TE) )
+  )
+  
+  paternal_genes_TE   = TE_df[TE_df$transcript %in% paternal_genes,]$transcript
+  maternal_genes_TE   = TE_df[TE_df$transcript %in% maternal_genes,]$transcript
+  background_genes_TE = TE_df[TE_df$transcript %in% background_genes,]$transcript
+  
+  TE_arranged_genes = c(background_genes_TE, paternal_genes_TE, maternal_genes_TE)
+  
+  TE_arranged_df_pre = data.frame(  type       = TE_labels,
+                                imprinted  = TE_imprinted,
+                                gene       = TE_arranged_genes,
+                                TE         = arranged_TE,
+                                rna        = arrenged_rna )
+  
+  TE_arranged_df = merge(TE_arranged_df_pre, gene_lengths, by.x = "gene", by.y= "gene")
+  
+  return(TE_arranged_df)
+  
+}
+
+
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_fourcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "fourcell_TE_clr"  , 
+       paternal_genes   = fourcell_paternal_genes_bootstrap, 
+       maternal_genes   = fourcell_maternal_genes_bootstrap, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+fourcell_TE
+
+
+
+sample_fourcell = matchit(imprinted~rna, data = fourcell_TE )
+
+sample_fourcell
+
+
+matched_fourcell = match.data(sample_fourcell)
+
+matched_fourcell
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
+
+boxplot( matched_fourcell$TE ~ matched_fourcell$type )
+
+
+plot(density( log2( matched_fourcell[matched_fourcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_fourcell[matched_fourcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_fourcell[matched_fourcell$type == "background",]$cds_length  )   ), col = "red" )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( matched_fourcell[matched_fourcell$type == "background", ]$TE, matched_fourcell[matched_fourcell$type == "maternal", ]$TE  )
+
+wilcox.test( matched_fourcell[matched_fourcell$type == "background", ]$TE, matched_fourcell[matched_fourcell$type == "paternal", ]$TE  )
+
+wilcox.test( matched_fourcell[matched_fourcell$type == "maternal", ]$TE, matched_fourcell[matched_fourcell$type == "paternal", ]$TE  )
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_eightcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "eightcell_TE_clr"  , 
+       paternal_genes   = eightcell_paternal_genes_bootstrap, 
+       maternal_genes   = eightcell_maternal_genes_bootstrap, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+eightcell_TE
+
+
+
+sample_eightcell = matchit(imprinted~rna, data = eightcell_TE )
+
+sample_eightcell
+
+
+matched_eightcell = match.data(sample_eightcell)
+
+matched_eightcell
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$imprinted )
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$type )
+
+boxplot( matched_eightcell$TE ~ matched_eightcell$type )
+
+
+plot(density( log2( matched_eightcell[matched_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_eightcell[matched_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_eightcell[matched_eightcell$type == "background",]$cds_length  )   ), col = "red" )
+
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, matched_eightcell[matched_eightcell$type == "maternal", ]$TE  )
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "maternal", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
+```
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_maternal_genes_bootstrap
+
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+detailed_eightcell_snps[detailed_eightcell_snps$gene %in% c("Padi6", "Rexo4", "Rad9b", "Reps1"), ]
+
+```
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_paternal_genes_bootstrap
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+detailed_fourcell_snps[ detailed_fourcell_snps$gene %in% c("Gspt1", "Tigar", "Sgk3") , ]
+
+```
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+```
