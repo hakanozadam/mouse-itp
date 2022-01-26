@@ -733,6 +733,8 @@ mymain = function(TE_df, rna_averages, gene_lengths, picker_name , paternal_gene
 
 ```{r echo=FALSE,warning=FALSE}
 
+set.seed(3)
+
 fourcell_TE = 
   mymain(
        TE_df            = TE_df_clr, 
@@ -747,7 +749,7 @@ fourcell_TE
 
 
 
-sample_fourcell = matchit(imprinted~rna, data = fourcell_TE )
+sample_fourcell = matchit(imprinted~rna + cds_length, data = fourcell_TE )
 
 sample_fourcell
 
@@ -756,9 +758,13 @@ matched_fourcell = match.data(sample_fourcell)
 
 matched_fourcell
 
+boxplot( log2(fourcell_TE$rna) ~ fourcell_TE$imprinted )
+
 boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
 
 boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
+
+boxplot( fourcell_TE$TE ~ fourcell_TE$type )
 
 boxplot( matched_fourcell$TE ~ matched_fourcell$type )
 
@@ -776,7 +782,41 @@ wilcox.test( matched_fourcell[matched_fourcell$type == "background", ]$TE, match
 
 wilcox.test( matched_fourcell[matched_fourcell$type == "background", ]$TE, matched_fourcell[matched_fourcell$type == "paternal", ]$TE  )
 
+wilcox.test( matched_fourcell[matched_fourcell$type == "background", ]$TE, c(matched_fourcell[matched_fourcell$type == "paternal", ]$TE, matched_fourcell[matched_fourcell$type == "maternal", ]$TE)  )
+
 wilcox.test( matched_fourcell[matched_fourcell$type == "maternal", ]$TE, matched_fourcell[matched_fourcell$type == "paternal", ]$TE  )
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "maternal", ]$TE  )
+
+wilcox.test( fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE  )
+
+wilcox.test( fourcell_TE[fourcell_TE$type == "background", ]$TE, c(fourcell_TE[fourcell_TE$type == "paternal", ]$TE, fourcell_TE[fourcell_TE$type == "maternal", ]$TE)  )
+
+wilcox.test( fourcell_TE[fourcell_TE$type == "maternal", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE  )
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+four_cell_snp_filtered$total_rna_snp = four_cell_snp_filtered$maternal_y + four_cell_snp_filtered$paternal_y
+
+
+fourcell_imprented_totals = four_cell_snp_filtered[four_cell_snp_filtered$gene %in% fourcell_TE[fourcell_TE$imprinted == 1, ]$gene, ]$total_rna_snp
+fourcell_background_totals = four_cell_snp_filtered[four_cell_snp_filtered$gene %in% fourcell_TE[fourcell_TE$imprinted == 0, ]$gene, ]$total_rna_snp
+
+plot(  density(  log2(fourcell_imprented_totals) ) )
+lines(  density( log2(fourcell_background_totals) ), col="red" )
+
+hist( log2(fourcell_imprented_totals)) 
+lines( hist( log2(fourcell_imprented_totals), plot = F) ) 
+
+four_cell_snp_filtered$paternal_ratio = four_cell_snp_filtered$paternal_y / four_cell_snp_filtered$total_rna_snp
+four_cell_snp_filtered[four_cell_snp_filtered$paternal_ratio == 0,]
+four_cell_snp_filtered[four_cell_snp_filtered$paternal_ratio == 1,]
+
 ```
 
 
@@ -796,7 +836,7 @@ eightcell_TE
 
 
 
-sample_eightcell = matchit(imprinted~rna, data = eightcell_TE )
+sample_eightcell = matchit(imprinted~rna + cds_length, data = eightcell_TE )
 
 sample_eightcell
 
@@ -827,48 +867,398 @@ wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, mat
 
 wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
 
+wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, c(matched_eightcell[matched_eightcell$type == "paternal", ]$TE, matched_eightcell[matched_eightcell$type == "maternal", ]$TE )  )
+
 wilcox.test( matched_eightcell[matched_eightcell$type == "maternal", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
 ```
 
+## Mono Allelic Genes
 
-
-
-```{r echo=FALSE,warning=FALSE}
-
-eightcell_maternal_genes_bootstrap
-
-```
-
-
-
-```{r echo=FALSE,warning=FALSE}
-
-detailed_eightcell_snps[detailed_eightcell_snps$gene %in% c("Padi6", "Rexo4", "Rad9b", "Reps1"), ]
-
-```
+Among our imprinted genes, 
+If a gene has (zero paternal counts and more than one paternal counts) or
+(has more than one paternal counts and zero maternal counts), it is called a mono alelic gene.
+Here we investigate the translation efficiency of mono allelic genes.
 
 
 
 
 ```{r echo=FALSE,warning=FALSE}
 
-fourcell_paternal_genes_bootstrap
+mono_allelic_eightcell_paternal_df = eight_cell_snp_filtered[ eight_cell_snp_filtered$maternal_y == 0 & eight_cell_snp_filtered$paternal_y > 0 & eight_cell_snp_filtered$gene %in% eightcell_paternal_genes_bootstrap,  ]
+
+mono_allelic_eightcell_paternal_df
+
+mono_allelic_eightcell_paternal_genes = eight_cell_snp_filtered[ eight_cell_snp_filtered$maternal_y == 0 & eight_cell_snp_filtered$paternal_y > 0 & eight_cell_snp_filtered$gene %in% eightcell_paternal_genes_bootstrap,  ]$gene
+
+
+mono_allelic_eightcell_maternal_genes = eight_cell_snp_filtered[ eight_cell_snp_filtered$paternal_y == 0 & eight_cell_snp_filtered$maternal_y > 0 & eight_cell_snp_filtered$gene %in% eightcell_maternal_genes_bootstrap,  ]$gene
+
+print( c("Eight cell Monoallelic paternal and maternal genes", length(mono_allelic_eightcell_paternal_genes), length(mono_allelic_eightcell_maternal_genes))  )
+
+
+mono_allelic_fourcell_paternal_genes = four_cell_snp_filtered[ four_cell_snp_filtered$maternal_y == 0 & four_cell_snp_filtered$paternal_y > 0 & four_cell_snp_filtered$gene %in% fourcell_paternal_genes_bootstrap,  ]$gene
+
+
+mono_allelic_fourcell_maternal_genes = four_cell_snp_filtered[ four_cell_snp_filtered$paternal_y == 0 & four_cell_snp_filtered$maternal_y > 0 & four_cell_snp_filtered$gene %in% fourcell_maternal_genes_bootstrap,  ]$gene
+
+print( c("four cell Monoallelic paternal and maternal genes", length(mono_allelic_fourcell_paternal_genes), length(mono_allelic_fourcell_maternal_genes))  )
+
+mono_allelic_eightcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_eightcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "eightcell_TE_clr"  , 
+       paternal_genes   = mono_allelic_eightcell_paternal_genes, 
+       maternal_genes   = mono_allelic_eightcell_maternal_genes, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+mono_allelic_eightcell_TE
+
+
+mono_allelic_fourcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_fourcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "fourcell_TE_clr"  , 
+       paternal_genes   = mono_allelic_fourcell_paternal_genes, 
+       maternal_genes   = mono_allelic_fourcell_maternal_genes, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+mono_allelic_fourcell_TE
+
 ```
+
+### Eight Cell Mono Allelic Genes
+
+```{r echo=FALSE,warning=FALSE}
+
+sample_mono_allelic_eightcell = matchit(imprinted~rna + cds_length, data = mono_allelic_eightcell_TE )
+
+sample_mono_allelic_eightcell
+
+
+matched_mono_allelic_eightcell = match.data(sample_mono_allelic_eightcell)
+
+matched_mono_allelic_eightcell
+
+boxplot( log2(matched_mono_allelic_eightcell$rna) ~ matched_mono_allelic_eightcell$imprinted )
+
+boxplot( log2(matched_mono_allelic_eightcell$rna) ~ matched_mono_allelic_eightcell$type )
+
+boxplot( mono_allelic_eightcell_TE$TE ~ mono_allelic_eightcell_TE$type )
+
+boxplot( matched_mono_allelic_eightcell$TE ~ matched_mono_allelic_eightcell$type )
+
+
+plot(density( log2( matched_mono_allelic_eightcell[matched_mono_allelic_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_mono_allelic_eightcell[matched_mono_allelic_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_mono_allelic_eightcell[matched_mono_allelic_eightcell$type == "background",]$cds_length  )   ), col = "red" )
+
+
+
+```
+
 
 
 
 ```{r echo=FALSE,warning=FALSE}
 
-detailed_fourcell_snps[ detailed_fourcell_snps$gene %in% c("Gspt1", "Tigar", "Sgk3") , ]
+wilcox.test( matched_mono_allelic_eightcell[matched_mono_allelic_eightcell$imprinted == 0, ]$TE , matched_mono_allelic_eightcell[matched_mono_allelic_eightcell$imprinted == 1, ]$TE  )
+
+```
+
+### Four Cell Mono Allelic Genes
+
+```{r echo=FALSE,warning=FALSE}
+
+sample_mono_allelic_fourcell = matchit(imprinted~rna + cds_length, data = mono_allelic_fourcell_TE )
+
+sample_mono_allelic_fourcell
+
+
+matched_mono_allelic_fourcell = match.data(sample_mono_allelic_fourcell)
+
+matched_mono_allelic_fourcell
+
+boxplot( log2(matched_mono_allelic_fourcell$rna) ~ matched_mono_allelic_fourcell$imprinted )
+
+boxplot( log2(matched_mono_allelic_fourcell$rna) ~ matched_mono_allelic_fourcell$type )
+
+boxplot( mono_allelic_fourcell_TE$TE ~ mono_allelic_fourcell_TE$type )
+
+boxplot( matched_mono_allelic_fourcell$TE ~ matched_mono_allelic_fourcell$type )
+
+
+plot(density( log2( matched_mono_allelic_fourcell[matched_mono_allelic_fourcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_mono_allelic_fourcell[matched_mono_allelic_fourcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_mono_allelic_fourcell[matched_mono_allelic_fourcell$type == "background",]$cds_length  )   ), col = "red" )
+
+
 
 ```
 
 
+```{r echo=FALSE,warning=FALSE}
+
+wilcox.test( matched_mono_allelic_fourcell[matched_mono_allelic_fourcell$imprinted == 0, ]$TE , matched_mono_allelic_fourcell[matched_mono_allelic_fourcell$imprinted == 1, ]$TE  )
+
+```
+
+
+### Multiple SNP Concordence
+
+Now we check that multiple SNPS 
+
+```{r echo=FALSE,warning=FALSE}
+
+raw_snps = read.csv(detailed_snp_file)
+
+raw_snps_four_cell = raw_snps[raw_snps$experiment %in% experiments_fourcell, ]
+raw_snps_eight_cell = raw_snps[raw_snps$experiment %in% experiments_eightcell, ]
+
+compute_support_ratio = function(this_df){
+  result = 
+    this_df %>% group_by(experiment, transcript) %>%
+    mutate(support_ratio_of_replicate = sum(support) / snp_positions)
+  
+  result = 
+    result %>% group_by(transcript, position) %>%
+    mutate(support_ratio_combined = sum(support_ratio_of_replicate))
+  
+  return(result)
+}
+
+find_well_supported_genes = function(this_df, threshold){
+  result = this_df[this_df$support_ratio_combined > threshold,]$transcript 
+  return( unique(result) )
+} 
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+snps_pos_four_cell_pre = raw_snps_four_cell[, 1:5]
+
+snps_pos_four_cell_pre$transcript = unlist( lapply(strsplit(snps_pos_four_cell_pre$transcript, split = "-" ) , "[[", 1))
+
+snps_pos_four_cell_pre = 
+  snps_pos_four_cell_pre %>% 
+  group_by(experiment, transcript) %>%
+  mutate(snp_positions = length(position))
+
+snps_pos_four_cell_pre = snps_pos_four_cell_pre[snps_pos_four_cell_pre$snp_positions > 1, ]
+
+snps_pos_four_cell_pre$paternal_ratio = (snps_pos_four_cell_pre$paternal + 1) / (snps_pos_four_cell_pre$paternal + snps_pos_four_cell_pre$maternal + 2)
+
+snps_pos_four_cell_paternal = snps_pos_four_cell_pre[ snps_pos_four_cell_pre$transcript %in% fourcell_paternal_genes_bootstrap,  ]
+snps_pos_four_cell_maternal = snps_pos_four_cell_pre[ snps_pos_four_cell_pre$transcript %in% fourcell_maternal_genes_bootstrap,  ]
+
+snps_pos_four_cell_paternal$support = as.integer( snps_pos_four_cell_paternal$paternal_ratio > 0.5 )
+snps_pos_four_cell_maternal$support = as.integer( snps_pos_four_cell_maternal$paternal_ratio < 0.5 )
+
+
+
+snps_pos_four_cell_paternal = compute_support_ratio(snps_pos_four_cell_paternal)
+snps_pos_four_cell_maternal = compute_support_ratio(snps_pos_four_cell_maternal)
+
+snps_pos_four_cell_paternal
+snps_pos_four_cell_maternal
+
+
+# There needs to be 0.6 support from each replicate hence the thereshold 1.2
+multiple_snp_supported_fourcell_paternal_genes = find_well_supported_genes(snps_pos_four_cell_paternal, 1.2)
+
+multiple_snp_supported_fourcell_maternal_genes = find_well_supported_genes(snps_pos_four_cell_maternal, 1.2)
+#snps_pos_four_cell_paternal$paternal_ratio = (snps_pos_four_cell_paternal$paternal + 1) / (snps_pos_four_cell_maternal$paternal + snps_pos_four_cell_paternal$maternal + 2)
+
+multiple_snp_supported_fourcell_paternal_genes
+multiple_snp_supported_fourcell_maternal_genes
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+snps_pos_eight_cell_pre = raw_snps_eight_cell[, 1:5]
+
+snps_pos_eight_cell_pre$transcript = unlist( lapply(strsplit(snps_pos_eight_cell_pre$transcript, split = "-" ) , "[[", 1))
+
+snps_pos_eight_cell_pre = 
+  snps_pos_eight_cell_pre %>% 
+  group_by(experiment, transcript) %>%
+  mutate(snp_positions = length(position))
+
+snps_pos_eight_cell_pre = snps_pos_eight_cell_pre[snps_pos_eight_cell_pre$snp_positions > 1, ]
+
+snps_pos_eight_cell_pre$paternal_ratio = (snps_pos_eight_cell_pre$paternal + 1) / (snps_pos_eight_cell_pre$paternal + snps_pos_eight_cell_pre$maternal + 2)
+
+snps_pos_eight_cell_paternal = snps_pos_eight_cell_pre[ snps_pos_eight_cell_pre$transcript %in% eightcell_paternal_genes_bootstrap,  ]
+snps_pos_eight_cell_maternal = snps_pos_eight_cell_pre[ snps_pos_eight_cell_pre$transcript %in% eightcell_maternal_genes_bootstrap,  ]
+
+snps_pos_eight_cell_paternal$support = as.integer( snps_pos_eight_cell_paternal$paternal_ratio > 0.5 )
+snps_pos_eight_cell_maternal$support = as.integer( snps_pos_eight_cell_maternal$paternal_ratio < 0.5 )
+
+
+
+snps_pos_eight_cell_paternal = compute_support_ratio(snps_pos_eight_cell_paternal)
+snps_pos_eight_cell_maternal = compute_support_ratio(snps_pos_eight_cell_maternal)
+
+snps_pos_eight_cell_paternal
+snps_pos_eight_cell_maternal
+
+
+# There needs to be 0.6 support from each replicate hence the thereshold 2.4
+multiple_snp_supported_eightcell_paternal_genes = find_well_supported_genes(snps_pos_eight_cell_paternal, 2.4)
+
+multiple_snp_supported_eightcell_maternal_genes = find_well_supported_genes(snps_pos_eight_cell_maternal, 2.4)
+
+multiple_snp_supported_eightcell_paternal_genes
+multiple_snp_supported_eightcell_maternal_genes
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+fourcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_fourcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "fourcell_TE_clr"  , 
+       paternal_genes   = multiple_snp_supported_fourcell_paternal_genes, 
+       maternal_genes   = multiple_snp_supported_fourcell_maternal_genes, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+fourcell_TE
+
+
+
+sample_fourcell = matchit(imprinted~rna + cds_length, data = fourcell_TE )
+
+sample_fourcell
+
+
+matched_fourcell = match.data(sample_fourcell)
+
+matched_fourcell
+
+boxplot( log2(fourcell_TE$rna) ~ fourcell_TE$imprinted )
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
+
+boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
+
+boxplot( fourcell_TE$TE ~ fourcell_TE$type )
+
+boxplot( matched_fourcell$TE ~ matched_fourcell$type )
+
+
+plot(density( log2( matched_fourcell[matched_fourcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_fourcell[matched_fourcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_fourcell[matched_fourcell$type == "background",]$cds_length  )   ), col = "red" )
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test(  fourcell_TE[fourcell_TE$imprinted == 0, ]$TE, fourcell_TE[fourcell_TE$imprinted == 1, ]$TE )
+
+wilcox.test(  matched_fourcell[matched_fourcell$imprinted == 0, ]$TE, matched_fourcell[matched_fourcell$imprinted == 1, ]$TE )
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+eightcell_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_eightcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "eightcell_TE_clr"  , 
+       paternal_genes   = multiple_snp_supported_eightcell_paternal_genes, 
+       maternal_genes   = multiple_snp_supported_eightcell_maternal_genes, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+eightcell_TE
+
+
+
+sample_eightcell = matchit(imprinted~rna + cds_length, data = eightcell_TE )
+
+sample_eightcell
+
+
+matched_eightcell = match.data(sample_eightcell)
+
+matched_eightcell
+
+boxplot( log2(eightcell_TE$rna) ~ eightcell_TE$imprinted )
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$imprinted )
+
+boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$type )
+
+boxplot( eightcell_TE$TE ~ eightcell_TE$type )
+
+boxplot( matched_eightcell$TE ~ matched_eightcell$type )
+
+
+plot(density( log2( matched_eightcell[matched_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_eightcell[matched_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_eightcell[matched_eightcell$type == "background",]$cds_length  )   ), col = "red" )
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test(  eightcell_TE[eightcell_TE$imprinted == 0, ]$TE, eightcell_TE[eightcell_TE$imprinted == 1, ]$TE )
+
+wilcox.test(  matched_eightcell[matched_eightcell$imprinted == 0, ]$TE, matched_eightcell[matched_eightcell$imprinted == 1, ]$TE )
+```
 
 
 ```{r echo=FALSE,warning=FALSE}
 ```
 
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+```
 
 
 ```{r echo=FALSE,warning=FALSE}
