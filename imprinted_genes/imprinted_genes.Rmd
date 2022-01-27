@@ -67,11 +67,11 @@ get_gene_name = function(long_name){
 
 region_lengths_pre$gene = unlist( lapply( get_gene_name(region_lengths_pre$gene)  , "[[", 6)  )
 
-region_lengths_pre = region_lengths_pre[ region_lengths_pre$region == "CDS" ,]
+region_lengths_pre      = region_lengths_pre[ region_lengths_pre$region == "CDS" ,]
 
-cds_lengths = region_lengths_pre$end - region_lengths_pre$start
+cds_lengths             = region_lengths_pre$end - region_lengths_pre$start
 
-region_lengths = data.frame(gene = region_lengths_pre$gene, cds_length = cds_lengths)
+region_lengths          = data.frame(gene = region_lengths_pre$gene, cds_length = cds_lengths)
 
 ```
 
@@ -86,7 +86,7 @@ $$
 \frac{ \mbox{PATERNAL READS + CONSTANT} }{ \mbox{MATERNAL READS + PATERNAL READS + 2*CONSTANT}  }
 $$
 
-where constant is a positive integer. Namely, we are taking the ratio of paternal reads to the total reads after adding a constant to both maternal and paternal reads (hence the coefficinet 2 in the denominatior).
+where constant is a positive integer. Namely, we are taking the ratio of paternal reads to the total reads after adding a constant to both maternal and paternal reads (hence the coefficient 2 in the denominatior).
 
 ```{r echo=FALSE,warning=FALSE}
 four_cell_all_snp_counts  = read.csv(four_cell_all_snp_counts_file)
@@ -115,10 +115,6 @@ tucci_et_al_imprinted_gene_df = tucci_et_al_imprinted_gene_df_pre[tucci_et_al_im
 
 tucci_et_al_imprinted_gene_df
 ```
-
-## Definition of Imprinted genes
-
-?? To be completed ??
 
 ## Distribution of SNP RNA Counts
 
@@ -174,6 +170,7 @@ chrx_genes = chrx_df[, 1]
 chrx_eight_cell_intersection_count = length( intersect(eight_cell_snp_filtered_pre$gene, chrx_genes) )
 chrx_four_cell_intersection_count  = length( intersect(four_cell_snp_filtered_pre$gene, chrx_genes) )
 
+print("Genes of the chrX:")
 print( c("Intersection with the 4cell expressed genes is", chrx_four_cell_intersection_count)  )
 print( c("Intersection with the 8cell expressed genes is", chrx_eight_cell_intersection_count)  )
 
@@ -184,7 +181,10 @@ four_cell_snp_filtered  = four_cell_snp_filtered_pre[ !(four_cell_snp_filtered_p
 
 ```
 
+## A simple way of finding Imprinted Genes
 
+After combining the reads of the replicates, we initially determine the maternal and paternal reads from the 0.5% tails of the paternal ratio distribution.
+Later we control for replicate-to-replicate variability and refine this list.
 
 ```{r echo=FALSE,warning=FALSE}
 
@@ -220,7 +220,13 @@ print( c(length(eightcell_paternal_genes), length(eightcell_maternal_genes) )  )
 
 ## Comparison of Our Imprinted Genes to the Published Ones
 
+There are similarities and differences worth noting with the papers we compare our data to.
 
+Our data come from 4 or 8 cell stages of the embryo whereas published data come from 32-cell stage. 
+It is already known that imprinted genes show different patterns during the stages of the development. Hence an overlap is not expected.
+
+From [Santini et. al.](https://www.nature.com/articles/s41467-021-23510-4#Abs1):
+**"Hence, statistically significant parent-of-origin-specific gene expression was detected in blastocysts for only a quarter of all published imprinted genes, indicating a strong impact of tissue and cell type in defining imprinting patterns during development."**
 
 ```{r echo=FALSE,warning=FALSE}
 
@@ -656,7 +662,7 @@ fourcell_bootstrap_df  = bulk_sample(detailed_fourcell_snps, paternal_threshold 
 
 ```{r echo=FALSE,warning=FALSE}
 
-hist( eightcell_bootstrap_df$maternal   )
+hist( eightcell_bootstrap_df$maternal, breaks = seq(0,1000, 50)   )
 
 hist( fourcell_bootstrap_df$maternal   )
 ```
@@ -872,6 +878,17 @@ wilcox.test( matched_eightcell[matched_eightcell$type == "background", ]$TE, c(m
 wilcox.test( matched_eightcell[matched_eightcell$type == "maternal", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
 ```
 
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( eightcell_TE[eightcell_TE$type == "background", ]$TE, eightcell_TE[eightcell_TE$type == "maternal", ]$TE  )
+
+wilcox.test( eightcell_TE[eightcell_TE$type == "background", ]$TE, eightcell_TE[eightcell_TE$type == "paternal", ]$TE  )
+
+wilcox.test( eightcell_TE[eightcell_TE$type == "background", ]$TE, c(eightcell_TE[eightcell_TE$type == "paternal", ]$TE, eightcell_TE[eightcell_TE$type == "maternal", ]$TE )  )
+
+wilcox.test( matched_eightcell[matched_eightcell$type == "maternal", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
+```
+
+
 ## Mono Allelic Genes
 
 Among our imprinted genes, 
@@ -927,6 +944,25 @@ mono_allelic_fourcell_TE =
        background_genes = fourcell_background_genes_bootstrap)
 
 mono_allelic_fourcell_TE
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+length(mono_allelic_eightcell_paternal_genes)
+length(mono_allelic_fourcell_maternal_genes)
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+length(eightcell_paternal_genes_bootstrap)
+length(fourcell_paternal_genes_bootstrap)
+length(intersect( eightcell_paternal_genes_bootstrap, fourcell_paternal_genes_bootstrap  ))
+
+length(eightcell_maternal_genes_bootstrap)
+length(fourcell_maternal_genes_bootstrap)
+length(intersect( eightcell_maternal_genes_bootstrap, fourcell_maternal_genes_bootstrap  ))
 
 ```
 
@@ -988,7 +1024,7 @@ boxplot( log2(matched_mono_allelic_fourcell$rna) ~ matched_mono_allelic_fourcell
 
 boxplot( log2(matched_mono_allelic_fourcell$rna) ~ matched_mono_allelic_fourcell$type )
 
-boxplot( mono_allelic_fourcell_TE$TE ~ mono_allelic_fourcell_TE$type )
+boxplot( mono_allelic_fourcell_TE$TE ~ mono_allelic_fourcell_TE$type, varwidth = T )
 
 boxplot( matched_mono_allelic_fourcell$TE ~ matched_mono_allelic_fourcell$type )
 
@@ -1047,10 +1083,13 @@ snps_pos_four_cell_pre = raw_snps_four_cell[, 1:5]
 
 snps_pos_four_cell_pre$transcript = unlist( lapply(strsplit(snps_pos_four_cell_pre$transcript, split = "-" ) , "[[", 1))
 
+snps_pos_four_cell_pre = snps_pos_four_cell_pre[ snps_pos_four_cell_pre$paternal + snps_pos_four_cell_pre$maternal > 0 , ]
+
 snps_pos_four_cell_pre = 
   snps_pos_four_cell_pre %>% 
   group_by(experiment, transcript) %>%
   mutate(snp_positions = length(position))
+
 
 snps_pos_four_cell_pre = snps_pos_four_cell_pre[snps_pos_four_cell_pre$snp_positions > 1, ]
 
@@ -1083,9 +1122,16 @@ multiple_snp_supported_fourcell_maternal_genes
 
 
 ```{r echo=FALSE,warning=FALSE}
+length(unique(snps_pos_four_cell_maternal$transcript) )
+length(  multiple_snp_supported_fourcell_maternal_genes )
+```
+
+```{r echo=FALSE,warning=FALSE}
 snps_pos_eight_cell_pre = raw_snps_eight_cell[, 1:5]
 
 snps_pos_eight_cell_pre$transcript = unlist( lapply(strsplit(snps_pos_eight_cell_pre$transcript, split = "-" ) , "[[", 1))
+
+snps_pos_eight_cell_pre = snps_pos_eight_cell_pre[ snps_pos_eight_cell_pre$paternal + snps_pos_eight_cell_pre$maternal > 0 , ]
 
 snps_pos_eight_cell_pre = 
   snps_pos_eight_cell_pre %>% 
@@ -1171,6 +1217,12 @@ lines(density( log2( matched_fourcell[matched_fourcell$type == "background",]$cd
 wilcox.test(  fourcell_TE[fourcell_TE$imprinted == 0, ]$TE, fourcell_TE[fourcell_TE$imprinted == 1, ]$TE )
 
 wilcox.test(  matched_fourcell[matched_fourcell$imprinted == 0, ]$TE, matched_fourcell[matched_fourcell$imprinted == 1, ]$TE )
+
+wilcox.test(  fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE )
+
+wilcox.test(  fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "maternal", ]$TE )
+
+wilcox.test(  fourcell_TE[fourcell_TE$type == "maternal", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE )
 ```
 
 ```{r echo=FALSE,warning=FALSE}
@@ -1211,7 +1263,7 @@ boxplot( eightcell_TE$TE ~ eightcell_TE$type )
 boxplot( matched_eightcell$TE ~ matched_eightcell$type )
 
 
-plot(density( log2( matched_eightcell[matched_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+plot(density( log2( matched_eightcell[matched_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.8) )
 
 lines(density( log2( matched_eightcell[matched_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
 
