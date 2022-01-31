@@ -27,8 +27,8 @@ CONSTANT_ADDITION = 1
 
 ```{r setwd,echo=FALSE,warning=FALSE}
 
-#setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
-setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+#setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 ```
 
 ```{r filepaths,echo=FALSE,warning=FALSE}
@@ -51,6 +51,7 @@ chrx_genes_file = "./chrx_genes.tsv"
 region_lengths_file = "../appris_mouse_v2_filtered_regions.bed"
  
 detailed_snp_file = "../snp/notebooks/snp_dataframes/rnaseq_detailed_snps.csv.gz"
+GSE80810_allelic_ratio_file = "./GSE80810_allelic_ratio.csv"
 ```
 
 ```{r region_lengths,echo=FALSE,warning=FALSE}
@@ -1276,6 +1277,46 @@ wilcox.test(  eightcell_TE[eightcell_TE$imprinted == 0, ]$TE, eightcell_TE[eight
 wilcox.test(  matched_eightcell[matched_eightcell$imprinted == 0, ]$TE, matched_eightcell[matched_eightcell$imprinted == 1, ]$TE )
 ```
 
+
+## Comparison with GSE80810
+
+```{r echo=FALSE,warning=FALSE}
+GSE80810_allelic_ratios = read.csv(GSE80810_allelic_ratio_file)
+
+a = colnames(GSE80810_allelic_ratios)
+GSE80810_allelic_ratios = GSE80810_allelic_ratios[, c(1,16:20,26:44)]
+
+GSE80810_8C_paternal_intersection = GSE80810_allelic_ratios[GSE80810_allelic_ratios$Genes %in% eightcell_paternal_genes_bootstrap,-c(1,2,3,4,5,6)]
+GSE80810_8C_paternal_averages = apply(GSE80810_8C_paternal_intersection , MARGIN = 1, FUN = mean, na.rm = 1) 
+GSE80810_8C_paternal_agreements = sum(as.integer(GSE80810_8C_paternal_averages > 0.5 ) , na.rm = T)
+
+print(c("8 cell paternal", GSE80810_8C_paternal_agreements, "agreements out of ", dim(GSE80810_8C_paternal_intersection)[1]))
+
+
+
+GSE80810_8C_maternal_intersection = GSE80810_allelic_ratios[GSE80810_allelic_ratios$Genes %in% eightcell_maternal_genes_bootstrap,-c(1,2,3,4,5,6)]
+GSE80810_8C_maternal_averages = apply(GSE80810_8C_maternal_intersection , MARGIN = 1, FUN = mean, na.rm = 1)
+GSE80810_8C_maternal_agreements = sum(as.integer(GSE80810_8C_maternal_averages < 0.5 ) , na.rm = T)
+
+print(c("8 cell maternal", GSE80810_8C_maternal_agreements, "agreements out of ", dim(GSE80810_8C_maternal_intersection)[1]))
+
+
+
+GSE80810_4C_paternal_intersection = GSE80810_allelic_ratios[GSE80810_allelic_ratios$Genes %in% fourcell_paternal_genes_bootstrap,-c(1,2,3,4,5,6)]
+GSE80810_4C_paternal_averages = apply(GSE80810_4C_paternal_intersection , MARGIN = 1, FUN = mean, na.rm = 1) 
+GSE80810_4C_paternal_agreements = sum(as.integer(GSE80810_4C_paternal_averages > 0.5 ) , na.rm = T)
+
+print(c("4 cell paternal", GSE80810_4C_paternal_agreements, "agreements out of ", dim(GSE80810_4C_paternal_intersection)[1]))
+
+
+
+GSE80810_4C_maternal_intersection = GSE80810_allelic_ratios[GSE80810_allelic_ratios$Genes %in% fourcell_maternal_genes_bootstrap,-c(1,2,3,4,5,6)]
+GSE80810_4C_maternal_averages = apply(GSE80810_4C_maternal_intersection , MARGIN = 1, FUN = mean, na.rm = 1) 
+GSE80810_4C_maternal_agreements = sum(as.integer(GSE80810_4C_maternal_averages < 0.5 ) , na.rm = T)
+
+print(c("4 cell maternal", GSE80810_4C_maternal_agreements, "agreements out of ", dim(GSE80810_4C_maternal_intersection)[1]))
+
+```
 
 ```{r echo=FALSE,warning=FALSE}
 ```
