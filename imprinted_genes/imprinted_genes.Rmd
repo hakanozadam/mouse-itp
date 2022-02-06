@@ -18,6 +18,9 @@ library(Cairo)
 library(edgeR)
 library(MatchIt)
 library(Seurat)
+library(VennDiagram)
+library(grDevices)
+library(ggpubr)
 ```
 
 ```{r constants,echo=FALSE,warning=FALSE}
@@ -27,8 +30,8 @@ CONSTANT_ADDITION = 1
 
 ```{r setwd,echo=FALSE,warning=FALSE}
 
-setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
-#setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+#setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 ```
 
 ```{r filepaths,echo=FALSE,warning=FALSE}
@@ -54,6 +57,57 @@ detailed_snp_file = "../snp/notebooks/snp_dataframes/rnaseq_detailed_snps.csv.gz
 GSE80810_allelic_ratio_file = "./GSE80810_allelic_ratio.csv"
 ```
 
+
+```{r plot_constants,echo=FALSE,warning=FALSE}
+BURNT_ORANGE = "#bf5700"
+UT_BLUE      = "#005f86"
+
+PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#f0756e"
+PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#7ccba2"
+PERCENTAGE_BARPLOT_OTHER_COLOR    = "#045175"
+
+CDS_GREEN  = rgb(124, 203, 162, maxColorValue = 255)
+UTR5_BLUE  = rgb(4,   82,  117, maxColorValue = 255)
+UTR3_GREEN = rgb(240, 116, 110,maxColorValue = 255)
+
+#PERCENTAGE_BARPLOT_PATERNAL_COLOR =  "#999999"
+#PERCENTAGE_BARPLOT_MATERNAL_COLOR = "#E69F00"
+#PERCENTAGE_BARPLOT_OTHER_COLOR    = "#56B4E9"
+
+PERCENTAGE_BARPLOT_COLORS = c(PERCENTAGE_BARPLOT_OTHER_COLOR,
+                              PERCENTAGE_BARPLOT_MATERNAL_COLOR,
+                              PERCENTAGE_BARPLOT_PATERNAL_COLOR
+                              )
+
+
+
+
+#MAIN_PERCENTAGE_RNASEQ_FILL_COLOR     = "skyblue"
+#MAIN_PERCENTAGE_RIBOSEQ_FILL_COLOR    = "#abe39d"
+#MAIN_PERCENTAGE_ERRORBAR_COLOR = "#413bb8"
+
+FOURCELL_BACKGROUND_COLOR = "#d9d9d9"
+
+COUNT_NORMALIZATION_FACTOR = 10000
+
+#RATIO_RIBO_COLOUR = "orange"
+#RATIO_RNA_COLOUR  = "blue"
+
+RATIO_RIBO_COLOUR = BURNT_ORANGE
+RATIO_RNA_COLOUR  = "navy"
+
+PERCENTAGE_DASHED_COLOR = "#088f99"
+
+################################################################################
+#########                 F O N T   S I Z E S                          #########
+
+FONT_LABEL_SIZE = 8
+FONT_TITLE_SIZE = 9
+
+PDF_resolution = 600
+FIGURE_FONT = "helvetica"
+```
+
 ```{r region_lengths,echo=FALSE,warning=FALSE}
 
 # Here we obtain the cds lengths
@@ -76,10 +130,27 @@ region_lengths          = data.frame(gene = region_lengths_pre$gene, cds_length 
 
 ```
 
-## Publisehd Imprinted Genes
+```{r plot_save_functions,echo=FALSE,warning=FALSE}
+get_output_file_path = function(file_name, output_folder = "pdf"){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
 
-[Santini et al ](https://www.nature.com/articles/s41467-021-23510-4#MOESM4) studies mouse embryos and provide a list of imprinted genes.
-However their list doesn't indicate any direction (maternal or paternal).
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+         plot   = this_plot, 
+         device = cairo_pdf, 
+         width  = width,
+         height = height,
+         dpi    = PDF_resolution )
+  
+}
+```
+
+
+## Publisehd Imprinted Genes
 
 We define **paternal ratio** as
 
@@ -99,23 +170,8 @@ four_cell_all_snp_counts$paternal_ratio  =
 eight_cell_all_snp_counts$paternal_ratio = 
   (eight_cell_all_snp_counts$paternal_y + CONSTANT_ADDITION) / (eight_cell_all_snp_counts$maternal_y + eight_cell_all_snp_counts$paternal_y + 2*CONSTANT_ADDITION)
 
-published_nature_gen_df = read.csv(published_imprinted_gene_list_file)
-
-published_nature_gen_df
 ```
 
-[Tucci et. al.](https://www.cell.com/cell/fulltext/S0092-8674(19)30106-0?_returnURL=https%3A%2F%2Flinkinghub.elsevier.com%2Fretrieve%2Fpii%2FS0092867419301060%3Fshowall%3Dtrue#%20)
-however, indicates the direction, though their list is less comprehensive.
-
-```{r echo=FALSE,warning=FALSE}
-
-tucci_et_al_imprinted_gene_df_pre = read.csv(tucci_et_al_imprinted_gene_list_file)
-
-# get rid of the isoform-psecific entries
-tucci_et_al_imprinted_gene_df = tucci_et_al_imprinted_gene_df_pre[tucci_et_al_imprinted_gene_df_pre$ExpressedAllele %in% c("P", "M") ,]
-
-tucci_et_al_imprinted_gene_df
-```
 
 ## Distribution of SNP RNA Counts
 
@@ -219,47 +275,6 @@ print( c(length(eightcell_paternal_genes), length(eightcell_maternal_genes) )  )
 
 
 
-## Comparison of Our Imprinted Genes to the Published Ones
-
-There are similarities and differences worth noting with the papers we compare our data to.
-
-Our data come from 4 or 8 cell stages of the embryo whereas published data come from 32-cell stage. 
-It is already known that imprinted genes show different patterns during the stages of the development. Hence an overlap is not expected.
-
-From [Santini et. al.](https://www.nature.com/articles/s41467-021-23510-4#Abs1):
-**"Hence, statistically significant parent-of-origin-specific gene expression was detected in blastocysts for only a quarter of all published imprinted genes, indicating a strong impact of tissue and cell type in defining imprinting patterns during development."**
-
-```{r echo=FALSE,warning=FALSE}
-
-nature_intersection_df = merge(published_nature_gen_df, region_lengths, by, by.x = "Gene.symbol", by.y = "gene" )
-published_nature_gen_df
-nature_intersection_df
-
-fourcell_common_genes_with_nature = intersect( nature_intersection_df$Gene.symbol, union( fourcell_maternal_genes, fourcell_paternal_genes  )   )
-
-print("4 Cell: Common imprinted genes with the Santini et. al. paper:")
-print(fourcell_common_genes_with_nature)
-
-print("8 Cell: Common imprinted genes with the Santini et. al. paper:")
-eightcell_common_genes_with_nature = intersect( nature_intersection_df$Gene.symbol, union( eightcell_maternal_genes, eightcell_paternal_genes  )   )
-
-eightcell_common_genes_with_nature
-
-#published_nature_gen_df
-#fourcell_tucci_merged = merge(four_cell_snp_filtered, tucci_et_al_imprinted_gene_df, by.x = "gene", by.y = "Gene")
-#fourcell_tucci_merged$gene
-
-#eightcell_tucci_merged = merge(eight_cell_snp_filtered, tucci_et_al_imprinted_gene_df, by.x = "gene", by.y = "Gene")
-#eightcell_tucci_merged$gene
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-a = merge(published_nature_gen_df, eight_cell_snp_filtered, by.x = "Gene.symbol", by.y = "gene")
-a
-
-```
 
 
 ## Translation Efficiency of Imprinted Genes 
@@ -285,9 +300,13 @@ clr_normalized_counts_pre = NormalizeData(ribo_rna_counts[,-1],
 
 clr_normalized_counts = data.frame(transcript = ribo_rna_counts$transcript , clr_normalized_counts_pre)
 
+cpm_normalized_counts_pre = cpm(ribo_rna_counts[,-1])
+
+cpm_normalized_counts = data.frame( transcript = ribo_rna_counts$transcript, cpm_normalized_counts_pre)
+
 colSums(clr_normalized_counts_pre)
 print("\n\n##################\n\n")
-colSums(ribo_rna_counts[,-1])
+colSums(cpm_normalized_counts[,-1])
 ```
 
 ```{r echo=FALSE,warning=FALSE}
@@ -300,255 +319,86 @@ ribo_eightcell_averages_clr   = (clr_normalized_counts$X8cell.1 + clr_normalized
 fourcell_TE_clr  = ribo_fourcell_averages_clr / rnaseq_fourcell_averages_clr
 eightcell_TE_clr = ribo_eightcell_averages_clr / rnaseq_eightcell_averages_clr
 
+rnaseq_onecell_averages_clr = (clr_normalized_counts$X1cell.1.RNAseq + clr_normalized_counts$X1cell.2.RNAseq + clr_normalized_counts$X1cell.3.RNAseq + clr_normalized_counts$X1cell.4.RNAseq) / 4
+ribo_onecell_averages_clr   = (clr_normalized_counts$X1cell.1 + clr_normalized_counts$X1cell.2 + clr_normalized_counts$X1cell.3 + clr_normalized_counts$X1cell.4 + clr_normalized_counts$X1cell.5) / 5
 
-TE_df_clr = data.frame( transcript = ribo_rna_counts$transcript, fourcell_TE_clr = fourcell_TE_clr, eightcell_TE_clr = eightcell_TE_clr  )
+onecell_TE_clr = ribo_onecell_averages_clr / rnaseq_onecell_averages_clr
+
+rnaseq_twocell_averages_clr = (clr_normalized_counts$X2cell.1.RNAseq + clr_normalized_counts$X2cell.2.RNAseq + clr_normalized_counts$X2cell.3.RNAseq + clr_normalized_counts$X2cell.4.RNAseq) / 4
+ribo_twocell_averages_clr   = (clr_normalized_counts$X2cell.1 + clr_normalized_counts$X2cell.2 + clr_normalized_counts$X2cell.3) / 3
+
+twocell_TE_clr = rnaseq_twocell_averages_clr / ribo_twocell_averages_clr
+
+rnaseq_mii_averages_clr = (clr_normalized_counts$MII.1.RNAseq + clr_normalized_counts$MII.2.RNAseq + clr_normalized_counts$MII.3.RNAseq + clr_normalized_counts$MII.4.RNAseq ) / 4
+ribo_mii_averages_clr = (clr_normalized_counts$MII.1 + clr_normalized_counts$MII.2 + clr_normalized_counts$MII.3 + clr_normalized_counts$MII.4 + clr_normalized_counts$MII.5) / 5
+
+mii_TE_clr = ribo_mii_averages_clr / rnaseq_mii_averages_clr
+
+
+rnaseq_gv_averages_clr = (clr_normalized_counts$GV.1.RNAseq + clr_normalized_counts$GV.2.RNAseq + clr_normalized_counts$GV.3.RNAseq + clr_normalized_counts$GV.4.RNAseq) / 4
+ribo_gv_averages_clr   = (clr_normalized_counts$GV.1 + clr_normalized_counts$GV.2 + clr_normalized_counts$GV.3 + clr_normalized_counts$GV.4 + clr_normalized_counts$GV.5) / 5
+
+gv_TE_clr = ribo_gv_averages_clr / rnaseq_gv_averages_clr
+
+TE_df_clr = data.frame( transcript   = ribo_rna_counts$transcript, 
+                        fourcell_TE  = fourcell_TE_clr, 
+                        eightcell_TE = eightcell_TE_clr, 
+                        mii_TE       = mii_TE_clr,
+                        gv_TE    = gv_TE_clr,
+                        onecell_TE   = onecell_TE_clr, 
+                        twocell_TE   = twocell_TE_clr
+                        )
 
 hist( log2(fourcell_TE_clr) )
 
 hist( log2(eightcell_TE_clr) )
 
 ```
-
 ```{r echo=FALSE,warning=FALSE}
 
+rnaseq_fourcell_averages_cpm  = (cpm_normalized_counts$X4cell.1.RNAseq + cpm_normalized_counts$X4cell.2.RNAseq) / 2
+rnaseq_eightcell_averages_cpm = (cpm_normalized_counts$X8cell.1.RNAseq + cpm_normalized_counts$X8cell.2.RNAseq + cpm_normalized_counts$X8cell.3.RNAseq + cpm_normalized_counts$X8cell.4.RNAseq) / 4
+ribo_fourcell_averages_cpm    = (cpm_normalized_counts$X4cell.1 + cpm_normalized_counts$X4cell.2 + cpm_normalized_counts$X4cell.3) / 3
+ribo_eightcell_averages_cpm   = (cpm_normalized_counts$X8cell.1 + cpm_normalized_counts$X8cell.2 + cpm_normalized_counts$X8cell.3 + cpm_normalized_counts$X8cell.4) / 4
+
+fourcell_TE_cpm  = ribo_fourcell_averages_cpm / rnaseq_fourcell_averages_cpm
+eightcell_TE_cpm = ribo_eightcell_averages_cpm / rnaseq_eightcell_averages_cpm
+
+rnaseq_onecell_averages_cpm = (cpm_normalized_counts$X1cell.1.RNAseq + cpm_normalized_counts$X1cell.2.RNAseq + cpm_normalized_counts$X1cell.3.RNAseq + cpm_normalized_counts$X1cell.4.RNAseq) / 4
+ribo_onecell_averages_cpm   = (cpm_normalized_counts$X1cell.1 + cpm_normalized_counts$X1cell.2 + cpm_normalized_counts$X1cell.3 + cpm_normalized_counts$X1cell.4 + cpm_normalized_counts$X1cell.5) / 5
+
+onecell_TE_cpm = ribo_onecell_averages_cpm / rnaseq_onecell_averages_cpm
+
+rnaseq_twocell_averages_cpm = (cpm_normalized_counts$X2cell.1.RNAseq + cpm_normalized_counts$X2cell.2.RNAseq + cpm_normalized_counts$X2cell.3.RNAseq + cpm_normalized_counts$X2cell.4.RNAseq) / 4
+ribo_twocell_averages_cpm   = (cpm_normalized_counts$X2cell.1 + cpm_normalized_counts$X2cell.2 + cpm_normalized_counts$X2cell.3) / 3
+
+twocell_TE_cpm = rnaseq_twocell_averages_cpm / ribo_twocell_averages_cpm
+
+rnaseq_mii_averages_cpm = (cpm_normalized_counts$MII.1.RNAseq + cpm_normalized_counts$MII.2.RNAseq + cpm_normalized_counts$MII.3.RNAseq + cpm_normalized_counts$MII.4.RNAseq ) / 4
+ribo_mii_averages_cpm = (cpm_normalized_counts$MII.1 + cpm_normalized_counts$MII.2 + cpm_normalized_counts$MII.3 + cpm_normalized_counts$MII.4 + cpm_normalized_counts$MII.5) / 5
+
+mii_TE_cpm = ribo_mii_averages_cpm / rnaseq_mii_averages_cpm
 
 
-fourcell_background_genes = setdiff( TE_df_clr$transcript , union( fourcell_maternal_genes, fourcell_paternal_genes  ) )
+rnaseq_gv_averages_cpm = (cpm_normalized_counts$GV.1.RNAseq + cpm_normalized_counts$GV.2.RNAseq + cpm_normalized_counts$GV.3.RNAseq + cpm_normalized_counts$GV.4.RNAseq) / 4
+ribo_gv_averages_cpm   = (cpm_normalized_counts$GV.1 + cpm_normalized_counts$GV.2 + cpm_normalized_counts$GV.3 + cpm_normalized_counts$GV.4 + cpm_normalized_counts$GV.5) / 5
 
-eightcell_background_genes = setdiff( TE_df_clr$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
+gv_TE_cpm = ribo_gv_averages_cpm / rnaseq_gv_averages_cpm
 
+TE_df_cpm = data.frame( transcript   = ribo_rna_counts$transcript, 
+                        fourcell_TE  = fourcell_TE_cpm, 
+                        eightcell_TE = eightcell_TE_cpm, 
+                        mii_TE       = mii_TE_cpm,
+                        gv_TE    = gv_TE_cpm,
+                        onecell_TE   = onecell_TE_cpm, 
+                        twocell_TE   = twocell_TE_cpm
+                        )
 
-fourcell_paternal_TE_clr   = TE_df_clr[ TE_df_clr$transcript %in% fourcell_paternal_genes,]$fourcell_TE_clr
-fourcell_maternal_TE_clr   = TE_df_clr[ TE_df_clr$transcript %in% fourcell_maternal_genes,]$fourcell_TE_clr
-fourcell_background_TE_clr = TE_df_clr[ TE_df_clr$transcript %in% fourcell_background_genes,]$fourcell_TE_clr
+hist( log2(fourcell_TE_cpm) )
 
-
-fourcell_paternal_rna_clr   = rnaseq_fourcell_averages_clr[ TE_df_clr$transcript %in% fourcell_paternal_genes    ]
-fourcell_maternal_rna_clr   = rnaseq_fourcell_averages_clr[ TE_df_clr$transcript %in% fourcell_maternal_genes    ]
-fourcell_background_rna_clr = rnaseq_fourcell_averages_clr[ TE_df_clr$transcript %in% fourcell_background_genes  ]
-
-fourcell_arranged_TE_clr = c( fourcell_background_TE_clr, fourcell_paternal_TE_clr, fourcell_maternal_TE_clr )
-
-fourcell_arranged_rna_clr = c(fourcell_background_rna_clr, fourcell_paternal_rna_clr, fourcell_maternal_rna_clr )
-
-fourcell_TE_labels_clr = c(
-  rep("background", length(fourcell_background_TE_clr)) ,
-  rep("paternal", length(fourcell_paternal_TE_clr) ),
-  rep("maternal",  length(fourcell_maternal_TE_clr) )
-)
-
-fourcell_TE_imprinted_clr = c(
-  rep(0, length(fourcell_background_TE_clr)) ,
-  rep(1, length(fourcell_paternal_TE_clr) ),
-  rep(1,  length(fourcell_maternal_TE_clr) )
-)
-
-
-
-
-fourcell_paternal_genes_clr   = TE_df_clr[ TE_df_clr$transcript %in% fourcell_paternal_genes,]$transcript
-fourcell_maternal_genes_clr   = TE_df_clr[ TE_df_clr$transcript %in% fourcell_maternal_genes,]$transcript
-fourcell_background_genes_clr = TE_df_clr[ TE_df_clr$transcript %in% fourcell_background_genes,]$transcript
-
-fourcell_arranged_genes_clr = c(
-  fourcell_background_genes_clr,
-  fourcell_paternal_genes_clr,
-  fourcell_maternal_genes_clr
-)
-
-
-fourcell_TE_arranged_df_clr = data.frame( type       = fourcell_TE_labels_clr,
-                                      imprinted  = fourcell_TE_imprinted_clr,
-                                      transcript = fourcell_arranged_genes_clr,
-                                      TE         = fourcell_arranged_TE_clr,
-                                      rna        = fourcell_arranged_rna_clr )
-
-
-
-
-
-sample_fourcell_clr = matchit(imprinted~rna, data = fourcell_TE_arranged_df_clr )
-
-sample_fourcell_clr
-
-
-matched_fourcell_clr = match.data(sample_fourcell_clr)
-
-matched_fourcell_clr
-
-boxplot( log2(matched_fourcell_clr$rna) ~ matched_fourcell_clr$imprinted )
-boxplot( (matched_fourcell_clr$rna) ~ matched_fourcell_clr$imprinted )
-
-boxplot( log2(matched_fourcell_clr$rna) ~ matched_fourcell_clr$type )
-
-boxplot( log2(matched_fourcell_clr$TE) ~ matched_fourcell_clr$type )
-
-boxplot( (matched_fourcell_clr$TE) ~ matched_fourcell_clr$type )
-
-
+hist( log2(eightcell_TE_cpm) )
 
 ```
-
-```{r echo=FALSE,warning=FALSE}
-
-
-
-wilcox.test( matched_fourcell_clr[matched_fourcell_clr$type == "background",]$TE, matched_fourcell_clr[matched_fourcell_clr$type == "maternal",]$TE  )
-
-wilcox.test( matched_fourcell_clr[matched_fourcell_clr$type == "background",]$TE, matched_fourcell_clr[matched_fourcell_clr$type == "paternal",]$TE  )
-
-wilcox.test( matched_fourcell_clr[matched_fourcell_clr$type == "paternal",]$TE, matched_fourcell_clr[matched_fourcell_clr$type == "maternal",]$TE  )
-
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-fourcell_TE_and_lengths = merge(matched_fourcell_clr, region_lengths, by.x = "transcript", by.y = "gene")
-
-hist( log2(fourcell_TE_and_lengths$cds_length) )
-
-hist( log2(cds_lengths) )
-
-median( fourcell_TE_and_lengths$cds_length )
-
-median( cds_lengths )
-
-boxplot( (fourcell_TE_and_lengths$cds_length) ~ fourcell_TE_and_lengths$type )
-
-
-hist( log2( fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "maternal",]$cds_length  ) )
-
-hist( log2( fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "background",]$cds_length  ) )
-
-
-plot(density( log2( fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "maternal",]$cds_length  )   ) )
-
-lines(density( log2( fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "background",]$cds_length  )   ), col = "red" )
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-wilcox.test(  fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "maternal",]$cds_length,  fourcell_TE_and_lengths[fourcell_TE_and_lengths$type == "background",]$cds_length  )
-
-wilcox.test( fourcell_TE_and_lengths$cds_length, cds_lengths  )
-```
-
-
-
-
-
-```{r echo=FALSE,warning=FALSE}
-
-eightcell_background_genes = setdiff( TE_df_clr$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
-
-eightcell_background_genes = setdiff( TE_df_clr$transcript , union( eightcell_maternal_genes, eightcell_paternal_genes  ) )
-
-
-eightcell_paternal_TE_clr   = TE_df_clr[ TE_df_clr$transcript %in% eightcell_paternal_genes,]$eightcell_TE_clr
-eightcell_maternal_TE_clr   = TE_df_clr[ TE_df_clr$transcript %in% eightcell_maternal_genes,]$eightcell_TE_clr
-eightcell_background_TE_clr = TE_df_clr[ TE_df_clr$transcript %in% eightcell_background_genes,]$eightcell_TE_clr
-
-
-eightcell_paternal_rna_clr   = rnaseq_eightcell_averages_clr[ TE_df_clr$transcript %in% eightcell_paternal_genes    ]
-eightcell_maternal_rna_clr   = rnaseq_eightcell_averages_clr[ TE_df_clr$transcript %in% eightcell_maternal_genes    ]
-eightcell_background_rna_clr = rnaseq_eightcell_averages_clr[ TE_df_clr$transcript %in% eightcell_background_genes  ]
-
-eightcell_arranged_TE_clr = c( eightcell_background_TE_clr, eightcell_paternal_TE_clr, eightcell_maternal_TE_clr )
-
-eightcell_arranged_rna_clr = c(eightcell_background_rna_clr, eightcell_paternal_rna_clr, eightcell_maternal_rna_clr )
-
-eightcell_TE_labels_clr = c(
-  rep("background", length(eightcell_background_TE_clr)) ,
-  rep("paternal", length(eightcell_paternal_TE_clr) ),
-  rep("maternal",  length(eightcell_maternal_TE_clr) )
-)
-
-eightcell_TE_imprinted_clr = c(
-  rep(0, length(eightcell_background_TE_clr)) ,
-  rep(1, length(eightcell_paternal_TE_clr) ),
-  rep(1,  length(eightcell_maternal_TE_clr) )
-)
-
-
-
-
-eightcell_paternal_genes_clr   = TE_df_clr[ TE_df_clr$transcript %in% eightcell_paternal_genes,]$transcript
-eightcell_maternal_genes_clr   = TE_df_clr[ TE_df_clr$transcript %in% eightcell_maternal_genes,]$transcript
-eightcell_background_genes_clr = TE_df_clr[ TE_df_clr$transcript %in% eightcell_background_genes,]$transcript
-
-eightcell_arranged_genes_clr = c(
-  eightcell_background_genes_clr,
-  eightcell_paternal_genes_clr,
-  eightcell_maternal_genes_clr
-)
-
-eightcell_TE_arranged_df_clr = data.frame( type       = eightcell_TE_labels_clr,
-                                      imprinted  = eightcell_TE_imprinted_clr,
-                                      transcript = eightcell_arranged_genes_clr,
-                                      TE         = eightcell_arranged_TE_clr,
-                                      rna        = eightcell_arranged_rna_clr )
-
-
-
-
-
-sample_eightcell_clr = matchit(imprinted~rna, data = eightcell_TE_arranged_df_clr )
-
-sample_eightcell_clr
-
-
-matched_eightcell_clr = match.data(sample_eightcell_clr)
-
-matched_eightcell_clr
-
-boxplot( log2(matched_eightcell_clr$rna) ~ matched_eightcell_clr$imprinted )
-
-boxplot( log2(matched_eightcell_clr$rna) ~ matched_eightcell_clr$type )
-
-boxplot( log2(matched_eightcell_clr$TE) ~ matched_eightcell_clr$type )
-
-boxplot( (matched_eightcell_clr$TE) ~ matched_eightcell_clr$type )
-
-```
-
-
-```{r echo=FALSE,warning=FALSE}
-
-
-
-wilcox.test( matched_eightcell_clr[matched_eightcell_clr$type == "background",]$TE, matched_eightcell_clr[matched_eightcell_clr$type == "maternal",]$TE  )
-
-wilcox.test( matched_eightcell_clr[matched_eightcell_clr$type == "background",]$TE, matched_eightcell_clr[matched_eightcell_clr$type == "paternal",]$TE  )
-
-wilcox.test( matched_eightcell_clr[matched_eightcell_clr$type == "paternal",]$TE, matched_eightcell_clr[matched_eightcell_clr$type == "maternal",]$TE  )
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -747,7 +597,7 @@ fourcell_TE =
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_fourcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "fourcell_TE_clr"  , 
+       picker_name      = "fourcell_TE"  , 
        paternal_genes   = fourcell_paternal_genes_bootstrap, 
        maternal_genes   = fourcell_maternal_genes_bootstrap, 
        background_genes = fourcell_background_genes_bootstrap)
@@ -826,6 +676,71 @@ four_cell_snp_filtered[four_cell_snp_filtered$paternal_ratio == 1,]
 
 ```
 
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+fourcell_TE_cpm = 
+  mymain(
+       TE_df            = TE_df_cpm, 
+       rna_averages     = rnaseq_fourcell_averages_cpm, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "fourcell_TE"  , 
+       paternal_genes   = fourcell_paternal_genes_bootstrap, 
+       maternal_genes   = fourcell_maternal_genes_bootstrap, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+fourcell_TE_cpm
+
+
+
+sample_fourcell_cpm = matchit(imprinted~rna + cds_length, data = fourcell_TE_cpm )
+
+sample_fourcell_cpm
+
+
+matched_fourcell_cpm = match.data(sample_fourcell_cpm)
+
+matched_fourcell_cpm
+
+boxplot( log2(fourcell_TE_cpm$rna) ~ fourcell_TE_cpm$imprinted )
+
+boxplot( log2(matched_fourcell_cpm$rna) ~ matched_fourcell_cpm$imprinted )
+
+boxplot( log2(matched_fourcell_cpm$rna) ~ matched_fourcell_cpm$type )
+
+boxplot( fourcell_TE_cpm$TE ~ fourcell_TE_cpm$type )
+
+boxplot( matched_fourcell_cpm$TE ~ matched_fourcell_cpm$type )
+
+
+plot(density( log2( matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_fourcell_cpm[matched_fourcell_cpm$type == "background",]$cds_length  )   ), col = "red" )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( fourcell_TE_cpm[fourcell_TE_cpm$type == "background", ]$TE, fourcell_TE_cpm[fourcell_TE_cpm$type == "maternal", ]$TE  )
+
+wilcox.test( fourcell_TE_cpm[fourcell_TE_cpm$type == "background", ]$TE, fourcell_TE_cpm[fourcell_TE_cpm$type == "paternal", ]$TE  )
+
+wilcox.test( fourcell_TE_cpm[fourcell_TE_cpm$type == "background", ]$TE, c(fourcell_TE_cpm[fourcell_TE_cpm$type == "paternal", ]$TE, fourcell_TE_cpm[fourcell_TE_cpm$type == "maternal", ]$TE)  )
+
+wilcox.test( fourcell_TE_cpm[fourcell_TE_cpm$type == "maternal", ]$TE, fourcell_TE_cpm[fourcell_TE_cpm$type == "paternal", ]$TE  )
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, c(matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE)  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE  )
+```
 
 ```{r echo=FALSE,warning=FALSE}
 
@@ -834,7 +749,7 @@ eightcell_TE =
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_eightcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "eightcell_TE_clr"  , 
+       picker_name      = "eightcell_TE"  , 
        paternal_genes   = eightcell_paternal_genes_bootstrap, 
        maternal_genes   = eightcell_maternal_genes_bootstrap, 
        background_genes = eightcell_background_genes_bootstrap)
@@ -889,6 +804,72 @@ wilcox.test( eightcell_TE[eightcell_TE$type == "background", ]$TE, c(eightcell_T
 wilcox.test( matched_eightcell[matched_eightcell$type == "maternal", ]$TE, matched_eightcell[matched_eightcell$type == "paternal", ]$TE  )
 ```
 
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+eightcell_TE_cpm = 
+  mymain(
+       TE_df            = TE_df_cpm, 
+       rna_averages     = rnaseq_eightcell_averages_cpm, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "eightcell_TE"  , 
+       paternal_genes   = eightcell_paternal_genes_bootstrap, 
+       maternal_genes   = eightcell_maternal_genes_bootstrap, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+eightcell_TE_cpm
+
+
+
+sample_eightcell_cpm = matchit(imprinted~rna + cds_length, data = eightcell_TE_cpm )
+
+sample_eightcell_cpm
+
+
+matched_eightcell_cpm = match.data(sample_eightcell_cpm)
+
+matched_eightcell_cpm
+
+boxplot( log2(eightcell_TE_cpm$rna) ~ eightcell_TE_cpm$imprinted )
+
+boxplot( log2(matched_eightcell_cpm$rna) ~ matched_eightcell_cpm$imprinted )
+
+boxplot( log2(matched_eightcell_cpm$rna) ~ matched_eightcell_cpm$type )
+
+boxplot( eightcell_TE_cpm$TE ~ eightcell_TE_cpm$type )
+
+boxplot( matched_eightcell_cpm$TE ~ matched_eightcell_cpm$type )
+
+
+plot(density( log2( matched_eightcell_cpm[matched_eightcell_cpm$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_eightcell_cpm[matched_eightcell_cpm$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_eightcell_cpm[matched_eightcell_cpm$type == "background",]$cds_length  )   ), col = "red" )
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( eightcell_TE_cpm[eightcell_TE_cpm$type == "background", ]$TE, eightcell_TE_cpm[eightcell_TE_cpm$type == "maternal", ]$TE  )
+
+wilcox.test( eightcell_TE_cpm[eightcell_TE_cpm$type == "background", ]$TE, eightcell_TE_cpm[eightcell_TE_cpm$type == "paternal", ]$TE  )
+
+wilcox.test( eightcell_TE_cpm[eightcell_TE_cpm$type == "background", ]$TE, c(eightcell_TE_cpm[eightcell_TE_cpm$type == "paternal", ]$TE, eightcell_TE_cpm[eightcell_TE_cpm$type == "maternal", ]$TE)  )
+
+wilcox.test( eightcell_TE_cpm[eightcell_TE_cpm$type == "maternal", ]$TE, eightcell_TE_cpm[eightcell_TE_cpm$type == "paternal", ]$TE  )
+```
+
+```{r echo=FALSE,warning=FALSE}
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, c(matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE)  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE  )
+```
+
 
 ## Mono Allelic Genes
 
@@ -926,7 +907,7 @@ mono_allelic_eightcell_TE =
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_eightcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "eightcell_TE_clr"  , 
+       picker_name      = "eightcell_TE"  , 
        paternal_genes   = mono_allelic_eightcell_paternal_genes, 
        maternal_genes   = mono_allelic_eightcell_maternal_genes, 
        background_genes = eightcell_background_genes_bootstrap)
@@ -939,7 +920,7 @@ mono_allelic_fourcell_TE =
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_fourcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "fourcell_TE_clr"  , 
+       picker_name      = "fourcell_TE"  , 
        paternal_genes   = mono_allelic_fourcell_paternal_genes, 
        maternal_genes   = mono_allelic_fourcell_maternal_genes, 
        background_genes = fourcell_background_genes_bootstrap)
@@ -1172,113 +1153,165 @@ multiple_snp_supported_eightcell_maternal_genes
 
 set.seed(3)
 
-fourcell_TE = 
+fourcell_multiple_snp_TE = 
   mymain(
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_fourcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "fourcell_TE_clr"  , 
+       picker_name      = "fourcell_TE"  , 
        paternal_genes   = multiple_snp_supported_fourcell_paternal_genes, 
        maternal_genes   = multiple_snp_supported_fourcell_maternal_genes, 
        background_genes = fourcell_background_genes_bootstrap)
 
-fourcell_TE
+fourcell_multiple_snp_TE
 
 
 
-sample_fourcell = matchit(imprinted~rna + cds_length, data = fourcell_TE )
+sample_multiple_snp_fourcell = matchit(imprinted~rna + cds_length, data = fourcell_multiple_snp_TE )
 
-sample_fourcell
-
-
-matched_fourcell = match.data(sample_fourcell)
-
-matched_fourcell
-
-boxplot( log2(fourcell_TE$rna) ~ fourcell_TE$imprinted )
-
-boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$imprinted )
-
-boxplot( log2(matched_fourcell$rna) ~ matched_fourcell$type )
-
-boxplot( fourcell_TE$TE ~ fourcell_TE$type )
-
-boxplot( matched_fourcell$TE ~ matched_fourcell$type )
+sample_multiple_snp_fourcell
 
 
-plot(density( log2( matched_fourcell[matched_fourcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+matched_multiple_snp_fourcell = match.data(sample_multiple_snp_fourcell)
 
-lines(density( log2( matched_fourcell[matched_fourcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+matched_multiple_snp_fourcell
 
-lines(density( log2( matched_fourcell[matched_fourcell$type == "background",]$cds_length  )   ), col = "red" )
+boxplot( log2(fourcell_multiple_snp_TE$rna) ~ fourcell_multiple_snp_TE$imprinted )
+
+boxplot( log2(matched_multiple_snp_fourcell$rna) ~ matched_multiple_snp_fourcell$imprinted )
+
+boxplot( log2(matched_multiple_snp_fourcell$rna) ~ matched_multiple_snp_fourcell$type )
+
+boxplot( fourcell_multiple_snp_TE$TE ~ fourcell_multiple_snp_TE$type )
+
+boxplot( matched_multiple_snp_fourcell$TE ~ matched_multiple_snp_fourcell$type )
+
+
+plot(density( log2( matched_multiple_snp_fourcell[matched_multiple_snp_fourcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.6) )
+
+lines(density( log2( matched_multiple_snp_fourcell[matched_multiple_snp_fourcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_multiple_snp_fourcell[matched_multiple_snp_fourcell$type == "background",]$cds_length  )   ), col = "red" )
 ```
 
 
 ```{r echo=FALSE,warning=FALSE}
-wilcox.test(  fourcell_TE[fourcell_TE$imprinted == 0, ]$TE, fourcell_TE[fourcell_TE$imprinted == 1, ]$TE )
+wilcox.test(  fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$imprinted == 0, ]$TE, fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$imprinted == 1, ]$TE )
 
-wilcox.test(  matched_fourcell[matched_fourcell$imprinted == 0, ]$TE, matched_fourcell[matched_fourcell$imprinted == 1, ]$TE )
+wilcox.test(  matched_multiple_snp_fourcell[matched_multiple_snp_fourcell$imprinted == 0, ]$TE, matched_multiple_snp_fourcell[matched_multiple_snp_fourcell$imprinted == 1, ]$TE )
 
-wilcox.test(  fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE )
+wilcox.test(  fourcell_multiple_snp_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE )
 
-wilcox.test(  fourcell_TE[fourcell_TE$type == "background", ]$TE, fourcell_TE[fourcell_TE$type == "maternal", ]$TE )
+wilcox.test(  fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$type == "background", ]$TE, fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$type == "maternal", ]$TE )
 
-wilcox.test(  fourcell_TE[fourcell_TE$type == "maternal", ]$TE, fourcell_TE[fourcell_TE$type == "paternal", ]$TE )
+wilcox.test(  fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$type == "maternal", ]$TE, fourcell_multiple_snp_TE[fourcell_multiple_snp_TE$type == "paternal", ]$TE )
 ```
+
 
 ```{r echo=FALSE,warning=FALSE}
 
 set.seed(3)
 
-eightcell_TE = 
+fourcell_mono_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_fourcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "fourcell_TE"  , 
+       paternal_genes   = mono_allelic_fourcell_paternal_genes, 
+       maternal_genes   = mono_allelic_fourcell_maternal_genes, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+
+sample_mono_fourcell = matchit(imprinted~rna + cds_length, data = fourcell_mono_TE )
+
+matched_mono_fourcell = match.data(sample_mono_fourcell)
+
+
+eightcell_mono_TE = 
   mymain(
        TE_df            = TE_df_clr, 
        rna_averages     = rnaseq_eightcell_averages_clr, 
        gene_lengths     = region_lengths, 
-       picker_name      = "eightcell_TE_clr"  , 
+       picker_name      = "eightcell_TE"  , 
+       paternal_genes   = mono_allelic_eightcell_paternal_genes, 
+       maternal_genes   = mono_allelic_eightcell_maternal_genes, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+
+sample_mono_eightcell = matchit(imprinted~rna + cds_length, data = eightcell_mono_TE )
+
+matched_mono_eightcell = match.data(sample_mono_eightcell)
+
+
+
+
+```
+
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+set.seed(3)
+
+eightcell_multiple_snp_TE = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_eightcell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "eightcell_TE"  , 
        paternal_genes   = multiple_snp_supported_eightcell_paternal_genes, 
        maternal_genes   = multiple_snp_supported_eightcell_maternal_genes, 
        background_genes = eightcell_background_genes_bootstrap)
 
-eightcell_TE
+eightcell_multiple_snp_TE
 
 
 
-sample_eightcell = matchit(imprinted~rna + cds_length, data = eightcell_TE )
+sample_multiple_snp_eightcell = matchit(imprinted~rna + cds_length, data = eightcell_multiple_snp_TE )
 
-sample_eightcell
-
-
-matched_eightcell = match.data(sample_eightcell)
-
-matched_eightcell
-
-boxplot( log2(eightcell_TE$rna) ~ eightcell_TE$imprinted )
-
-boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$imprinted )
-
-boxplot( log2(matched_eightcell$rna) ~ matched_eightcell$type )
-
-boxplot( eightcell_TE$TE ~ eightcell_TE$type )
-
-boxplot( matched_eightcell$TE ~ matched_eightcell$type )
+sample_multiple_snp_eightcell
 
 
-plot(density( log2( matched_eightcell[matched_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.8) )
+matched_multiple_snp_eightcell = match.data(sample_multiple_snp_eightcell)
 
-lines(density( log2( matched_eightcell[matched_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+matched_multiple_snp_eightcell
 
-lines(density( log2( matched_eightcell[matched_eightcell$type == "background",]$cds_length  )   ), col = "red" )
+boxplot( log2(eightcell_multiple_snp_TE$rna) ~ eightcell_multiple_snp_TE$imprinted )
+
+boxplot( log2(matched_multiple_snp_eightcell$rna) ~ matched_multiple_snp_eightcell$imprinted )
+
+boxplot( log2(matched_multiple_snp_eightcell$rna) ~ matched_multiple_snp_eightcell$type )
+
+boxplot( eightcell_multiple_snp_TE$TE ~ eightcell_multiple_snp_TE$type )
+
+boxplot( matched_multiple_snp_eightcell$TE ~ matched_multiple_snp_eightcell$type )
+
+
+plot(density( log2( matched_multiple_snp_eightcell[matched_multiple_snp_eightcell$type == "maternal",]$cds_length  )   ), ylim = c(0, 0.8) )
+
+lines(density( log2( matched_multiple_snp_eightcell[matched_multiple_snp_eightcell$type == "paternal",]$cds_length  )   ), col = "blue" )
+
+lines(density( log2( matched_multiple_snp_eightcell[matched_multiple_snp_eightcell$type == "background",]$cds_length  )   ), col = "red" )
 ```
 
 ```{r echo=FALSE,warning=FALSE}
-wilcox.test(  eightcell_TE[eightcell_TE$imprinted == 0, ]$TE, eightcell_TE[eightcell_TE$imprinted == 1, ]$TE )
+wilcox.test(  eightcell_multiple_snp_TE[eightcell_multiple_snp_TE$imprinted == 0, ]$TE, eightcell_multiple_snp_TE[eightcell_multiple_snp_TE$imprinted == 1, ]$TE )
 
-wilcox.test(  matched_eightcell[matched_eightcell$imprinted == 0, ]$TE, matched_eightcell[matched_eightcell$imprinted == 1, ]$TE )
+wilcox.test(  matched_multiple_snp_eightcell[matched_multiple_snp_eightcell$imprinted == 0, ]$TE, matched_multiple_snp_eightcell[matched_multiple_snp_eightcell$imprinted == 1, ]$TE )
 ```
 
 
 ## Comparison with GSE80810
+
+In [Borensztein M, ..., Heard. E., Xist-dependent imprinted X inactivation and the early developmental consequences of its failure] (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5337400/), they crossed 
+females from the strain C57BL/6J  with males from the strain Cast/EiJ. They called this crossing **BC**.  We compared our 4cell and 8cell data to their wild type BC crossings.
+They reported the paternal ratios for individual replicates. So we averaged the ratios to obtain a single comparison for each cell number (4 cell and 8cell). 
+
+We made our comparison directional-wise. Namely, to compare our paternal genes, we counted the  genes with ratio > 0.5 and for maternal genes, we counted the genes with ratio < 0.5 in Borensztein et. al.
+
 
 ```{r echo=FALSE,warning=FALSE}
 GSE80810_allelic_ratios = read.csv(GSE80810_allelic_ratio_file)
@@ -1318,7 +1351,1188 @@ print(c("4 cell maternal", GSE80810_4C_maternal_agreements, "agreements out of "
 
 ```
 
+## Scatter Plot of Paternal Ratios
+
+```{r echo=FALSE, warning=FALSE}
+
+snp_ratios_merged = merge(  four_cell_snp_filtered, eight_cell_snp_filtered,
+                           by.x = "gene", by.y = "gene", all = T  )
+
+snp_ratios_merged = snp_ratios_merged[, c(1,6,12)]
+
+colnames(snp_ratios_merged) = c("gene", "fourcell_ratio", "eightcell_ratio")
+
+decide_snp_class_pre = function(gene, 
+                                fourcell_paternal_genes, fourcell_maternal_genes,
+                                eightcell_maternal_genes, eightcell_paternal_genes){
+
+  significant_fourcell_genes  = c(fourcell_paternal_genes, fourcell_maternal_genes)
+  significant_eightcell_genes = c(eightcell_maternal_genes, eightcell_paternal_genes)
+  
+  int_4_8 = intersect(significant_fourcell_genes, significant_eightcell_genes)
+  
+  if(gene %in% int_4_8  ){
+    return("4_and_8")
+  } 
+  else if(gene %in% significant_fourcell_genes){
+    return("4")
+  }
+  else if(gene %in% significant_eightcell_genes){
+    return("8")
+  }
+  else {
+    return("None")
+  }
+}
+
+decide_snp_class = Vectorize(decide_snp_class_pre, vectorize.args = "gene")
+
+
+plot_snp_scatter = function(this_title , snp_ratios, 
+                            fourcell_paternal_genes, fourcell_maternal_genes,
+                            eightcell_maternal_genes, eightcell_paternal_genes  ){
+  
+  tick_offset = 0.06
+
+  tick_positions = c(0.7, 0.3, 1, 0)
+  tick_labels    = c("0.7", "0.3", "1.0", "0.0")
+  
+  
+  
+  snp_ratios$gene_type = decide_snp_class(snp_ratios$gene,
+                                          fourcell_paternal_genes = fourcell_paternal_genes,
+                                          fourcell_maternal_genes = fourcell_maternal_genes,
+                                          eightcell_maternal_genes = eightcell_maternal_genes,
+                                          eightcell_paternal_genes = eightcell_paternal_genes)
+  
+  
+  
+  snp_ratios$gene_type = 
+    factor(snp_ratios$gene_type, 
+         labels = c("4 & 8 cell","4 cell", "8 cell", "non-specific"),
+         levels = c("4_and_8", "4", "8", "None"))
+  
+  
+  ratio_scatter_plot = 
+    ggplot( snp_ratios, aes(x = fourcell_ratio, y = eightcell_ratio, color = gene_type) ) +
+
+      geom_point( alpha = 0.4, size = 0.5) + theme_bw() + 
+            theme(
+            panel.border      = element_blank(),
+            panel.grid        = element_blank(),
+            plot.title        = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            panel.background  = element_blank(),
+            axis.text       = element_blank(),
+            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.ticks        = element_blank(),
+            legend.background = element_blank()
+            #legend.position   = "none"
+          ) +
+      geom_hline(yintercept=0.5, size = 0.35) +
+      geom_vline(xintercept=0.5, size = 0.35) + 
+      scale_color_manual(values = c(UTR5_BLUE, CDS_GREEN, UTR3_GREEN ,"gray") ) +
+      labs(title = this_title, x = "4 cell", y = "8 cell", color = "Type")
+  
+  ratio_scatter_plot = 
+    ratio_scatter_plot + 
+    annotate("text", 
+              label = c("0.5",tick_labels), 
+              x = rep( 0.5 - tick_offset , 5  ), 
+              y = c(0.5 - tick_offset, tick_positions), size = 3) +
+    annotate("text", 
+              label =tick_labels, 
+              y = rep( 0.5 - tick_offset , 4  ), 
+              x = tick_positions, size = 3)
+     
+    ratio_scatter_plot = 
+      ratio_scatter_plot + 
+        geom_segment(data = data.frame(w = c(tick_positions, tick_positions)), 
+                     aes(x     = c(rep(0.5 - tick_offset*0.2, length(tick_positions)), tick_positions) , 
+                         xend = c( rep( 0.5 + tick_offset*0.2, length(tick_positions) ), tick_positions),
+                         y = c(tick_positions, rep(0.5 - tick_offset*0.2, length(tick_positions))), 
+                         yend = c(tick_positions, rep(0.5 + tick_offset*0.2, length(tick_positions))) ), 
+                     color = "black", size = 0.25 )
+    
+    return(ratio_scatter_plot)
+}
+
+
+
+
+
+
+```
+
+
 ```{r echo=FALSE,warning=FALSE}
+scatter_plot_of_bootstrapped = 
+  plot_snp_scatter("Paternal Ratios" , 
+                   snp_ratios = snp_ratios_merged, 
+                   fourcell_paternal_genes = fourcell_paternal_genes_bootstrap, 
+                   fourcell_maternal_genes = fourcell_maternal_genes_bootstrap,
+                   eightcell_maternal_genes = eightcell_maternal_genes_bootstrap, 
+                   eightcell_paternal_genes = eightcell_paternal_genes_bootstrap  )
+  
+scatter_plot_of_bootstrapped
+```
+
+## Common genes
+
+We determine the number of common (paternal and maternal) genes between 4 cell and 8 cell stages.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+generate_venn_diagram = function( fourcell_set, eightcell_set, title  ){
+
+  result = 
+  venn.diagram(  x = list(fourcell_set, eightcell_set ),
+                 category.names = c("4 cell", "8 Cell"),
+                 main = title, 
+                 filename = NULL, 
+                 disable.logging = T,
+                 output   = F,
+                 inverted = T,
+                 
+                 # Numbers
+                 fontfamily = "sans",
+                 cex = 0.6,
+                 
+                 # Circles
+                 lwd = 1,
+                 lty = 'blank',
+                 fill = c(CDS_GREEN, UTR3_GREEN),
+                         
+                 imagetype="svg" ,
+                 height = 300 , 
+                 width = 480 , 
+                 resolution = PDF_resolution,
+                 
+                 cat.cex = 0.6,
+                 cat.fontfamily = "sans",
+                 cat.pos = c(30,330),
+                 cat.dist = c(0.04, 0.04 ) )
+
+}
+
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+venn_paternal_genes_bootstrap = 
+  generate_venn_diagram( fourcell_set   =  fourcell_paternal_genes_bootstrap, 
+                         eightcell_set  = eightcell_paternal_genes,
+                         title          = "Paternal Genes"  )
+
+venn_maternal_genes_bootstrap = 
+  generate_venn_diagram( fourcell_set   =  fourcell_maternal_genes_bootstrap, 
+                         eightcell_set  = eightcell_maternal_genes,
+                         title          = "Maternal Genes"  )
+
+pdf("pdf/venn_bootstrap.pdf", width = 1.5, height = 1.5)
+grid.draw(venn_maternal_genes_bootstrap)
+grid.newpage()
+grid.draw(venn_paternal_genes_bootstrap)
+dev.off()
+
+grid.draw(venn_maternal_genes_bootstrap)
+grid.newpage()
+grid.draw(venn_paternal_genes_bootstrap)
+grid.newpage()
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+scatter_plot_of_multisnp = 
+  plot_snp_scatter("Multi SNP Genes" , 
+                   snp_ratios = snp_ratios_merged, 
+                   fourcell_paternal_genes = multiple_snp_supported_fourcell_paternal_genes, 
+                   fourcell_maternal_genes = multiple_snp_supported_fourcell_maternal_genes,
+                   eightcell_maternal_genes = multiple_snp_supported_eightcell_maternal_genes, 
+                   eightcell_paternal_genes = multiple_snp_supported_eightcell_paternal_genes  )
+  
+
+scatter_plot_of_multisnp
+```
+
+```{r echo=FALSE,warning=FALSE}
+venn_paternal_genes_multisnp = 
+  generate_venn_diagram( fourcell_set   =  multiple_snp_supported_fourcell_paternal_genes, 
+                         eightcell_set  = multiple_snp_supported_eightcell_paternal_genes,
+                         title          = "Paternal Genes"  )
+
+venn_maternal_genes_multisnp = 
+  generate_venn_diagram( fourcell_set   =  multiple_snp_supported_fourcell_maternal_genes, 
+                         eightcell_set  = multiple_snp_supported_eightcell_maternal_genes,
+                         title          = "Maternal Genes"  )
+
+pdf("pdf/venn_multisnp.pdf", width = 1.5, height = 1.5)
+grid.draw(venn_maternal_genes_multisnp)
+grid.newpage()
+grid.draw(venn_paternal_genes_multisnp)
+dev.off()
+
+grid.draw(venn_maternal_genes_multisnp)
+grid.newpage()
+grid.draw(venn_paternal_genes_multisnp)
+grid.newpage()
+```
+
+```{r echo=FALSE,warning=FALSE}
+scatter_plot_of_monoallelic = 
+  plot_snp_scatter("Monoallelic Genes" , 
+                   snp_ratios = snp_ratios_merged, 
+                   fourcell_paternal_genes = mono_allelic_fourcell_paternal_genes, 
+                   fourcell_maternal_genes = mono_allelic_fourcell_maternal_genes,
+                   eightcell_maternal_genes = mono_allelic_eightcell_maternal_genes, 
+                   eightcell_paternal_genes = mono_allelic_eightcell_paternal_genes  )
+  
+scatter_plot_of_monoallelic
+```
+
+```{r echo=FALSE,warning=FALSE}
+venn_paternal_genes_mono = 
+  generate_venn_diagram( fourcell_set   =  mono_allelic_fourcell_paternal_genes, 
+                         eightcell_set  = mono_allelic_eightcell_paternal_genes,
+                         title          = "Paternal Genes"  )
+
+venn_maternal_genes_mono = 
+  generate_venn_diagram( fourcell_set   =  mono_allelic_fourcell_maternal_genes, 
+                         eightcell_set  = mono_allelic_eightcell_maternal_genes,
+                         title          = "Maternal Genes"  )
+
+pdf("pdf/venn_mono.pdf", width = 1.5, height = 1.5)
+grid.draw(venn_maternal_genes_mono)
+grid.newpage()
+grid.draw(venn_paternal_genes_mono)
+dev.off()
+
+grid.draw(venn_maternal_genes_mono)
+grid.newpage()
+grid.draw(venn_paternal_genes_mono)
+grid.newpage()
+```
+
+```{r echo=FALSE,warning=FALSE}
+ 
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+
+save_plot_pdf("scatter_plot_of_bootstrapped_with_legend.pdf", scatter_plot_of_bootstrapped, width = 3.6, height = 2 )
+save_plot_pdf("scatter_plot_of_bootstrapped_no_legend.pdf", scatter_plot_of_bootstrapped + theme(legend.position = "none"), width = 2, height = 2 )
+
+save_plot_pdf("scatter_plot_of_multisnp_with_legend.pdf", scatter_plot_of_multisnp, width = 3.6, height = 2 )
+save_plot_pdf("scatter_plot_of_multisnp_no_legend.pdf", scatter_plot_of_multisnp + theme(legend.position = "none"), width = 2, height = 2 )
+
+save_plot_pdf("scatter_plot_of_monoallelic_with_legend.pdf", scatter_plot_of_monoallelic, width = 3.6, height = 2 )
+save_plot_pdf("scatter_plot_of_monoallelic_no_legend.pdf", scatter_plot_of_monoallelic + theme(legend.position = "none"), width = 2, height = 2 )
+```
+
+## Barplots of the Manuscript
+
+```{r echo=FALSE,warning=FALSE}
+
+twoplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F){
+  
+  TE_df$imprinted_chr = as.character(TE_df$imprinted)
+  
+  p = ggplot( TE_df, aes(x = imprinted_chr, y = TE, fill = imprinted_chr) )
+  
+  if(type == "violin"){
+    p = p + geom_violin(draw_quantiles = c(0.5, 0.5), scale = "count", trim = FALSE, na.rm = TRUE)
+  }
+  else{
+    p = p + geom_boxplot(outlier.shape = NA, varwidth = T)
+    if(jitter){
+      p = p + geom_jitter(size = 1, alpha = 0.3)
+    }
+  }
+  p = p +
+    scale_y_continuous(limits = c(0, ymax)) + 
+    theme_bw() +
+    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            panel.border = element_blank(),
+            panel.grid   = element_blank(),
+            axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.line.y      = element_line(colour = "black", size = 0.35),
+            legend.title      = element_blank(),
+          legend.position     = "None"  ) + 
+    scale_x_discrete(labels = c("Non-specific", "Allele Specific")) + 
+    labs(title = title, 
+           x     = "Genes", 
+           y     = "TE") + 
+    scale_fill_manual(values=c("gray", this_color))
+  
+  return(p)
+}
+
+
+TWO_STAT = stat_compare_means( label.x = 1.4, size = 3, na.rm = F, method = "wilcox", method.args = list(tol.root = 1e-4, digits.rank = Inf, alternative = "two.sided" ) )
+```
+
+```{r echo=FALSE,warning=FALSE}
+threeplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F, selector = "TE"){
+  
+  TE_df["value"] = TE_df[selector]
+  
+  p = ggplot( TE_df, aes(x = type, y = value, fill = type) )
+  
+  if(type == "violin"){
+    p = p + geom_violin(draw_quantiles = c(0.5, 0.5), scale = "count")
+  }
+  else{
+    p = p + geom_boxplot(outlier.shape = NA, varwidth = T, )
+    if(jitter){
+      p = p + geom_jitter(size = 1, alpha = 0.3)
+    }
+  }
+  p = p +
+    scale_y_continuous(limits = c(0, ymax)) + 
+    theme_bw() +
+    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            panel.border = element_blank(),
+            panel.grid   = element_blank(),
+            axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.line.y      = element_line(colour = "black", size = 0.35),
+            legend.title      = element_blank(),
+          legend.position     = "None"  ) + 
+    scale_x_discrete(labels = c("Non-specific", "Maternal", "Paternal")) + 
+    labs(title = title, 
+           x     = "Genes", 
+           y     = selector) + 
+    scale_fill_manual(values=c("gray", this_color, this_color))
+  
+  return(p)
+}
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+compare_cds_lengths = function(TE_df, title = "CDS Lengths", this_color = CDS_GREEN){
+  result = ggplot( TE_df, aes(x = cds_length ,  color = type) ) +
+    geom_density( aes(linetype = type)) + 
+     scale_linetype_manual(values=c("solid","twodash", "dotted") ) + 
+    scale_color_manual(values = c("gray", this_color, this_color)) + 
+    theme_bw() +
+    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+        panel.border = element_blank(),
+        panel.grid   = element_blank(),
+        axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.line.y      = element_line(colour = "black", size = 0.35),
+        axis.line.x      = element_line(colour = "black", size = 0.35),
+        legend.title      = element_blank() ) + 
+    labs(title = title, 
+       x     = "CDS Length", 
+       y     = "Density") +
+    scale_x_continuous(trans = "log2")
+
+  result = result + theme(legend.position = c(0.8,0.7))
+  
+  return(result)
+}
+
+```
+
+
+
+## Fourcell Bootstrapped
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_main_boxplot = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_main_boxplot + TWO_STAT
+
+
+p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+wilcox.test( fourcell_TE[fourcell_TE$imprinted == 1,]$TE, fourcell_TE[fourcell_TE$imprinted == 0,]$TE )
+#p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(fourcell_TE, title = "Four Cell TE", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(fourcell_TE, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(fourcell_TE, this_color = CDS_GREEN)
+```
+
+## Fourcell Bootstrapped CPM
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_main_boxplot = twoplot(fourcell_TE_cpm, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_main_boxplot + TWO_STAT
+
+
+p = twoplot(fourcell_TE_cpm, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+wilcox.test( fourcell_TE_cpm[fourcell_TE_cpm$imprinted == 1,]$TE, fourcell_TE_cpm[fourcell_TE_cpm$imprinted == 0,]$TE )
+#p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(fourcell_TE_cpm, title = "Four Cell TE", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(fourcell_TE_cpm, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(fourcell_TE_cpm, this_color = CDS_GREEN)
+```
+
+## Fourcell Matched
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_bootstrapped_matched_boxplot = twoplot(matched_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_bootstrapped_matched_boxplot + TWO_STAT
+
+
+p = twoplot(matched_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+wilcox.test( matched_fourcell[matched_fourcell$imprinted == 1,]$TE, matched_fourcell[matched_fourcell$imprinted == 0,]$TE )
+#p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(matched_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_fourcell, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_fourcell, this_color = CDS_GREEN)
+```
+## Fourcell Multi-SNP Supported
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_multisnp_boxplot = twoplot(fourcell_multiple_snp_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_multisnp_boxplot + TWO_STAT
+
+
+p = twoplot(fourcell_multiple_snp_TE, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(fourcell_multiple_snp_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(fourcell_multiple_snp_TE, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(fourcell_multiple_snp_TE, this_color = CDS_GREEN)
+```
+
+## Fourcell Mono-Allelic
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_mono_boxplot = twoplot(fourcell_mono_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_mono_boxplot + TWO_STAT
+
+
+p = twoplot(fourcell_mono_TE, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(fourcell_mono_TE, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(fourcell_mono_TE, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(fourcell_mono_TE, this_color = CDS_GREEN)
+```
+## Fourcell Matched Mono-Allelic
+
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_matched_mono_boxplot = twoplot(matched_mono_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+fourcell_matched_mono_boxplot + TWO_STAT
+
+
+p = twoplot(matched_mono_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_mono_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_mono_fourcell, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_mono_fourcell, this_color = CDS_GREEN)
+```
+
+## One Cell TE From Four Cell
+
+```{r echo=FALSE,warning=FALSE}
+
+onecell_TE_from_4 = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_onecell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "onecell_TE"  , 
+       paternal_genes   = fourcell_paternal_genes_bootstrap, 
+       maternal_genes   = fourcell_maternal_genes_bootstrap, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+sample_onecell_TE_from_4 = matchit(imprinted~rna + cds_length, data = onecell_TE_from_4 )
+
+
+matched_onecell_TE_from_4 = match.data(sample_onecell_TE_from_4)
+
+
+
+onecell_from_fourcell_boxplot = twoplot(matched_onecell_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+onecell_from_fourcell_boxplot + TWO_STAT
+
+
+p = twoplot(matched_onecell_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_onecell_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_onecell_TE_from_4, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_onecell_TE_from_4, this_color = CDS_GREEN)
+
+p = threeplot(onecell_TE_from_4, title = "Four Cell (Unmatched)", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = twoplot(onecell_TE_from_4, title = "Four Cell (Unmatched)", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+```
+
+
+
+## MII TE From Four Cell
+
+```{r echo=FALSE,warning=FALSE}
+
+mii_TE_from_4 = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_onecell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "mii_TE"  , 
+       paternal_genes   = fourcell_paternal_genes_bootstrap, 
+       maternal_genes   = fourcell_maternal_genes_bootstrap, 
+       background_genes = fourcell_background_genes_bootstrap)
+
+sample_mii_TE_from_4 = matchit(imprinted~rna + cds_length, data = mii_TE_from_4 )
+
+
+matched_mii_TE_from_4 = match.data(sample_mii_TE_from_4)
+
+
+
+mii_from_fourcell_boxplot = twoplot(matched_mii_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+mii_from_fourcell_boxplot + TWO_STAT
+
+
+p = twoplot(matched_mii_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_mii_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_mii_TE_from_4, title = "Four Cell RNA", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_mii_TE_from_4, this_color = CDS_GREEN)
+
+p = threeplot(mii_TE_from_4, title = "Four Cell (Unmatched)", this_color = CDS_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = twoplot(mii_TE_from_4, title = "Four Cell (Unmatched)", this_color = CDS_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## eightcell Bootstrapped
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_main_boxplot = twoplot(eightcell_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_main_boxplot + TWO_STAT
+
+
+p = twoplot(eightcell_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+wilcox.test( eightcell_TE[eightcell_TE$imprinted == 1,]$TE, eightcell_TE[eightcell_TE$imprinted == 0,]$TE )
+#p = twoplot(eightcell_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(eightcell_TE, title = "eight Cell TE", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(eightcell_TE, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(eightcell_TE, this_color = UTR3_GREEN)
+```
+## eightcell Bootstrapped CPM
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_main_boxplot = twoplot(eightcell_TE_cpm, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_main_boxplot + TWO_STAT
+
+
+p = twoplot(eightcell_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+#wilcox.test( eightcell_TE[eightcell_TE_cpm$imprinted == 1,]$TE, eightcell_TE[eightcell_TE$imprinted == 0,]$TE )
+#p = twoplot(eightcell_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(eightcell_TE_cpm, title = "eight Cell TE", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(eightcell_TE_cpm, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(eightcell_TE_cpm, this_color = UTR3_GREEN)
+```
+
+
+## eightcell Matched
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_bootstrapped_matched_boxplot = twoplot(matched_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_bootstrapped_matched_boxplot + TWO_STAT
+
+
+p = twoplot(matched_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+wilcox.test( matched_eightcell[matched_eightcell$imprinted == 1,]$TE, matched_eightcell[matched_eightcell$imprinted == 0,]$TE )
+#p = twoplot(eightcell_TE, title = "eight Cell", this_color = CDS_GREEN, type = "box", jitter = T)
+#p + TWO_STAT
+
+
+p = threeplot(matched_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_eightcell, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_eightcell, this_color = UTR3_GREEN)
+```
+## eightcell Multi-SNP Supported
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_multisnp_boxplot = twoplot(eightcell_multiple_snp_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_multisnp_boxplot + TWO_STAT
+
+
+p = twoplot(eightcell_multiple_snp_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(eightcell_multiple_snp_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(eightcell_multiple_snp_TE, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(eightcell_multiple_snp_TE, this_color = UTR3_GREEN)
+```
+
+## eightcell Mono-Allelic
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_mono_boxplot = twoplot(eightcell_mono_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_mono_boxplot + TWO_STAT
+
+
+p = twoplot(eightcell_mono_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(eightcell_mono_TE, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(eightcell_mono_TE, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(eightcell_mono_TE, this_color = UTR3_GREEN)
+```
+## eightcell Matched Mono-Allelic
+
+```{r echo=FALSE,warning=FALSE}
+
+eightcell_matched_mono_boxplot = twoplot(matched_mono_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+eightcell_matched_mono_boxplot + TWO_STAT
+
+
+p = twoplot(matched_mono_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_mono_eightcell, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_mono_eightcell, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_mono_eightcell, this_color = UTR3_GREEN)
+```
+
+## One Cell TE From eight Cell
+
+```{r echo=FALSE,warning=FALSE}
+
+onecell_TE_from_8 = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_onecell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "onecell_TE"  , 
+       paternal_genes   = eightcell_paternal_genes_bootstrap, 
+       maternal_genes   = eightcell_maternal_genes_bootstrap, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+sample_onecell_TE_from_8 = matchit(imprinted~rna + cds_length, data = onecell_TE_from_8 )
+
+
+matched_onecell_TE_from_8 = match.data(sample_onecell_TE_from_8)
+
+
+
+onecell_from_eightcell_boxplot = twoplot(matched_onecell_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+onecell_from_eightcell_boxplot + TWO_STAT
+
+
+p = twoplot(matched_onecell_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_onecell_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_onecell_TE_from_8, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_onecell_TE_from_8, this_color = UTR3_GREEN)
+
+p = threeplot(onecell_TE_from_8, title = "eight Cell (Unmatched)", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = twoplot(onecell_TE_from_8, title = "eight Cell (Unmatched)", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+```
+
+
+
+## MII TE From eight Cell
+
+```{r echo=FALSE,warning=FALSE}
+
+mii_TE_from_8 = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_onecell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "mii_TE"  , 
+       paternal_genes   = eightcell_paternal_genes_bootstrap, 
+       maternal_genes   = eightcell_maternal_genes_bootstrap, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+sample_mii_TE_from_8 = matchit(imprinted~rna + cds_length, data = mii_TE_from_8 )
+
+
+matched_mii_TE_from_8 = match.data(sample_mii_TE_from_8)
+
+
+
+mii_from_eightcell_boxplot = twoplot(matched_mii_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F)
+mii_from_eightcell_boxplot + TWO_STAT
+
+
+p = twoplot(matched_mii_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+
+p = threeplot(matched_mii_TE_from_8, title = "eight Cell", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = threeplot(matched_mii_TE_from_8, title = "eight Cell RNA", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 6, selector = "rna" )
+p = p + stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(5.25, 5.65) )
+p
+
+compare_cds_lengths(matched_mii_TE_from_8, this_color = UTR3_GREEN)
+
+p = threeplot(mii_TE_from_8, title = "eight Cell (Unmatched)", this_color = UTR3_GREEN, type = "box", jitter = F, ymax = 1.8)
+p = p +  stat_compare_means(comparisons = list(  c(1,2), c(1,3)  ), label.y = c(1.55, 1.65) )
+p
+
+p = twoplot(mii_TE_from_8, title = "eight Cell (Unmatched)", this_color = UTR3_GREEN, type = "violin", jitter = F)
+p + TWO_STAT
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+all_snps_eight_cell = raw_snps[raw_snps$experiment %in% experiments_eightcell, ]
+
+all_snps_eight_cell$transcript = unlist( lapply( strsplit(all_snps_eight_cell$transcript, split = "-" ) , "[[", 1)  )
+
+all_snps_four_cell = raw_snps[raw_snps$experiment %in% experiments_fourcell, ]
+
+all_snps_four_cell$transcript = unlist( lapply( strsplit(all_snps_four_cell$transcript, split = "-" ) , "[[", 1)  )
+
+mono_allelic_eightcell_maternal_genes
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+this_gene = "Slc24a5"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+this_gene = "Tubg2"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+```
+
+
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+mono_allelic_eightcell_paternal_genes
+
+eightcell_TE[eightcell_TE$gene %in% mono_allelic_eightcell_paternal_genes, ]
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+this_gene = "Prkce"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+this_gene = "Ptprh"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+
+this_gene = "Shc3"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+mono_allelic_fourcell_paternal_genes
+
+fourcell_TE[fourcell_TE$gene %in% mono_allelic_fourcell_paternal_genes, ]
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+this_gene = "Prkcz"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+this_gene = "Syt5"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+
+this_gene = "Atg10"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+mono_allelic_fourcell_maternal_genes
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+this_gene = "Tesc"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+this_gene = "Tacc2"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+a = all_snps_four_cell[all_snps_four_cell$transcript %in% fourcell_background_genes_bootstrap, ]
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+this_gene = "Actr5"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+this_gene = "Adam17"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+
+this_gene = "Anapc7"
+
+all_snps_four_cell[all_snps_four_cell$transcript == this_gene,]
+
+fourcell_TE[fourcell_TE$gene == this_gene , ]
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+b = all_snps_eight_cell[all_snps_eight_cell$transcript %in% eightcell_background_genes_bootstrap, ]
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+this_gene = "Plpp5"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+
+this_gene = "Pld3"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+
+this_gene = "Pik3c2a"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+
+
+this_gene = "Pemt"
+
+all_snps_eight_cell[all_snps_eight_cell$transcript == this_gene,]
+
+eightcell_TE[eightcell_TE$gene == this_gene , ]
+
+```
+
+
+```{r echo=FALSE,warning=FALSE}
+
+# Prepare the data structures for the plots
+## TO BE ADDED: Confidence interval for TE
+
+
+example_4cell_gene_list = c("Prkcz", "Tesc", "Anapc7" )
+example_4cell_TE_df = fourcell_TE[fourcell_TE$gene %in% example_4cell_gene_list, ]
+example_4cell_TE_df$stage = rep("4 cell", 3)
+
+example_8cell_gene_list = c("Shc3","Plpp5", "Tubg2" )
+example_8cell_TE_df     = eightcell_TE[eightcell_TE$gene %in% example_8cell_gene_list, ]
+example_8cell_TE_df$stage = rep("8 cell", 3)
+
+example_TE_df = rbind(example_4cell_TE_df, example_8cell_TE_df)
+example_TE_df
+
+example_fourcell_snps = all_snps_four_cell[all_snps_four_cell$transcript %in% example_4cell_gene_list,]
+example_fourcell_snps
+
+example_eightcell_snps = all_snps_eight_cell[all_snps_eight_cell$transcript %in% example_8cell_gene_list,]
+example_eightcell_snps
+
+fourcell_background_median_TE  = median(fourcell_TE[fourcell_TE$type == "background", ]$TE, na.rm = T )
+eightcell_background_median_TE = median(eightcell_TE[eightcell_TE$type == "background", ]$TE, na.rm = T )
+
+print( c(fourcell_background_median_TE, eightcell_background_median_TE ) )
+
+```
+
+
+
+```{r echo=FALSE,warning=FALSE}
+
+thick_width = 0.3
+
+plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
+  
+  p_colors = c("gray", CDS_GREEN, CDS_GREEN, gray, UTR3_GREEN, UTR3_GREEN) 
+  
+  p = ggplot(data = TE_df, aes(x = stage, y = TE)) + 
+    geom_point( aes(color = type, shape = gene), position = position_dodge(width = 0.2), size = 1.8 ) + 
+    geom_segment(data = data.frame(w = c(1, 2), m = c(fourcell_median, eightcell_median)), 
+             aes(x     = w - thick_width , 
+                 xend = w + thick_width,
+                 y = m, 
+                 yend =m ) , 
+             color = "#999999", size = 0.45 ) + 
+    theme_bw() + 
+    scale_color_manual(values=c("#999999", BURNT_ORANGE, UT_BLUE)) + 
+    labs(title = "Example Genes", y = "Translation Efficiency", x = "stage")
+  return(p)
+}
+
+plot_example_TE(example_TE_df, fourcell_median = fourcell_background_median_TE, eightcell_median = eightcell_background_median_TE)
 ```
 
 
@@ -1330,24 +2544,16 @@ print(c("4 cell maternal", GSE80810_4C_maternal_agreements, "agreements out of "
 ```
 
 
-```{r echo=FALSE,warning=FALSE}
-```
 
 
 ```{r echo=FALSE,warning=FALSE}
 ```
 
 
-```{r echo=FALSE,warning=FALSE}
-```
-
 
 ```{r echo=FALSE,warning=FALSE}
 ```
 
-
-```{r echo=FALSE,warning=FALSE}
-```
 
 
 ```{r echo=FALSE,warning=FALSE}
@@ -1355,4 +2561,8 @@ print(c("4 cell maternal", GSE80810_4C_maternal_agreements, "agreements out of "
 
 
 ```{r echo=FALSE,warning=FALSE}
+
+
+
 ```
+
