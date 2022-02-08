@@ -21,17 +21,41 @@ library(Seurat)
 library(VennDiagram)
 library(grDevices)
 library(ggpubr)
+library(RColorBrewer)
 ```
 
 ```{r constants,echo=FALSE,warning=FALSE}
 CONSTANT_ADDITION = 1
+
+FONT_LABEL_SIZE = 8
+FONT_TITLE_SIZE = 9
+
+PDF_resolution = 600
+FIGURE_FONT = "helvetica"
 ```
 
 
 ```{r setwd,echo=FALSE,warning=FALSE}
 
 #setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
-setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+#setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+
+MBOOK = T
+
+if(MBOOK){
+
+    setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+
+    PLOT_TITLE = element_text(hjust = 0.5,  face = "plain", size = FONT_TITLE_SIZE)
+    AXIS_TITLE  = element_text(face = "plain", size = FONT_LABEL_SIZE)
+}else{
+    setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+
+    PLOT_TITLE = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE)
+    AXIS_TITLE  = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE)
+
+}
+
 ```
 
 ```{r filepaths,echo=FALSE,warning=FALSE}
@@ -106,6 +130,8 @@ FONT_TITLE_SIZE = 9
 
 PDF_resolution = 600
 FIGURE_FONT = "helvetica"
+
+DETAILED_BARPLOT_FONT_SIZE = 7
 ```
 
 ```{r region_lengths,echo=FALSE,warning=FALSE}
@@ -1412,6 +1438,9 @@ plot_snp_scatter = function(this_title , snp_ratios,
          labels = c("4 & 8 cell","4 cell", "8 cell", "non-specific"),
          levels = c("4_and_8", "4", "8", "None"))
   
+  #snp_ratios = snp_ratios[(! is.na(snp_ratios$fourcell_ratio) & !is.na(snp_ratios$eightcell_ratio) ),]
+  
+
   
   ratio_scatter_plot = 
     ggplot( snp_ratios, aes(x = fourcell_ratio, y = eightcell_ratio, color = gene_type) ) +
@@ -1420,11 +1449,11 @@ plot_snp_scatter = function(this_title , snp_ratios,
             theme(
             panel.border      = element_blank(),
             panel.grid        = element_blank(),
-            plot.title        = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+            plot.title        = PLOT_TITLE,
             panel.background  = element_blank(),
             axis.text       = element_blank(),
-            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.title.y      = AXIS_TITLE,
+            axis.title.x      = AXIS_TITLE,
             axis.ticks        = element_blank(),
             legend.background = element_blank()
             #legend.position   = "none"
@@ -1433,6 +1462,9 @@ plot_snp_scatter = function(this_title , snp_ratios,
       geom_vline(xintercept=0.5, size = 0.35) + 
       scale_color_manual(values = c(UTR5_BLUE, CDS_GREEN, UTR3_GREEN ,"gray") ) +
       labs(title = this_title, x = "4 cell", y = "8 cell", color = "Type")
+  
+  
+ 
   
   ratio_scatter_plot = 
     ratio_scatter_plot + 
@@ -1444,7 +1476,9 @@ plot_snp_scatter = function(this_title , snp_ratios,
               label =tick_labels, 
               y = rep( 0.5 - tick_offset , 4  ), 
               x = tick_positions, size = 3)
-     
+  
+ 
+    
     ratio_scatter_plot = 
       ratio_scatter_plot + 
         geom_segment(data = data.frame(w = c(tick_positions, tick_positions)), 
@@ -1661,13 +1695,13 @@ twoplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = 
   p = p +
     scale_y_continuous(limits = c(0, ymax)) + 
     theme_bw() +
-    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+    theme(plot.title   = PLOT_TITLE,
             panel.border = element_blank(),
             panel.grid   = element_blank(),
-            axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.y       = AXIS_TITLE,
+            axis.text.x       = AXIS_TITLE,
+            axis.title.y      = AXIS_TITLE,
+            axis.title.x      = AXIS_TITLE,
             axis.line.y      = element_line(colour = "black", size = 0.35),
             legend.title      = element_blank(),
           legend.position     = "None"  ) + 
@@ -1703,13 +1737,13 @@ threeplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter 
   p = p +
     scale_y_continuous(limits = c(0, ymax)) + 
     theme_bw() +
-    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+    theme(plot.title   = PLOT_TITLE,
             panel.border = element_blank(),
             panel.grid   = element_blank(),
-            axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-            axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+            axis.text.y       = AXIS_TITLE,
+            axis.text.x       = AXIS_TITLE,
+            axis.title.y      = AXIS_TITLE,
+            axis.title.x      = AXIS_TITLE,
             axis.line.y      = element_line(colour = "black", size = 0.35),
             legend.title      = element_blank(),
           legend.position     = "None"  ) + 
@@ -1732,13 +1766,13 @@ compare_cds_lengths = function(TE_df, title = "CDS Lengths", this_color = CDS_GR
      scale_linetype_manual(values=c("solid","twodash", "dotted") ) + 
     scale_color_manual(values = c("gray", this_color, this_color)) + 
     theme_bw() +
-    theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+    theme(plot.title   = PLOT_TITLE,
         panel.border = element_blank(),
         panel.grid   = element_blank(),
-        axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
-        axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.y       = AXIS_TITLE,
+        axis.text.x       = AXIS_TITLE,
+        axis.title.y      = AXIS_TITLE,
+        axis.title.x      = AXIS_TITLE,
         axis.line.y      = element_line(colour = "black", size = 0.35),
         axis.line.x      = element_line(colour = "black", size = 0.35),
         legend.title      = element_blank() ) + 
@@ -2482,7 +2516,7 @@ eightcell_TE[eightcell_TE$gene == this_gene , ]
 
 # Prepare the data structures for the plots
 ## TO BE ADDED: Confidence interval for TE
-
+COUNT_NORMALIZATION_FACTOR = 100000
 
 example_4cell_gene_list = c("Prkcz", "Tesc", "Anapc7" )
 example_4cell_TE_df = fourcell_TE[fourcell_TE$gene %in% example_4cell_gene_list, ]
@@ -2495,19 +2529,244 @@ example_8cell_TE_df$stage = rep("8 cell", 3)
 example_TE_df = rbind(example_4cell_TE_df, example_8cell_TE_df)
 example_TE_df
 
-example_fourcell_snps = all_snps_four_cell[all_snps_four_cell$transcript %in% example_4cell_gene_list,]
-example_fourcell_snps
+## We added normalized counts
+all_snps_four_cell = 
+  all_snps_four_cell %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR )
 
+all_snps_eight_cell = 
+  all_snps_eight_cell %>% 
+  group_by(experiment) %>%
+  mutate( experiment_total = sum(paternal + maternal) ) %>%
+  mutate( paternal_per_k = (paternal / experiment_total)* COUNT_NORMALIZATION_FACTOR,
+          maternal_per_k = (maternal / experiment_total)*COUNT_NORMALIZATION_FACTOR )
+
+example_fourcell_snps = all_snps_four_cell[all_snps_four_cell$transcript %in% example_4cell_gene_list,]
+example_fourcell_snps = example_fourcell_snps[, c(1:5,13,14)]  
+  
 example_eightcell_snps = all_snps_eight_cell[all_snps_eight_cell$transcript %in% example_8cell_gene_list,]
-example_eightcell_snps
+example_eightcell_snps = example_eightcell_snps[, c(1:5, 13,14)]
+  example_eightcell_snps
 
 fourcell_background_median_TE  = median(fourcell_TE[fourcell_TE$type == "background", ]$TE, na.rm = T )
 eightcell_background_median_TE = median(eightcell_TE[eightcell_TE$type == "background", ]$TE, na.rm = T )
 
 print( c(fourcell_background_median_TE, eightcell_background_median_TE ) )
 
+## We will add two dummy experiments with 0 counts to 4cell
+## this way, the bar widths will be equal
+
+fourcell_e1_data = example_fourcell_snps[example_fourcell_snps$experiment == 	"20210607-RNAseq-4cell-cross-A",]
+fourcell_e1_data$maternal = 0
+fourcell_e1_data$paternal = 0
+fourcell_e1_data$maternal_per_k = 0
+fourcell_e1_data$paternal_per_k = 0
+fourcell_e1_data$experiment = "D1"
+
+
+example_fourcell_snps = rbind(example_fourcell_snps, fourcell_e1_data)
+fourcell_e1_data$experiment = "D2"
+example_fourcell_snps = rbind(example_fourcell_snps, fourcell_e1_data)
+example_fourcell_snps
 ```
 
+```{r echo=FALSE,warning=FALSE}
+
+
+format_y_axis = function(x){
+  return( sprintf("%.0f", x) )
+}
+
+make_y_axis = function(ymax){
+  if(ymax == 5){
+    result = c(0, 5)
+  }
+  else if(ymax %% 2 == 0){
+    result = c(0, ymax / 2, ymax)
+  } 
+  else if(ymax %% 3 == 0){
+    result = c(0, ymax / 3, 2*( ymax / 3 ) , ymax)
+  } 
+  else{
+    result = c(0, ymax)
+  }
+  
+  return(result)
+}
+
+y_scale_expand = c(0,0)
+
+
+
+generate_legend_unit = function(snp_df, gene){
+  
+  gene_data = 
+    snp_df %>%
+    filter( transcript == gene ) %>%
+    filter(paternal_per_k > 0 | maternal_per_k > 0)
+  
+  number_of_snps = length( unique(gene_data$position  ) )
+
+    barplot_colors = colorRampPalette(brewer.pal(9,"Blues"))( number_of_snps + 5 )[-seq(1,5)] 
+  
+  df = data.frame( x = rep(1,number_of_snps), y = rep(1,number_of_snps), position = seq(1,number_of_snps))
+  
+  p = ggplot(data=df, 
+             aes(x    = x, 
+                 y    = y, 
+                 fill = factor(position, levels = sort(unique( df$position  ) )  )  )  )  + 
+    geom_bar(stat="identity", width= 0.8, color = "black", size = 0.3) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.ticks.y=element_blank(),
+      plot.background = element_blank(),
+      axis.text.y = element_blank(),
+      plot.title = element_text(color = "black", size=7, face="bold", hjust = 0.5),
+    ) + 
+    scale_fill_manual(values = barplot_colors)  + 
+    #ggtitle(title_texts[[experiment_type]])
+    ggtitle( paste( as.character(number_of_snps), sep = " " ) )
+  
+  #if(experiment_type == "rna"){
+  #  p = p + scale_y_reverse()
+  #}
+  
+  return(p + rotate())
+}
+
+
+unit_snp_plot = function(snp_df, gene, allele_type = "paternal", ymax = 100){
+  
+  gene_data = snp_df[ snp_df$transcript == gene,]
+  
+  number_of_snps = length( unique(gene_data$position  ) )
+  
+  this_color_palette = colorRampPalette(brewer.pal(9,"Blues"))( number_of_snps + 5 )[-seq( 1,  5) ]
+  
+  yticks = make_y_axis(ymax)
+  
+  if(allele_type == "paternal"){
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = paternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  ) 
+  }else{
+    plot_base = ggplot(data=gene_data, 
+                       aes(x    = experiment, 
+                           y    = maternal_per_k, 
+                           fill = factor(position, levels = sort(unique( gene_data$position  ) )  )  )  )
+  }
+  
+  p = plot_base + 
+        geom_bar(stat="identity", width= 1) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = element_blank(),
+      axis.title.x     = element_blank(),
+      legend.position  = "none",
+      # plot.margin      = margin(5.5, 5.5, 0, 5.5),
+      axis.title.y     = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x=element_blank(),
+      #plot.background = background_canvas,
+      axis.text.y = element_text( face = "plain", size = DETAILED_BARPLOT_FONT_SIZE),
+      # axis.ticks.y=element_blank()
+    ) +
+    scale_fill_manual(values = this_color_palette)
+  
+    if(allele_type == "maternal"){
+      p = p + scale_y_reverse(labels = format_y_axis, 
+                                              limits = c(ymax, 0), 
+                                              breaks   = yticks,
+                                              expand = y_scale_expand )
+    }
+    else{
+      p = p + scale_y_continuous( labels = format_y_axis, 
+                                                  limits = c(0, ymax),
+                                                  breaks   = yticks,
+                                                  expand = y_scale_expand  )
+    }
+  
+  return(p)
+}
+
+
+plot_snps_of_gene = function(snp_df, gene){
+  
+  
+    this_title = ggdraw() + 
+    draw_label(
+      gene,
+      fontface   = 'plain',
+      size       = FONT_LABEL_SIZE,
+      angle      = 0
+    ) +
+    theme(
+      plot.margin = margin(0, 0, 0, 0)
+    )
+  
+  gene_sums = snp_df %>%
+    filter( transcript == gene ) %>%
+    group_by(experiment) %>%
+    mutate(paternal_sum = sum(paternal_per_k), maternal_sum = sum(maternal_per_k))
+  
+  ymax = max( max(gene_sums$paternal_sum), max( gene_sums$maternal_sum ) )
+  
+  paternal_plot = unit_snp_plot(snp_df, gene = gene, allele_type = "paternal", ymax = ymax)
+  maternal_plot = unit_snp_plot(snp_df, gene = gene, allele_type = "maternal", ymax = ymax)
+  
+  this_legend = generate_legend_unit(snp_df = snp_df, gene = gene)
+  this_plot = plot_grid(this_title, paternal_plot, maternal_plot, this_legend, ncol = 1, rel_heights = c(0.2,1,1, 0.4))
+  
+  return(this_plot)
+}
+
+unit_snp_plot(example_fourcell_snps, gene = "Anapc7", allele_type = "paternal")
+
+plot_snps_of_gene(example_fourcell_snps, gene = "Anapc7") 
+
+
+
+```
+```{r echo=FALSE,warning=FALSE}
+
+snp_plot_anapc7 = plot_snps_of_gene(example_fourcell_snps, gene = "Anapc7") 
+
+snp_plot_prkcz = plot_snps_of_gene(example_fourcell_snps, gene = "Prkcz")
+
+snp_plot_tesc = plot_snps_of_gene(example_fourcell_snps, gene = "Tesc")
+
+snp_plot_4cell = plot_grid(snp_plot_anapc7,  snp_plot_tesc, snp_plot_prkcz, nrow = 1)
+
+snp_plot_plpp5 = plot_snps_of_gene(example_eightcell_snps, gene = "Plpp5") 
+
+snp_plot_tubg2 = plot_snps_of_gene(example_eightcell_snps, gene = "Tubg2")
+
+snp_plot_shc3 = plot_snps_of_gene(example_eightcell_snps, gene = "Shc3")
+
+snp_plot8_cell = plot_grid(snp_plot_plpp5, snp_plot_tubg2, snp_plot_shc3, nrow = 1)
+snp_plot8_cell
+
+snp_pos_plot = plot_grid(snp_plot_4cell, snp_plot8_cell , nrow = 1)
+
+snp_pos_plot
+
+save_plot_pdf("snp_pos_plot.pdf", snp_pos_plot, width = 4, height = 2)
+#snp_plot_4cell
+
+
+```
 
 
 ```{r echo=FALSE,warning=FALSE}
@@ -2518,35 +2777,212 @@ plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
   
   p_colors = c("gray", CDS_GREEN, CDS_GREEN, gray, UTR3_GREEN, UTR3_GREEN) 
   
+  label_y_positions = TE_df$TE + c(0, 0.05, 0, 0, 0, 0)
+  text_df = data.frame(x=c(1, 1.2, 1, 2, 2.2, 2), y = label_y_positions, gene = TE_df$gene) 
+  
   p = ggplot(data = TE_df, aes(x = stage, y = TE)) + 
-    geom_point( aes(color = type, shape = gene), position = position_dodge(width = 0.2), size = 1.8 ) + 
-    geom_segment(data = data.frame(w = c(1, 2), m = c(fourcell_median, eightcell_median)), 
-             aes(x     = w - thick_width , 
+    geom_point( aes(color = type, label = as.character(1:6)), position = position_dodge(width = 0.3), size = 1.8 ) + 
+    geom_text(data = text_df, aes(x=x, y=y, label = gene), nudge_x = -0.2, size = 3) +
+    geom_segment(data = data.frame(w = c(1, 2), m = c(fourcell_median, eightcell_median)),
+             aes(x     = w - thick_width ,
                  xend = w + thick_width,
-                 y = m, 
-                 yend =m ) , 
-             color = "#999999", size = 0.45 ) + 
+                 y = m,
+                 yend =m ) ,
+             color = "#999999", size = 0.45 ) +
     theme_bw() + 
+    theme(
+      panel.border      = element_blank(),
+      panel.grid        = element_blank(),
+      plot.title        = PLOT_TITLE,
+      panel.background  = element_blank(),
+      axis.text.y       = AXIS_TITLE,
+      axis.text.x       = AXIS_TITLE,
+      axis.title.y      = AXIS_TITLE,
+      axis.title.x      = AXIS_TITLE,
+      # legend.position   = "none",
+      axis.line         = element_line(colour = "black", size = 0.35), 
+    ) +
     scale_color_manual(values=c("#999999", BURNT_ORANGE, UT_BLUE)) + 
-    labs(title = "Example Genes", y = "Translation Efficiency", x = "stage")
+    labs(title = "Example Genes", y = "Translation Efficiency", x = "stage") 
   return(p)
 }
 
 plot_example_TE(example_TE_df, fourcell_median = fourcell_background_median_TE, eightcell_median = eightcell_background_median_TE)
 ```
 
+# Bootstrapping to determine confidence intervals for Tes
 
 ```{r echo=FALSE,warning=FALSE}
+set.seed(3)
+example_genes_count = clr_normalized_counts[clr_normalized_counts$transcript %in% c(example_4cell_gene_list, example_8cell_gene_list),]
+
+example_genes_sample_ordered = example_genes_count$transcript
+
+example_genes_count_4cell_rna   = example_genes_count[,c(18,19)]
+example_genes_count_4cell_ribo  = example_genes_count[,c(32,33,34)]
+
+example_genes_count_8cell_ribo = example_genes_count[, 35:38]
+example_genes_count_8cell_rna  = example_genes_count[,  19:22]
+
+TE_sample_unit = function(){
+  
+  experiments_4cell_rna = sample(1: length(example_genes_count_4cell_rna), 
+                                 size    = length(example_genes_count_4cell_rna), 
+                                 replace = T)
+  
+  experiments_4cell_ribo = sample(1: length(example_genes_count_4cell_ribo), 
+                                 size    = length(example_genes_count_4cell_ribo), 
+                                 replace = T)
+  
+  experiments_8cell_rna = sample(1: length(example_genes_count_8cell_rna), 
+                                 size    = length(example_genes_count_8cell_rna), 
+                                 replace = T)
+  
+  experiments_8cell_ribo = sample(1: length(example_genes_count_8cell_ribo), 
+                                 size    = length(example_genes_count_8cell_ribo), 
+                                 replace = T)
+  
+  average_4cell_rna = apply(example_genes_count_4cell_rna[,experiments_4cell_rna], MARGIN = 1, FUN = mean) 
+  average_4cell_ribo = apply(example_genes_count_4cell_ribo[,experiments_4cell_ribo], MARGIN = 1, FUN = mean) 
+  average_8cell_rna = apply(example_genes_count_8cell_rna[, experiments_8cell_rna], MARGIN = 1, FUN = mean) 
+  average_8cell_ribo = apply(example_genes_count_8cell_ribo[, experiments_8cell_ribo], MARGIN = 1, FUN = mean) 
+  
+  TE_4cell_sampling_TE = average_4cell_ribo / average_4cell_rna
+  TE_8cell_sampling_TE = average_8cell_ribo / average_8cell_rna
+  
+  return(list(fourcell = TE_4cell_sampling_TE, eightcell = TE_8cell_sampling_TE) )
+}
+
+make_sampling_TE_matrices = function(rounds = 100){
+  first_round  = TE_sample_unit()
+  fourcell_TE  = first_round$fourcell
+  eightcell_TE = first_round$eightcell
+  
+  for( i in 2:rounds){
+    this_round  = TE_sample_unit()
+    fourcell_TE = rbind(fourcell_TE, this_round$fourcell)
+    eightcell_TE = rbind(eightcell_TE, this_round$eightcell)
+  }
+  
+
+  return(list(fourcell = fourcell_TE, eightcell = eightcell_TE))
+} 
+
+example_TE_from_sampling = make_sampling_TE_matrices(100)
 ```
 
 
 ```{r echo=FALSE,warning=FALSE}
+example_TE_4cell_from_sampling =  example_TE_from_sampling$fourcell
+example_TE_8cell_from_sampling =  example_TE_from_sampling$eightcell
+
+colnames(example_TE_4cell_from_sampling) = example_genes_sample_ordered
+colnames(example_TE_8cell_from_sampling) = example_genes_sample_ordered
+
+example_TE_4cell_from_sampling = example_TE_4cell_from_sampling[,example_4cell_gene_list]
+#example_TE_4cell_from_sampling
+
+example_TE_8cell_from_sampling = example_TE_8cell_from_sampling[,example_8cell_gene_list]
+#example_TE_8cell_from_sampling
+
+fourcell_TE_sampling_means  = apply(example_TE_4cell_from_sampling, MARGIN = 2, FUN = mean)
+eightcell_TE_sampling_means = apply(example_TE_8cell_from_sampling, MARGIN = 2, FUN = mean)
+
+fourcell_TE_sampling_confidencelower = apply(example_TE_4cell_from_sampling, MARGIN = 2, FUN = quantile, probs = 0.05 )
+eightcell_TE_sampling_confidencelower = apply(example_TE_8cell_from_sampling, MARGIN = 2, FUN = quantile, probs = 0.05 )
+
+fourcell_TE_sampling_confidenceupper = apply(example_TE_4cell_from_sampling, MARGIN = 2, FUN = quantile, probs = 0.95 )
+eightcell_TE_sampling_confidenceupper = apply(example_TE_8cell_from_sampling, MARGIN = 2, FUN = quantile, probs = 0.95 )
+
+stages = c(rep("4cell", 3), rep("8cell", 3))
+
+example_TE_with_conf_intervals = data.frame( gene = c(names(fourcell_TE_sampling_means), names(eightcell_TE_sampling_means)),
+                                            TE    = c(fourcell_TE_sampling_means, eightcell_TE_sampling_means),
+                                            stage = stages,
+                                            confidence_lower = c(fourcell_TE_sampling_confidencelower, eightcell_TE_sampling_confidencelower),
+                                            confidence_upper = c(fourcell_TE_sampling_confidenceupper, eightcell_TE_sampling_confidenceupper)
+                                           )
+
+example_TE_with_conf_intervals = merge(example_TE_with_conf_intervals, example_TE_df[,c(1,2)] )
+
+position_converter = function(x){
+  if(x == "4cell"){
+    return(1)
+  }
+  else{
+    return(2)
+  }
+}
+
+position_converter = Vectorize(position_converter)
+
+example_TE_with_conf_intervals$position = position_converter(example_TE_with_conf_intervals$stage)
+
+example_TE_with_conf_intervals
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+thick_width = 0.3
+
+plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
+  
+  p_colors = c("gray", CDS_GREEN, CDS_GREEN, gray, UTR3_GREEN, UTR3_GREEN) 
+  
+  label_y_positions = TE_df$TE + c(0, 0, 0, 0, 0, 0)
+  label_x_positions = TE_df$position + c(0, 0, 0.4, 0.4, 0, 0)
+  text_df = data.frame(x=label_x_positions, y = label_y_positions, gene = TE_df$gene) 
+  
+  p = ggplot(data = TE_df, aes(x = stage, y = TE)) + 
+    geom_point( aes(color = type, label = as.character(1:6)), position = position_dodge(width = 0.3), size = 1.8 ) + 
+    geom_errorbar(aes(ymin=confidence_lower, ymax=confidence_upper, color = type), 
+             position=position_dodge(width = 0.3), width = 0.1) +
+    geom_text(data = text_df, aes(x=x, y=y, label = gene), nudge_x = -0.2, size = 3) +
+    #geom_text(aes( label = gene), nudge_x = -0.2, size = 3) +
+    geom_segment(data = data.frame(w = c(1, 2), m = c(fourcell_median, eightcell_median)),
+             aes(x     = w - thick_width ,
+                 xend = w + thick_width,
+                 y = m,
+                 yend =m ) ,
+             color = "#999999", size = 0.45 ) +
+
+    theme_bw() + 
+    theme(
+      panel.border      = element_blank(),
+      panel.grid        = element_blank(),
+      plot.title        = PLOT_TITLE,
+      panel.background  = element_blank(),
+      axis.text.y       = AXIS_TITLE,
+      axis.text.x       = AXIS_TITLE,
+      axis.title.y      = AXIS_TITLE,
+      axis.title.x      = AXIS_TITLE,
+      # legend.position   = "none",
+      axis.line         = element_line(colour = "black", size = 0.35), 
+    ) +
+    scale_color_manual(values=c("#999999", BURNT_ORANGE, UT_BLUE)) + 
+    labs(title = "Example Genes", y = "Translation Efficiency", x = "stage") 
+  return(p)
+}
+
+main_example_TE_plot = plot_example_TE(example_TE_with_conf_intervals, fourcell_median = fourcell_background_median_TE, eightcell_median = eightcell_background_median_TE)
+
+main_example_TE_plot
 ```
 
 
-
-
 ```{r echo=FALSE,warning=FALSE}
+
+first_row_plot = plot_grid(scatter_plot_of_bootstrapped + theme(legend.position = "none"), 
+          fourcell_main_boxplot + TWO_STAT,
+          eightcell_main_boxplot + TWO_STAT,
+          fourcell_mono_boxplot + TWO_STAT,
+          eightcell_mono_boxplot + TWO_STAT, nrow =1)
+
+second_row_plot = plot_grid( snp_pos_plot,  main_example_TE_plot, nrow = 1)
+
+imprinted_plot = plot_grid(first_row_plot, second_row_plot, ncol = 1)
+
+imprinted_plot
 ```
 
 
