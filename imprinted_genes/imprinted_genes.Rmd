@@ -1756,16 +1756,52 @@ TWO_STAT = stat_compare_means( aes(label = paste0("p ", ..p.format..)), label.x 
 p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "bar", jitter = F, keep_y_axis = F, write_pval = T)
 p 
 
-a = wilcox.test(fourcell_TE[fourcell_TE$imprinted == 1,]$TE, fourcell_TE[fourcell_TE$imprinted == 0,]$TE)
-#WAS_HERE
+
 ```
 
 ```{r echo=FALSE,warning=FALSE}
-threeplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F, selector = "TE"){
+threeplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F, selector = "TE", keep_y_axis = T, write_pval = T){
   
   TE_df["value"] = TE_df[selector]
   
-  p = ggplot( TE_df, aes(x = type, y = value, fill = type) )
+  ylabel = selector
+  
+  if(selector == "TE"){
+    ylabel = "Translation Efficiency"
+  }
+  
+  this_wilcox_test_maternal = wilcox.test(TE_df[TE_df$type == "background", ]$TE,TE_df[TE_df$type == "maternal", ]$TE)
+  this_wilcox_test_paternal = wilcox.test(TE_df[TE_df$type == "background", ]$TE,TE_df[TE_df$type == "paternal", ]$TE)
+  
+  this_maternal_pvalue = ""
+  this_paternal_pvalue = ""
+  
+  if(write_pval){
+    this_maternal_pvalue = sprintf("p = %1.1e", this_wilcox_test_maternal$p.value)
+    this_paternal_pvalue = sprintf("p = %1.1e", this_wilcox_test_paternal$p.value)
+  }
+  
+  p_maternal_label =  annotate("text", 
+              label = this_maternal_pvalue, 
+              x = 2, 
+              y = ymax - 0.05, size = 2)
+  
+  p_paternal_label =  annotate("text", 
+              label = this_paternal_pvalue, 
+              x = 3, 
+              y = ymax - 0.05, size = 2)
+  
+  this_y_axis = element_blank()
+  this_y_axis_text = element_blank()
+  this_y_axis_title = element_blank()
+  
+  if(keep_y_axis){
+    this_y_axis = element_line(colour = "black", size = 0.35)
+    this_y_axis_text = AXIS_TITLE
+    this_y_axis_title = AXIS_TITLE
+  }
+  
+  p = ggplot( TE_df, aes(x = type, y = value, fill = type) ) + p_maternal_label + p_paternal_label
   
   if(type == "violin"){
     p = p + geom_violin(draw_quantiles = c(0.5, 0.5), scale = "count")
@@ -1780,23 +1816,30 @@ threeplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter 
     scale_y_continuous(limits = c(0, ymax)) + 
     theme_bw() +
     theme(plot.title   = PLOT_TITLE,
-            panel.border = element_blank(),
-            panel.grid   = element_blank(),
-            axis.text.y       = AXIS_TITLE,
-            axis.text.x       = AXIS_TITLE,
-            axis.title.y      = AXIS_TITLE,
-            axis.title.x      = AXIS_TITLE,
-            axis.line.y      = element_line(colour = "black", size = 0.35),
+            axis.text.y       = this_y_axis_text,
+            axis.text.x       =  element_text(face = "plain", size = FONT_LABEL_SIZE, angle = 45),
+            axis.title.y      = this_y_axis_title,
+            axis.title.x      = element_blank(),
+            axis.line.y       = this_y_axis,
+            panel.border      = element_blank(),
+            panel.grid        = element_blank(),
+
             legend.title      = element_blank(),
           legend.position     = "None"  ) + 
     scale_x_discrete(labels = c("Non-specific", "Maternal", "Paternal")) + 
     labs(title = title, 
-           x     = "Genes", 
-           y     = selector) + 
+           x     = "", 
+           y     = ylabel) + 
     scale_fill_manual(values=c("gray", this_color, this_color))
+  
+  if(! keep_y_axis){
+    p = p + theme(axis.ticks.y = element_blank())
+  }
   
   return(p)
 }
+
+#threeplot(fourcell_TE, title = "4cell", this_color = c(CDS_GREEN), ymax = 1.5, type = "box", jitter = F, selector = "TE")
 ```
 
 
@@ -2055,6 +2098,24 @@ matched_mii_TE_from_4 = match.data(sample_mii_TE_from_4)
 mii_from_fourcell_boxplot = twoplot(matched_mii_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
 mii_from_fourcell_boxplot + TWO_STAT
 
+
+mii_TE_from_8 = 
+  mymain(
+       TE_df            = TE_df_clr, 
+       rna_averages     = rnaseq_onecell_averages_clr, 
+       gene_lengths     = region_lengths, 
+       picker_name      = "mii_TE"  , 
+       paternal_genes   = eightcell_paternal_genes_bootstrap, 
+       maternal_genes   = eightcell_maternal_genes_bootstrap, 
+       background_genes = eightcell_background_genes_bootstrap)
+
+sample_mii_TE_from_8 = matchit(imprinted~rna + cds_length, data = mii_TE_from_8 )
+
+
+matched_mii_TE_from_8 = match.data(sample_mii_TE_from_8)
+
+mii_from_eightcell_boxplot = twoplot(matched_mii_TE_from_8, title = "eight Cell", this_color = CDS_GREEN, type = "box", jitter = F)
+mii_from_eightcell_boxplot + TWO_STAT
 
 p = twoplot(matched_mii_TE_from_4, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
 p + TWO_STAT
@@ -2799,7 +2860,7 @@ maternal_label = ggdraw() +
 separator_1 = generate_blank_plot()
 
 TITLE_HEIGHT  = 0.2
-LEGEND_HEIGHT = 0.5
+LEGEND_HEIGHT = 0.6
 
 snp_paternal_maternal_label = plot_grid(separator_1, paternal_label, maternal_label, separator_1, ncol = 1,
                                         rel_heights = c(TITLE_HEIGHT, 1, 1, LEGEND_HEIGHT))
@@ -2867,7 +2928,7 @@ snp_plot8_cell = plot_grid(snp_plot_plpp5, snp_plot_tubg2, snp_plot_shc3, nrow =
 snp_plot8_cell
 
 snp_pos_plot = plot_grid(snp_paternal_maternal_label, snp_plot_4cell, snp_plot8_cell , nrow = 1,
-                         rel_widths = c(0.1, 1, 1))
+                         rel_widths = c(0.15, 1, 1))
 
 snp_pos_plot
 
@@ -3056,7 +3117,7 @@ first_row_plot = plot_grid(scatter_plot_of_bootstrapped + theme(legend.position 
           eightcell_mono_boxplot , nrow =1, 
           rel_widths = c(3.4, 1.3, 1, 1, 1))
 
-example_genes_row_plot = plot_grid( snp_pos_plot,  main_example_TE_plot, nrow = 1, rel_widths = c(1.5,1))
+
 
 #imprinted_plot = plot_grid(first_row_plot, second_row_plot, ncol = 1, rel_heights = c(1, 1.1))
 imprinted_plot = first_row_plot
@@ -3125,16 +3186,79 @@ eightcell_cpm_matched_boxplot = twoplot(matched_eightcell_cpm, title = "8 Cell C
 matched_box_plot = plot_grid(fourcell_matched_boxplot, eightcell_matched_boxplot, fourcell_cpm_matched_boxplot, eightcell_cpm_matched_boxplot, nrow = 1)
 supp_second_row = plot_grid(matched_title, matched_box_plot, ncol = 1, rel_heights = c(0.1, 1))
 
-
+example_genes_row_plot = plot_grid( snp_pos_plot,  main_example_TE_plot, nrow = 1, rel_widths = c(1.5,1))
 supp_example_gene_row = plot_grid(example_gene_title , example_genes_row_plot, ncol = 1, rel_heights = c(0.1, 1))
 
-imprinted_supp = plot_grid(supp_first_row, supp_second_row,supp_example_gene_row, ncol = 1)
 
 
 
-save_plot_pdf("imprinted_supp.pdf", imprinted_supp, width = 7, height = 6.9)
+#twoplot()
 
-imprinted_supp
+onecell_TE_title = ggdraw() + 
+  draw_label(
+    "TE at 1 Cell Embryo",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+mii_TE_title = ggdraw() + 
+  draw_label(
+    "TE at MII",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+
+matched_onecell_TE_from_4_plot = twoplot(matched_onecell_TE_from_4, title = "Specificity from 4 cell", this_color = CDS_GREEN, type = "box", jitter = F, write_pval = T, keep_y_axis = T) 
+matched_onecell_TE_from_8_plot = twoplot(matched_onecell_TE_from_8, title = "Specificity from 8 cell", this_color = UTR3_GREEN, type = "box", jitter = F, write_pval = T, keep_y_axis = F)
+
+onecell_TE_base_plot = plot_grid( matched_onecell_TE_from_4_plot, matched_onecell_TE_from_8_plot, nrow = 1)
+
+onecell_TE_plot = plot_grid(onecell_TE_title, onecell_TE_base_plot, ncol = 1, rel_heights = c(0.1, 1))
+#onecell_TE_base_plot
+#
+
+
+matched_onecell_TE_from_4_plot = twoplot(matched_mii_TE_from_4, title = "Specificity from 4 cell", this_color = CDS_GREEN, type = "box", jitter = F, write_pval = T, keep_y_axis = T) 
+matched_onecell_TE_from_8_plot = twoplot(matched_mii_TE_from_8, title = "Specificity from 8 cell", this_color = UTR3_GREEN, type = "box", jitter = F, write_pval = T, keep_y_axis = F) 
+
+mii_TE_base_plot = plot_grid( matched_onecell_TE_from_4_plot, matched_onecell_TE_from_8_plot, nrow = 1 )
+
+mii_TE_plot = plot_grid(mii_TE_title, mii_TE_base_plot, ncol = 1, rel_heights = c(0.1, 1))
+
+TE_at_other_stages_row = plot_grid(onecell_TE_plot, mii_TE_plot, nrow = 1)
+
+
+
+
+
+maternal_paternal_title = ggdraw() + 
+  draw_label(
+    "Translation Efficiency of Maternal and Paternal Genes",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+maternal_paternal_TE_4cell_plot = threeplot(fourcell_TE, title = "4 cell", this_color = c(CDS_GREEN), ymax = 1.5, type = "box", jitter = F, selector = "TE", keep_y_axis = T)
+maternal_paternal_TE_8cell_plot = threeplot(eightcell_TE, title = "8 cell", this_color = c(UTR3_GREEN), ymax = 1.5, type = "box", jitter = F, selector = "TE", keep_y_axis = F)
+maternal_paternal_plot_row_base = plot_grid(separator_1, maternal_paternal_TE_4cell_plot, maternal_paternal_TE_8cell_plot, separator_1, nrow = 1, rel_widths = c(0.5, 0.7, 0.7, 0.5))
+maternal_paternal_plot_row      = plot_grid(maternal_paternal_title, maternal_paternal_plot_row_base, ncol = 1, rel_heights = c(0.1, 1))
+
+imprinted_supp = plot_grid(maternal_paternal_plot_row, supp_first_row, supp_second_row,supp_example_gene_row, TE_at_other_stages_row,  ncol = 1)
+save_plot_pdf("imprinted_supp.pdf", imprinted_supp, width = 7, height = 10.5)
+#imprinted_supp
 ```
 
 
