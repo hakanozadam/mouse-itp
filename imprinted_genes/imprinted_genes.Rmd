@@ -40,7 +40,7 @@ FIGURE_FONT = "helvetica"
 #setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 #setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 
-MBOOK = T
+MBOOK = F
 
 if(MBOOK){
 
@@ -766,6 +766,8 @@ wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$T
 wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "background", ]$TE, c(matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE)  )
 
 wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$type == "maternal", ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$type == "paternal", ]$TE  )
+
+wilcox.test( matched_fourcell_cpm[matched_fourcell_cpm$imprinted == 1, ]$TE, matched_fourcell_cpm[matched_fourcell_cpm$imprinted == 0, ]$TE  )
 ```
 
 ```{r echo=FALSE,warning=FALSE}
@@ -1455,8 +1457,9 @@ plot_snp_scatter = function(this_title , snp_ratios,
             axis.title.y      = AXIS_TITLE,
             axis.title.x      = AXIS_TITLE,
             axis.ticks        = element_blank(),
-            legend.background = element_blank()
-            #legend.position   = "none"
+            legend.background = element_blank(),
+            legend.title      = element_blank()
+ #           legend.position   = "bottom"
           ) +
       geom_hline(yintercept=0.5, size = 0.35) +
       geom_vline(xintercept=0.5, size = 0.35) + 
@@ -1581,7 +1584,7 @@ grid.newpage()
 ```{r echo=FALSE,warning=FALSE}
 
 scatter_plot_of_multisnp = 
-  plot_snp_scatter("Multi SNP Genes" , 
+  plot_snp_scatter("Multi SNP Supported Genes" , 
                    snp_ratios = snp_ratios_merged, 
                    fourcell_paternal_genes = multiple_snp_supported_fourcell_paternal_genes, 
                    fourcell_maternal_genes = multiple_snp_supported_fourcell_maternal_genes,
@@ -1677,11 +1680,26 @@ save_plot_pdf("scatter_plot_of_monoallelic_no_legend.pdf", scatter_plot_of_monoa
 
 ```{r echo=FALSE,warning=FALSE}
 
-twoplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F){
+twoplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = F, keep_y_axis = T, write_pval = F){
   
   TE_df$imprinted_chr = as.character(TE_df$imprinted)
   
-  p = ggplot( TE_df, aes(x = imprinted_chr, y = TE, fill = imprinted_chr) )
+  
+  
+  this_wilcox_test = wilcox.test(TE_df[TE_df$imprinted == 0, ]$TE, TE_df[TE_df$imprinted == 1, ]$TE)
+  
+  this_pvalue = ""
+  
+  if(write_pval){
+    this_pvalue = sprintf("p = %1.1e", this_wilcox_test$p.value)
+  }
+  
+   p_label =  annotate("text", 
+              label = this_pvalue, 
+              x = 1.7, 
+              y = ymax - 0.05, size = 2)
+  
+  p =  ggplot( TE_df, aes(x = imprinted_chr, y = TE, fill = imprinted_chr) ) + p_label
   
   if(type == "violin"){
     p = p + geom_violin(draw_quantiles = c(0.5, 0.5), scale = "count", trim = FALSE, na.rm = TRUE)
@@ -1692,30 +1710,54 @@ twoplot = function(TE_df, title, this_color, ymax = 1.5, type = "box", jitter = 
       p = p + geom_jitter(size = 1, alpha = 0.3)
     }
   }
+  
+  this_y_axis = element_blank()
+  this_y_axis_text = element_blank()
+  this_y_axis_title = element_blank()
+  
+  if(keep_y_axis){
+    this_y_axis = element_line(colour = "black", size = 0.35)
+    this_y_axis_text = AXIS_TITLE
+    this_y_axis_title = AXIS_TITLE
+  }
+  
+  
   p = p +
     scale_y_continuous(limits = c(0, ymax)) + 
     theme_bw() +
     theme(plot.title   = PLOT_TITLE,
             panel.border = element_blank(),
             panel.grid   = element_blank(),
-            axis.text.y       = AXIS_TITLE,
-            axis.text.x       = AXIS_TITLE,
-            axis.title.y      = AXIS_TITLE,
-            axis.title.x      = AXIS_TITLE,
-            axis.line.y      = element_line(colour = "black", size = 0.35),
+            axis.text.y       = this_y_axis_text,
+            axis.text.x       =  element_text(face = "plain", size = FONT_LABEL_SIZE, angle = 45),
+            axis.title.y      = this_y_axis_title,
+            axis.title.x      = element_blank(),
+            axis.line.y      = this_y_axis,
             legend.title      = element_blank(),
           legend.position     = "None"  ) + 
     scale_x_discrete(labels = c("Non-specific", "Allele Specific")) + 
     labs(title = title, 
            x     = "Genes", 
-           y     = "TE") + 
+           y     = "Translation Efficiency") + 
     scale_fill_manual(values=c("gray", this_color))
+  
+  if(! keep_y_axis){
+    p = p + theme(axis.ticks.y = element_blank())
+  }
+  
+
   
   return(p)
 }
 
 
-TWO_STAT = stat_compare_means( label.x = 1.4, size = 3, na.rm = F, method = "wilcox", method.args = list(tol.root = 1e-4, digits.rank = Inf, alternative = "two.sided" ) )
+TWO_STAT = stat_compare_means( aes(label = paste0("p ", ..p.format..)), label.x = 1.5, label.y.npc = 0.95, size = 2.5, na.rm = F, method = "wilcox", method.args = list(tol.root = 1e-4, alternative = "two.sided" ) )
+
+p = twoplot(fourcell_TE, title = "Four Cell", this_color = CDS_GREEN, type = "bar", jitter = F, keep_y_axis = F, write_pval = T)
+p 
+
+a = wilcox.test(fourcell_TE[fourcell_TE$imprinted == 1,]$TE, fourcell_TE[fourcell_TE$imprinted == 0,]$TE)
+#WAS_HERE
 ```
 
 ```{r echo=FALSE,warning=FALSE}
@@ -1851,6 +1893,12 @@ compare_cds_lengths(fourcell_TE_cpm, this_color = CDS_GREEN)
 fourcell_bootstrapped_matched_boxplot = twoplot(matched_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F)
 fourcell_bootstrapped_matched_boxplot + TWO_STAT
 
+
+twoplot(matched_fourcell_cpm, title = "Four Cell", this_color = CDS_GREEN, type = "box", jitter = F) + TWO_STAT
+
+wilcox.test(matched_fourcell_cpm[matched_fourcell_cpm$imprinted == 1,]$TE, matched_fourcell_cpm[matched_fourcell_cpm$imprinted == 0,]$TE)
+
+#fourcell_bootstrapped_matched_boxplot + TWO_STAT
 
 p = twoplot(matched_fourcell, title = "Four Cell", this_color = CDS_GREEN, type = "violin", jitter = F)
 p + TWO_STAT
@@ -2575,6 +2623,31 @@ example_fourcell_snps
 
 ```{r echo=FALSE,warning=FALSE}
 
+generate_blank_plot = function(bg = "white"){
+  
+  this_background = element_blank()
+    
+  if(bg != "white"){
+    this_background = element_rect(fill = bg)
+  }  
+  
+  df <- data.frame()
+  p = ggplot(df) + geom_point() + 
+    xlim(0, 4) + ylim(0, 100) + 
+    theme(
+      panel.border     = element_blank(),
+      panel.grid       = element_blank(),
+      panel.background = this_background,
+      axis.title.x     = element_blank(),
+      axis.title.y     = element_blank(),
+      axis.text.x      = element_blank(),
+      axis.text.y      = element_blank(),
+      axis.ticks.x     = element_blank(),
+      plot.background  = element_blank(),
+      axis.ticks.y     = element_blank()
+    ) 
+  return(p)
+}
 
 format_y_axis = function(x){
   return( sprintf("%.0f", x) )
@@ -2701,6 +2774,35 @@ unit_snp_plot = function(snp_df, gene, allele_type = "paternal", ymax = 100){
   return(p)
 }
 
+paternal_label = ggdraw() + 
+  draw_label(
+    "paternal",
+    fontface   = 'plain',
+    size       = FONT_LABEL_SIZE,
+    angle      = 90
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+maternal_label = ggdraw() + 
+  draw_label(
+    "maternal",
+    fontface   = 'plain',
+    size       = FONT_LABEL_SIZE,
+    angle      = 90
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+separator_1 = generate_blank_plot()
+
+TITLE_HEIGHT  = 0.2
+LEGEND_HEIGHT = 0.5
+
+snp_paternal_maternal_label = plot_grid(separator_1, paternal_label, maternal_label, separator_1, ncol = 1,
+                                        rel_heights = c(TITLE_HEIGHT, 1, 1, LEGEND_HEIGHT))
 
 plot_snps_of_gene = function(snp_df, gene){
   
@@ -2727,10 +2829,14 @@ plot_snps_of_gene = function(snp_df, gene){
   maternal_plot = unit_snp_plot(snp_df, gene = gene, allele_type = "maternal", ymax = ymax)
   
   this_legend = generate_legend_unit(snp_df = snp_df, gene = gene)
-  this_plot = plot_grid(this_title, paternal_plot, maternal_plot, this_legend, ncol = 1, rel_heights = c(0.2,1,1, 0.4))
+  this_plot = plot_grid(this_title, paternal_plot, maternal_plot, this_legend, ncol = 1, 
+                        rel_heights = c(TITLE_HEIGHT, 1, 1, LEGEND_HEIGHT))
   
   return(this_plot)
 }
+
+
+
 
 unit_snp_plot(example_fourcell_snps, gene = "Anapc7", allele_type = "paternal")
 
@@ -2740,6 +2846,8 @@ plot_snps_of_gene(example_fourcell_snps, gene = "Anapc7")
 
 ```
 ```{r echo=FALSE,warning=FALSE}
+
+
 
 snp_plot_anapc7 = plot_snps_of_gene(example_fourcell_snps, gene = "Anapc7") 
 
@@ -2758,7 +2866,8 @@ snp_plot_shc3 = plot_snps_of_gene(example_eightcell_snps, gene = "Shc3")
 snp_plot8_cell = plot_grid(snp_plot_plpp5, snp_plot_tubg2, snp_plot_shc3, nrow = 1)
 snp_plot8_cell
 
-snp_pos_plot = plot_grid(snp_plot_4cell, snp_plot8_cell , nrow = 1)
+snp_pos_plot = plot_grid(snp_paternal_maternal_label, snp_plot_4cell, snp_plot8_cell , nrow = 1,
+                         rel_widths = c(0.1, 1, 1))
 
 snp_pos_plot
 
@@ -2769,46 +2878,6 @@ save_plot_pdf("snp_pos_plot.pdf", snp_pos_plot, width = 4, height = 2)
 ```
 
 
-```{r echo=FALSE,warning=FALSE}
-
-thick_width = 0.3
-
-plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
-  
-  p_colors = c("gray", CDS_GREEN, CDS_GREEN, gray, UTR3_GREEN, UTR3_GREEN) 
-  
-  label_y_positions = TE_df$TE + c(0, 0.05, 0, 0, 0, 0)
-  text_df = data.frame(x=c(1, 1.2, 1, 2, 2.2, 2), y = label_y_positions, gene = TE_df$gene) 
-  
-  p = ggplot(data = TE_df, aes(x = stage, y = TE)) + 
-    geom_point( aes(color = type, label = as.character(1:6)), position = position_dodge(width = 0.3), size = 1.8 ) + 
-    geom_text(data = text_df, aes(x=x, y=y, label = gene), nudge_x = -0.2, size = 3) +
-    geom_segment(data = data.frame(w = c(1, 2), m = c(fourcell_median, eightcell_median)),
-             aes(x     = w - thick_width ,
-                 xend = w + thick_width,
-                 y = m,
-                 yend =m ) ,
-             color = "#999999", size = 0.45 ) +
-    theme_bw() + 
-    theme(
-      panel.border      = element_blank(),
-      panel.grid        = element_blank(),
-      plot.title        = PLOT_TITLE,
-      panel.background  = element_blank(),
-      axis.text.y       = AXIS_TITLE,
-      axis.text.x       = AXIS_TITLE,
-      axis.title.y      = AXIS_TITLE,
-      axis.title.x      = AXIS_TITLE,
-      # legend.position   = "none",
-      axis.line         = element_line(colour = "black", size = 0.35), 
-    ) +
-    scale_color_manual(values=c("#999999", BURNT_ORANGE, UT_BLUE)) + 
-    labs(title = "Example Genes", y = "Translation Efficiency", x = "stage") 
-  return(p)
-}
-
-plot_example_TE(example_TE_df, fourcell_median = fourcell_background_median_TE, eightcell_median = eightcell_background_median_TE)
-```
 
 # Bootstrapping to determine confidence intervals for Tes
 
@@ -2930,12 +2999,12 @@ plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
   p_colors = c("gray", CDS_GREEN, CDS_GREEN, gray, UTR3_GREEN, UTR3_GREEN) 
   
   label_y_positions = TE_df$TE + c(0, 0, 0, 0, 0, 0)
-  label_x_positions = TE_df$position + c(0, 0, 0.4, 0.4, 0, 0)
+  label_x_positions = TE_df$position + c(-0.15, -0.15, 0.5, 0, 0, 0.5)
   text_df = data.frame(x=label_x_positions, y = label_y_positions, gene = TE_df$gene) 
   
   p = ggplot(data = TE_df, aes(x = stage, y = TE)) + 
-    geom_point( aes(color = type, label = as.character(1:6)), position = position_dodge(width = 0.3), size = 1.8 ) + 
-    geom_errorbar(aes(ymin=confidence_lower, ymax=confidence_upper, color = type), 
+    geom_point( aes(color = gene, label = as.character(1:6)), position = position_dodge(width = 0.3), size = 1.8 ) + 
+    geom_errorbar(aes(ymin=confidence_lower, ymax=confidence_upper, color = gene), 
              position=position_dodge(width = 0.3), width = 0.1) +
     geom_text(data = text_df, aes(x=x, y=y, label = gene), nudge_x = -0.2, size = 3) +
     #geom_text(aes( label = gene), nudge_x = -0.2, size = 3) +
@@ -2956,10 +3025,10 @@ plot_example_TE = function(TE_df, fourcell_median, eightcell_median){
       axis.text.x       = AXIS_TITLE,
       axis.title.y      = AXIS_TITLE,
       axis.title.x      = AXIS_TITLE,
-      # legend.position   = "none",
+      legend.position   = "none",
       axis.line         = element_line(colour = "black", size = 0.35), 
     ) +
-    scale_color_manual(values=c("#999999", BURNT_ORANGE, UT_BLUE)) + 
+    scale_color_manual(values=c("#999999", "#999999", CDS_GREEN, UTR3_GREEN, CDS_GREEN, UTR3_GREEN)) + 
     labs(title = "Example Genes", y = "Translation Efficiency", x = "stage") 
   return(p)
 }
@@ -2972,22 +3041,100 @@ main_example_TE_plot
 
 ```{r echo=FALSE,warning=FALSE}
 
-first_row_plot = plot_grid(scatter_plot_of_bootstrapped + theme(legend.position = "none"), 
-          fourcell_main_boxplot + TWO_STAT,
-          eightcell_main_boxplot + TWO_STAT,
-          fourcell_mono_boxplot + TWO_STAT,
-          eightcell_mono_boxplot + TWO_STAT, nrow =1)
+fourcell_main_boxplot = twoplot(fourcell_TE, title = "4 Cell", this_color = CDS_GREEN, type = "box", jitter = F, write_pval = T) 
+eightcell_main_boxplot = twoplot(eightcell_TE, title = "8 Cell", this_color = UTR3_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T) 
+fourcell_mono_boxplot = twoplot(fourcell_mono_TE, title = "4 Cell Mono", this_color = CDS_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T)
+eightcell_mono_boxplot = twoplot(eightcell_mono_TE, title = "8 Cell Mono", this_color = UTR3_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T)
 
-second_row_plot = plot_grid( snp_pos_plot,  main_example_TE_plot, nrow = 1)
 
-imprinted_plot = plot_grid(first_row_plot, second_row_plot, ncol = 1)
+scatter_legend = get_legend(scatter_plot_of_bootstrapped + theme( legend.text=element_text(size=8), legend.title = element_blank() ) )
 
+first_row_plot = plot_grid(scatter_plot_of_bootstrapped + theme(legend.position = "right", legend.text=element_text(size=6), legend.title=element_blank()), 
+          fourcell_main_boxplot  ,
+          eightcell_main_boxplot  ,
+          fourcell_mono_boxplot ,
+          eightcell_mono_boxplot , nrow =1, 
+          rel_widths = c(3.4, 1.3, 1, 1, 1))
+
+example_genes_row_plot = plot_grid( snp_pos_plot,  main_example_TE_plot, nrow = 1, rel_widths = c(1.5,1))
+
+#imprinted_plot = plot_grid(first_row_plot, second_row_plot, ncol = 1, rel_heights = c(1, 1.1))
+imprinted_plot = first_row_plot
+
+save_plot_pdf("imprinted_main.pdf", imprinted_plot, width = 7, height = 2.3)
 imprinted_plot
 ```
 
 
 
+
+## Supplementary Figures
+
 ```{r echo=FALSE,warning=FALSE}
+
+multisnp_title = ggdraw() + 
+  draw_label(
+    "Genes Supported by Multiple Snps",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+matched_title = ggdraw() + 
+  draw_label(
+    "Genes with similar RNA abundance and CDS length",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+example_gene_title = ggdraw() + 
+  draw_label(
+    "Examples of genes and their TE",
+    fontface   = 'plain',
+    size       = FONT_TITLE_SIZE,
+    angle      = 0
+  ) +
+  theme(
+    plot.margin = margin(0, 0, 0, 0)
+  )
+
+fourcell_multisnp_boxplot = twoplot(fourcell_multiple_snp_TE, title = "4 Cell", this_color = CDS_GREEN, type = "box", jitter = F, keep_y_axis = T, write_pval = T)
+eightcell_multisnp_boxplot = twoplot(eightcell_multiple_snp_TE, title = "8 Cell", this_color = UTR3_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T) 
+
+supp_first_row = plot_grid(scatter_plot_of_multisnp + labs(title = "Paternal Ratio"),
+                           separator_1, fourcell_multisnp_boxplot, eightcell_multisnp_boxplot, nrow = 1, rel_widths = c(2.7,1,1,1) )
+
+supp_first_row = plot_grid(multisnp_title, supp_first_row, ncol = 1, rel_heights = c(0.1, 1) )
+
+
+fourcell_matched_boxplot = twoplot(matched_fourcell, title = "4 Cell CLR", this_color = CDS_GREEN, type = "box", jitter = F, keep_y_axis = T, write_pval = T) 
+
+eightcell_matched_boxplot = twoplot(matched_eightcell, title = "8 Cell CLR", this_color = UTR3_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T) 
+
+fourcell_cpm_matched_boxplot = twoplot(matched_fourcell_cpm, title = "4 Cell CPM", this_color = CDS_GREEN, type = "box", jitter = F, keep_y_axis = T, write_pval = T)
+
+eightcell_cpm_matched_boxplot = twoplot(matched_eightcell_cpm, title = "8 Cell CPM", this_color = UTR3_GREEN, type = "box", jitter = F, keep_y_axis = F, write_pval = T) 
+
+matched_box_plot = plot_grid(fourcell_matched_boxplot, eightcell_matched_boxplot, fourcell_cpm_matched_boxplot, eightcell_cpm_matched_boxplot, nrow = 1)
+supp_second_row = plot_grid(matched_title, matched_box_plot, ncol = 1, rel_heights = c(0.1, 1))
+
+
+supp_example_gene_row = plot_grid(example_gene_title , example_genes_row_plot, ncol = 1, rel_heights = c(0.1, 1))
+
+imprinted_supp = plot_grid(supp_first_row, supp_second_row,supp_example_gene_row, ncol = 1)
+
+
+
+save_plot_pdf("imprinted_supp.pdf", imprinted_supp, width = 7, height = 6.9)
+
+imprinted_supp
 ```
 
 
