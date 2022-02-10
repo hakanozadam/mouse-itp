@@ -22,15 +22,20 @@ colnames(this_cor_matrix) = row.names(this_cor_matrix)
 
 paletteLength = 100
 
-myBreaks <- c(seq(-1, 0, length.out=ceiling(paletteLength/2) + 1), 
-              seq(max(this_cor_matrix)/paletteLength, max(this_cor_matrix), length.out=floor(paletteLength/2)))
+
+input_heatmap = this_cor_matrix[1:6, 7:11]
+input_heatmap
+
+myBreaks <- c(seq(-0.5, 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(input_heatmap)/paletteLength, max(input_heatmap), length.out=floor(paletteLength/2)))
 
 
-myColor       = colorRampPalette(c("#5c2d70", "white", "#228B22"  ))(paletteLength)
+myColor       = colorRampPalette(c("#E2E60A", "white", "#228B22"  ))(paletteLength)
+
 
 te_and_prot_correlation_plot = 
 pheatmap (
-  this_cor_matrix,
+  input_heatmap,
   #color        =  colorRampPalette(brewer.pal( 9 ,"Greens"))(100),
   #color        =  colorRampPalette(brewer.pal( 9 ,"PRGn"))(100),
   color = myColor,
@@ -40,7 +45,8 @@ pheatmap (
   legend_labels = seq(-1, 1.5 , 0.5),
   cluster_rows = F,
   cluster_cols = F,
-  main   = "Correlation of proteomics and TE",
+  display_numbers = T,
+  main   = "Cor. of proteomics and TE",
   fontsize          = 7,
   fontsize_col      = 7,
   fontsize_row      = 7)
@@ -66,4 +72,4 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 
 
 
-save_plot_pdf("te_prot_cors_corrected.pdf", te_and_prot_correlation_plot, width = 3, height = 2.8)
+save_plot_pdf("te_prot_cors_corrected.pdf", te_and_prot_correlation_plot, width = 2.6, height = 2.4)
