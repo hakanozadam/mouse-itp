@@ -298,6 +298,8 @@ print( paste(hundred_cell_fold_percentage, "% of the genes changed less than two
 ```
 
 
+
+
 ```{r  echo=FALSE,warning=FALSE,message=FALSE}
 
 human_TE_ratio_Mono_2_3 = log2(human_TE_Monosome_2 / human_TE_Monosome_3 )
@@ -345,6 +347,79 @@ print( paste(human_Mono_2fold_percentage, "% of the genes changed less than two-
 
 ```{r  echo=FALSE,warning=FALSE,message=FALSE}
 
+get_output_file_path = function(file_name, output_folder = "pdf"){
+  this_path = paste( output_folder, file_name, sep = "/"  )
+  return(this_path)
+}
+
+save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
+  this_file = get_output_file_path(filename)
+  print(this_file)
+  ggsave(this_file, 
+         plot   = this_plot, 
+         device = cairo_pdf, 
+         width  = width,
+         height = height,
+         dpi    = PDF_resolution )
+  
+}
+
+CDS_GREEN  = "#00BA38"
+
+FONT_LABEL_SIZE = 8
+FONT_TITLE_SIZE = 9
+
+PDF_resolution = 600
+FIGURE_FONT = "helvetica"
+
+mybarplot = function(TE_ratios,  this_title = ""){
+  TE_df = data.frame(TE_ratio = TE_ratios)
+  
+  p = ggplot(TE_df, aes(x = TE_ratio)) + 
+    geom_histogram(color="white", fill="#bf5700", size = 0.3) + 
+    scale_y_log10() + 
+    xlim(-3, 3) + 
+    #scale_x_discrete(breaks = -3:3, labels = as.character(-3:3) ) + 
+    labs(title = this_title, x = "TE Ratio", y = "frequency" ) + 
+    theme(plot.title   =  element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        panel.grid   = element_blank(),
+        axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.line         = element_line(colour = "black", size = 0.35), )
+  
+  
+  
+  return(p)
+}
+
+barplot_100_cell = mybarplot(human_TE_ratio_100_3_1, this_title = "100-3 / 100-1")
+barplot_monosome = mybarplot(human_TE_ratio_Mono_2_3, this_title = "10M-2 / 10M-3")
+barplot_mono_and_100 = mybarplot(human_TE_ratio_Mono_100, this_title = "Monosome / Ribo-Itp")
+
+combined_barplot_pre = plot_grid(barplot_100_cell, barplot_monosome, barplot_mono_and_100 , nrow = 1)
+
+
+
+  plot_title =  ggdraw() + 
+    draw_label(
+      "Translation efficiency ratios",
+      fontface = 'plain',
+      fontfamily = FIGURE_FONT,
+      size = FONT_TITLE_SIZE, 
+      angle = 0
+    ) 
+  
+combined_barplot = plot_grid(plot_title, combined_barplot_pre, ncol = 1, rel_heights = c(0.1, 1.2)  )  
+```
+
+
+```{r  echo=FALSE,warning=FALSE,message=FALSE}
+combined_barplot
+save_plot_pdf("histograms_of_TE_ratios.pdf", combined_barplot, width = 5.2, height = 2 )
 ```
 
 
