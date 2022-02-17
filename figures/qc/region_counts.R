@@ -3,7 +3,7 @@
 mouse_ribo_file = "../../../mouse-itp_v5.ribo"
 human_ribo_file = "../../../../itp/human-itp_v4.ribo"
 
-
+human_single_cell_ribo_file = "../../../../itp/human_1cell.ribo"
 ################################################################################
 ########                    L I B R A R I E S                          #########
 
@@ -29,6 +29,8 @@ library(pheatmap)
 
 mouse_ribo = Ribo(mouse_ribo_file, rename = rename_default)
 human_ribo = Ribo(human_ribo_file, rename = rename_default)
+
+human_1cell_ribo = Ribo(human_single_cell_ribo_file, rename = rename_default)
 
 ################################################################################
 
@@ -173,6 +175,15 @@ human_region_counts = get_region_counts(ribo.object = human_ribo,
                                         range.upper = MOUSE_MAX_LENGTH,
                                         compact     = FALSE)
 
+human_1cell_region_counts = get_region_counts(ribo.object = human_1cell_ribo,
+                                        region      = c("UTR5", "CDS", "UTR3"),
+                                        range.lower = MOUSE_MIN_LENGTH,
+                                        range.upper = MOUSE_MAX_LENGTH,
+                                        compact     = FALSE)
+
+
+human_1cell_region_counts$experiment = c("1-1")
+
 mouse_region_counts$experiment = rename_experiments(mouse_region_counts$experiment)
 
 human_region_counts$experiment = human_rename_experiments(human_region_counts$experiment)
@@ -286,7 +297,7 @@ mouse_region_percentages$experiment =
                unique( (mouse_region_percentages %>% filter( group == "4cell" ) )$experiment ),
                unique( (mouse_region_percentages %>% filter( group == "8cell" ) )$experiment )) )
 
-human_region_percentages = compute_region_percentages(human_region_counts)
+human_region_percentages = compute_region_percentages(  rbind(human_1cell_region_counts , human_region_counts ) )
 
 mouse_supplementary_plot = 
   customized_plot_region_counts(mouse_region_percentages)
@@ -513,14 +524,33 @@ human_region_counts_per_gene =
                     compact     = FALSE)
 
 
+
+human_1cell_region_counts_per_gene = 
+  get_region_counts(ribo.object = human_1cell_ribo,
+                    region      = c("UTR5", "CDS", "UTR3"),
+                    range.lower = MOUSE_MIN_LENGTH,
+                    range.upper = MOUSE_MAX_LENGTH,
+                    transcript  = FALSE,
+                    compact     = FALSE)
+
 ################################################################################
 ####             Chi-squared Test for Region Counts (HUMAN)                 ####
 
 human_counts_wide = dcast( human_region_counts_per_gene,  experiment + transcript ~ region)
 colnames(human_counts_wide) = c(colnames(human_counts_wide)[1:2], "CDS_count", "UTR3_count", "UTR5_count")
 
+human_1cell_counts_wide = dcast( human_1cell_region_counts_per_gene,  experiment + transcript ~ region)
+colnames(human_1cell_counts_wide) = c(colnames(human_1cell_counts_wide)[1:2], "CDS_count", "UTR3_count", "UTR5_count")
+
 human_region_total_counts = 
   human_region_counts_per_gene %>%
+  group_by(experiment, transcript) %>%
+  summarise(total_count = sum(count))
+
+
+
+human_1cell_region_total_counts = 
+  human_1cell_region_counts_per_gene %>%
   group_by(experiment, transcript) %>%
   summarise(total_count = sum(count))
 
@@ -530,7 +560,11 @@ human_region_lengths = human_region_lengths %>% select(transcript, UTR5, CDS, UT
 
 human_counts_and_lengths_wide = merge( human_counts_wide, human_region_lengths  )
 
+human_1cell_counts_and_lengths_wide = merge( human_1cell_counts_wide, human_region_lengths  )
+
 human_region_total_counts_and_lengths = merge(human_region_total_counts, human_region_lengths)
+
+human_1cell_region_total_counts_and_lengths = merge(human_1cell_region_total_counts, human_region_lengths)
 
 human_expected_counts = human_counts_and_lengths_wide %>%
   group_by(experiment, transcript) %>%
@@ -626,12 +660,18 @@ mouse_expected_totals =
 
 human_region_total_counts_and_lengths$experiment = human_rename_experiments(human_region_total_counts_and_lengths$experiment)
 
+human_1cell_region_total_counts_and_lengths$group = c("1")
+human_1cell_region_total_counts_and_lengths$replicate_count = 1
+human_1cell_region_total_counts_and_lengths$experiment = c("1-1")
+
 human_region_total_counts_and_lengths = 
   human_region_total_counts_and_lengths %>%
   mutate( group = unlist(lapply ( strsplit(  as.vector(experiment), split = "-" ), "[[", 1) )  ) %>%
   group_by(group) %>%
   mutate( replicate_count = length( unique( experiment )  ) ) 
 
+## We incorporate 1cell data here
+human_region_total_counts_and_lengths = rbind(human_1cell_region_total_counts_and_lengths, human_region_total_counts_and_lengths)
 
 human_region_total_counts_and_lengths = 
   human_region_total_counts_and_lengths %>% 
@@ -705,3 +745,4 @@ save_plot_pdf("human_region_lengths_with_error_bars.pdf",
 save_plot_pdf("human_region_counts_comparative_error_bars.pdf", 
               human_region_counts_comperative_plot, 
               width = 4.2, height = 2.6)
+
