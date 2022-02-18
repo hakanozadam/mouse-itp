@@ -3262,14 +3262,65 @@ save_plot_pdf("imprinted_supp.pdf", imprinted_supp, width = 7, height = 10.5)
 ```
 
 
-
+## Effect Sizes
 ```{r echo=FALSE,warning=FALSE}
+
+report_effect_sizes = function(fourcell_df, eightcell_df){
+  effect_size_eightcell = 
+    median(eightcell_df[eightcell_df$imprinted == 1, ]$TE, na.rm = T ) /
+    median(eightcell_df[eightcell_df$imprinted == 0, ]$TE , na.rm = T)
+  
+  effect_size_fourcell = 
+    median(fourcell_df[fourcell_df$imprinted == 1, ]$TE, na.rm = T ) /
+    median(fourcell_df[fourcell_df$imprinted == 0, ]$TE , na.rm = T)
+  
+  print( c("Effect sizes are: 4-cell", effect_size_fourcell, "8-cell", effect_size_eightcell))  
+}
+
+
+
+```
+
+### Bootstrapped
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(fourcell_TE, eightcell_TE)
+
+```
+
+### Multi-SNP
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(fourcell_multiple_snp_TE , eightcell_multiple_snp_TE)
+
+```
+
+### Mono-Allelic
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(fourcell_mono_TE , eightcell_mono_TE)
+
+```
+
+### Matched
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(matched_fourcell , matched_eightcell)
+
 ```
 
 
+### Once Cell
 ```{r echo=FALSE,warning=FALSE}
-
-
+report_effect_sizes(matched_onecell_TE_from_4 , matched_onecell_TE_from_8)
 
 ```
 
+### MII
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(matched_mii_TE_from_4 , matched_mii_TE_from_8)
+
+```
+
+
+### Multi-SNP
+```{r echo=FALSE,warning=FALSE}
+report_effect_sizes(fourcell_multiple_snp_TE , eightcell_multiple_snp_TE)
+
+```
