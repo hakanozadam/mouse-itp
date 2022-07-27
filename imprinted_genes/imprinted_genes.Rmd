@@ -40,11 +40,11 @@ FIGURE_FONT = "helvetica"
 #setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 #setwd("/data/projects/mice_cell_development/mouse-itp/imprinted_genes/")
 
-MBOOK = F
+MBOOK = T
 
 if(MBOOK){
 
-    setwd("~/projects/mice_cell_development/mouse-itp/imprinted_genes/")
+    setwd("~/projects/ribo-itp/repos/mouse-itp/imprinted_genes/")
 
     PLOT_TITLE = element_text(hjust = 0.5,  face = "plain", size = FONT_TITLE_SIZE)
     AXIS_TITLE  = element_text(face = "plain", size = FONT_LABEL_SIZE)
@@ -3323,4 +3323,253 @@ report_effect_sizes(matched_mii_TE_from_4 , matched_mii_TE_from_8)
 ```{r echo=FALSE,warning=FALSE}
 report_effect_sizes(fourcell_multiple_snp_TE , eightcell_multiple_snp_TE)
 
+```
+
+
+### RPKM of Alle Specific Genes
+```{r echo=FALSE,warning=FALSE}
+
+
+region_lengths_pre$cds_length = region_lengths_pre$end - region_lengths_pre$start
+
+ribo_rna_column_sums = colSums(ribo_rna_counts[,-1])
+
+
+
+cds_lengths = region_lengths_pre[, c(-2,-3,-4,-5, -6)]
+colnames(cds_lengths) = c("transcript", "cds_length")
+
+# This p[art does RPKM]
+ribo_rna_with_lengths = merge(ribo_rna_counts, cds_lengths, by = "transcript")
+
+eightcell_and_four_cell_replicates_rpkm = ribo_rna_with_lengths[, c(1,49, 18:23)]
+
+ for(i in 3:length(colnames(eightcell_and_four_cell_replicates_rpkm)) ){
+   # Divide by experiment depth
+   eightcell_and_four_cell_replicates_rpkm[,i] = eightcell_and_four_cell_replicates_rpkm[,i] / sum(eightcell_and_four_cell_replicates_rpkm[,i])
+
+#   # Divide by gene length
+   eightcell_and_four_cell_replicates_rpkm[,i] = eightcell_and_four_cell_replicates_rpkm[,i] / eightcell_and_four_cell_replicates_rpkm[,2]
+
+   # Per kilo base per million part
+   eightcell_and_four_cell_replicates_rpkm[,i] = eightcell_and_four_cell_replicates_rpkm[,i] * (10**9)
+ }
+
+# End of RPKM
+
+# This part uses CLR normalized data. Then divide by cds length and multiply it with 1000
+
+# ribo_rna_with_lengths = merge(clr_normalized_counts, cds_lengths, by = "transcript")
+# 
+# eightcell_and_four_cell_replicates_rpkm = ribo_rna_with_lengths[, c(1,49, 18:23)]
+# 
+# for(i in 3:length(colnames(eightcell_and_four_cell_replicates_rpkm)) ){
+#   
+#   # Divide by gene length
+#   eightcell_and_four_cell_replicates_rpkm[,i] = eightcell_and_four_cell_replicates_rpkm[,i] / eightcell_and_four_cell_replicates_rpkm[,2]
+#   
+#   # Per kilo base part
+#   eightcell_and_four_cell_replicates_rpkm[,i] = eightcell_and_four_cell_replicates_rpkm[,i] * (10**3)
+# }
+
+## End of CLR norm
+
+eightcell_rowsums = rowSums(eightcell_and_four_cell_replicates_rpkm[, 5:8] )
+fourcell_rowsums  = rowSums(eightcell_and_four_cell_replicates_rpkm[, 3:4] )
+
+eightcell_average_rpkm = data.frame(gene = eightcell_and_four_cell_replicates_rpkm$transcript,
+                                    rpkm = eightcell_rowsums   / 4)
+
+
+fourcell_average_rpkm = data.frame(gene = eightcell_and_four_cell_replicates_rpkm$transcript,
+                                   rpkm = fourcell_rowsums / 2) 
+
+
+fourcell_average_rpkm_allelic = fourcell_average_rpkm[ fourcell_average_rpkm$gene %in% fourcell_TE$gene,  ]
+
+eightcell_average_rpkm_allelic = eightcell_average_rpkm[ eightcell_average_rpkm$gene %in% eightcell_TE$gene,  ]
+
+
+fourcell_rpkm_for_plot = merge(fourcell_average_rpkm_allelic, fourcell_TE, by = "gene")
+
+eightcell_rpkm_for_plot = merge(eightcell_average_rpkm_allelic, eightcell_TE, by = "gene")
+
+threeplot(TE_df = fourcell_rpkm_for_plot, 
+          title = "4 Cell RPKM", 
+          this_color = CDS_GREEN, 
+          ymax = 250, type = "box", jitter = F, selector = "rpkm", keep_y_axis = T, write_pval = T)
+
+threeplot(TE_df = eightcell_rpkm_for_plot, 
+          title = "8 Cell RPKM", 
+          this_color = UTR3_GREEN, 
+          ymax = 150, type = "box", jitter = F, selector = "rpkm", keep_y_axis = T, write_pval = T)
+
+median(fourcell_rpkm_for_plot[fourcell_rpkm_for_plot$type == "background",]$rpkm)
+
+median(fourcell_rpkm_for_plot[fourcell_rpkm_for_plot$type == "paternal",]$rpkm)
+
+median(fourcell_rpkm_for_plot[fourcell_rpkm_for_plot$type == "maternal",]$rpkm)
+
+median(fourcell_rpkm_for_plot[fourcell_rpkm_for_plot$type != "background",]$rpkm)
+```
+
+### RPKM of Mono Allelic Genes
+```{r echo=FALSE,warning=FALSE}
+
+fourcell_mono_average_rpkm = fourcell_average_rpkm[ fourcell_average_rpkm$gene %in% fourcell_mono_TE$gene,  ]
+
+eightcell_mono_average_rpkm = eightcell_average_rpkm[ eightcell_average_rpkm$gene %in% eightcell_mono_TE$gene,  ]
+
+fourcell_mono_rpkm_for_plot = merge(fourcell_mono_average_rpkm, fourcell_mono_TE, by = "gene")
+
+eightcell_mono_rpkm_for_plot = merge(eightcell_mono_average_rpkm, eightcell_mono_TE, by = "gene")
+
+threeplot(TE_df = fourcell_mono_rpkm_for_plot, 
+          title = "4 Cell RPKM Mono Allelic", 
+          this_color = CDS_GREEN, 
+          ymax = 250, type = "box", jitter = F, selector = "rpkm", keep_y_axis = T, write_pval = T)
+
+threeplot(TE_df = eightcell_mono_rpkm_for_plot, 
+          title = "8 Cell RPKM Mono Allelic", 
+          this_color = UTR3_GREEN, 
+          ymax = 150, type = "box", jitter = F, selector = "rpkm", keep_y_axis = T, write_pval = T)
+
+
+median(fourcell_mono_rpkm_for_plot[fourcell_mono_rpkm_for_plot$type == "background",]$rpkm)
+
+median(fourcell_mono_rpkm_for_plot[fourcell_mono_rpkm_for_plot$type == "paternal",]$rpkm)
+
+median(fourcell_mono_rpkm_for_plot[fourcell_mono_rpkm_for_plot$type == "maternal",]$rpkm)
+
+median(fourcell_mono_rpkm_for_plot[fourcell_mono_rpkm_for_plot$type != "background",]$rpkm)
+
+
+median(eightcell_mono_rpkm_for_plot[eightcell_mono_rpkm_for_plot$type == "background",]$rpkm)
+
+median(eightcell_mono_rpkm_for_plot[eightcell_mono_rpkm_for_plot$type == "paternal",]$rpkm)
+
+median(eightcell_mono_rpkm_for_plot[eightcell_mono_rpkm_for_plot$type == "maternal",]$rpkm)
+
+median(eightcell_mono_rpkm_for_plot[eightcell_mono_rpkm_for_plot$type != "background",]$rpkm)
+```
+
+### Correlation between RNA and TE
+```{r echo=FALSE,warning=FALSE}
+
+plot( log2(eightcell_mono_rpkm_for_plot$TE) , log2(eightcell_mono_rpkm_for_plot$rpkm) )
+plot( (eightcell_mono_rpkm_for_plot$TE) , log2(eightcell_mono_rpkm_for_plot$rpkm) )
+
+plot(  log2(eightcell_mono_rpkm_for_plot$rpkm), log2(eightcell_mono_rpkm_for_plot$TE) )
+
+plot(  log2(eightcell_mono_rpkm_for_plot$rpkm), (eightcell_mono_rpkm_for_plot$TE) )
+
+
+print("Spearman correlation of four cell is:")
+cor.test( log2(fourcell_rpkm_for_plot$rpkm ) , log2(fourcell_rpkm_for_plot$TE ), method = "spearman"  )
+
+print("Spearman correlation of eight cell is:")
+cor.test( log2(eightcell_rpkm_for_plot$rpkm) , log2(eightcell_rpkm_for_plot$TE), method = "spearman"  )
+
+
+```
+
+```{r echo=FALSE,warning=FALSE}
+
+scatter_rpkm_TE = function(rpkm_TE_df, plot_title = ""){
+
+ratio_scatter_plot = 
+  this_df = rpkm_TE_df
+
+
+  this_plot = 
+    ggplot( this_df, aes(x = rpkm, y = TE, color = imprinted) ) +
+
+      geom_point( alpha = 0.4, size = 1.5) +
+            theme(
+            panel.border      = element_blank(),
+           # panel.grid        = element_blank(),
+            plot.title        = PLOT_TITLE,
+            panel.background  = element_blank(),
+           # axis.text       = element_blank(),
+            axis.title.y      = AXIS_TITLE,
+            axis.title.x      = AXIS_TITLE,
+           axis.line.x = element_line(colour = "black", size = 0.35),
+           axis.line.y = element_line(colour = "black", size = 0.35),
+            #axis.ticks        = element_blank(),
+            legend.position   = "none"
+          ) +
+      #geom_hline(yintercept=0.5, size = 0.35) +
+      #geom_vline(xintercept=0.5, size = 0.35) + 
+    scale_x_continuous(trans='log2') +
+    scale_y_continuous(trans='log2') 
+  
+  return(this_plot)
+
+}
+
+scatter_rpkm_TE(eightcell_rpkm_for_plot)
+```
+```{r echo=FALSE,warning=FALSE}
+
+scatter_rpkm_TE = function(rpkm_TE_df, plot_title = "", imprinted_color = "blue", TE_lim = c(0.01, 3), RNA_lim = c(1,17000)){
+
+ratio_scatter_plot = 
+  this_df = rpkm_TE_df
+
+  this_df$imprinted = factor(x = this_df$imprinted, levels= c(0,1), labels = c("Non-specific", "Allele Specific"))
+  
+  this_cor = cor.test( log10(this_df$rpkm), log10(this_df$TE) , method = "spearman", continuity = T )
+  
+  this_coef = sprintf("%.2f",this_cor$estimate)
+  
+  this_title = paste(plot_title, ", ", "rho=", as.character(this_coef) , sep = "")
+    
+  this_plot = 
+    ggscatter(this_df, x = "rpkm", y = "TE",
+                 #                add = "reg.line", conf.int = FALSE,     
+                 #                add.params = list(color = "blue", size = 0.5),
+                 font.family = "Helvetica", 
+                 size        = 0.2,
+                 color       = "imprinted", 
+                 alpha       = 0.4, 
+                 ggtheme     = theme_bw(),
+                 palette = c("gray", imprinted_color)) 
+  
+  this_plot = this_plot + 
+  scale_x_log10(labels = scales::label_number_si(), limits = RNA_lim) + 
+  scale_y_log10(labels = scales::label_number_si() , limits = TE_lim) + 
+  theme(
+            panel.border      = element_blank(),
+            panel.grid        = element_blank(),
+            plot.title        = PLOT_TITLE,
+            axis.line.x       = element_line(colour = "black", size = 0.35),
+            axis.line.y       = element_line(colour = "black", size = 0.35),
+            legend.title = element_blank()
+            #legend.position   = "none"
+  ) + 
+  ggtitle(this_title) + 
+    xlab("RNA") + 
+    ylab("TE")
+  
+
+  return(this_plot)
+
+}
+
+scatter_plot_rpkm_TE_8cell = scatter_rpkm_TE(eightcell_rpkm_for_plot, plot_title = "8 Cell", imprinted_color = UTR3_GREEN, TE_lim = c(0.01, 3.0))
+scatter_plot_rpkm_TE_4cell = scatter_rpkm_TE(fourcell_rpkm_for_plot, plot_title = "4 Cell", imprinted_color = "#12b561", TE_lim = c(0.01, 3.0))
+
+scatter_plot_rpkm_TE_8cell
+scatter_plot_rpkm_TE_4cell
+
+scatter_rpkm_TE_4_and_8 = plot_grid(scatter_plot_rpkm_TE_4cell , scatter_plot_rpkm_TE_8cell, nrow = 1, rel_widths = c(1, 1))
+
+scatter_rpkm_TE_4_and_8
+```
+
+```{r echo=FALSE,warning=FALSE}
+save_plot_pdf("scatter_plot_rpkm_TE_8cell.pdf", scatter_plot_rpkm_TE_8cell, width = 3.6, height = 2 )
+save_plot_pdf("scatter_plot_rpkm_TE_4cell.pdf", scatter_plot_rpkm_TE_4cell, width = 3.6, height = 2 )
+
+save_plot_pdf("scatter_plot_rpkm_TE_4_and_8.pdf", scatter_rpkm_TE_4_and_8, width = 7.2, height = 2 )
 ```
