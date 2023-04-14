@@ -7,8 +7,11 @@ library(RColorBrewer)
 library(ggpubr)
 library(cowplot)
 library(dplyr)
+library(Cairo)
 
 ###############################################################################
+
+setwd("~/projects/ribo-itp/repos/mouse-itp/figures/frame")
 
 mouse_raw_frame_file      = "./mouse_raw_frame_percentages.csv"
 mouse_adjusted_frame_file = "./mouse_adjusted_frame_percentages.csv"
@@ -42,7 +45,7 @@ FONT_LABEL_SIZE = 7
 FONT_TITLE_SIZE = 8
 
 PDF_resolution = 600
-FIGURE_FONT = "helvetica"
+FIGURE_FONT = "sans"
 
 
 ################################################################################
@@ -113,6 +116,29 @@ human_monosome_adjusted_df = data.frame(means  = human_monosome_adjusted_means,
                                         se     = human_monosome_adjusted_se,
                                         frames = 0:2)
 
+
+
+
+################################################################################
+## For showing points, we need the individual values.
+## So we create the following data frames.
+
+mouse_single_cell_raw_points = 
+  melt(mouse_single_cell_raw) %>% group_by(variable) %>%
+  mutate(means = mean(value), se = sd(value))
+
+mouse_single_cell_adjusted_points =
+  melt(mouse_single_cell_adjusted) %>% group_by(variable) %>%
+  mutate(means = mean(value), se = sd(value) )
+
+human_100cell_adjusted_points = 
+  melt(human_100cell_adjusted) %>% group_by(variable) %>%
+  mutate(means = mean(value), se = sd(value) )
+
+human_monosome_adjusted_points = 
+  melt(human_monosome_adjusted) %>% group_by(variable) %>%
+  mutate(means = mean(value), se = sd(value) )
+
 ################################################################################
 
 get_output_file_path = function(file_name, output_folder = "pdf"){
@@ -133,18 +159,57 @@ save_plot_pdf = function(filename, this_plot, width = NA, height = NA){
 }
 
 
+# 
+# frame_barplot = function(df, plot_title = "Frame Percentage", ymax = 50){
+#   
+#   this_plot = ggplot(df, 
+#                      aes(x = frames, y=means)) +
+#     geom_bar(stat="identity", fill = BURNT_ORANGE, width = 0.8) +
+#     geom_errorbar( aes(  x        = frames, 
+#                          ymin     = means - se, 
+#                          ymax     = means + se), 
+#                    width    = 0.3, 
+#                    alpha    = 0.9, 
+#                    size     = 0.5) +
+#     theme_bw() + 
+#     theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+#           panel.border = element_blank(),
+#           panel.grid   = element_blank(),
+#           axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#           axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#           axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#           axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#           axis.line         = element_line(colour = "black", size = AXIS_THICKNESS),
+#           legend.title      = element_blank() ) + 
+#     labs(title = plot_title, 
+#          fill  = "Region", 
+#          x     = "Frame", 
+#          y     = "Percentage") + 
+#     scale_y_continuous( expand = c(0,0), limits = c(0, ymax))+  
+#     scale_x_continuous( breaks = 0:2, labels = c("0", "1", "2") )
+#   
+#   return(this_plot)
+# }
+
+################################################################################
+
 
 frame_barplot = function(df, plot_title = "Frame Percentage", ymax = 50){
   
   this_plot = ggplot(df, 
-                     aes(x = frames, y=means)) +
+                     aes(x = variable, y=means)) +
     geom_bar(stat="identity", fill = BURNT_ORANGE, width = 0.8) +
-    geom_errorbar( aes(  x        = frames, 
+    geom_errorbar( aes(  x        = variable, 
                          ymin     = means - se, 
                          ymax     = means + se), 
                    width    = 0.3, 
                    alpha    = 0.9, 
                    size     = 0.5) +
+    geom_jitter( aes(  y = value) , 
+                stat = "identity", 
+                alpha = 0.6,
+                shape = 19,
+                size = 1) +
     theme_bw() + 
     theme(plot.title   = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
           panel.border = element_blank(),
@@ -160,20 +225,34 @@ frame_barplot = function(df, plot_title = "Frame Percentage", ymax = 50){
          x     = "Frame", 
          y     = "Percentage") + 
     scale_y_continuous( expand = c(0,0), limits = c(0, ymax))+  
-    scale_x_continuous( breaks = 0:2, labels = c("0", "1", "2") )
+    scale_x_discrete( breaks = 0:2, labels = c("0", "1", "2") )
   
   return(this_plot)
 }
+
+
+frame_barplot(mouse_single_cell_raw_points, plot_title = "Mouse Single Cell Frames", ymax = 40)
 
 ################################################################################
 
 ## Mouse Plots
 
-mouse_raw_barplot = frame_barplot(mouse_raw_df, plot_title = "Mouse Single Cell Frames", ymax = 40)
+# mouse_raw_barplot = frame_barplot(mouse_raw_df, plot_title = "Mouse Single Cell Frames", ymax = 40)
+
+#save_plot_pdf("mouse_raw_barplot.pdf", mouse_raw_barplot, width = 1.9, height = 2.3)
+
+#mouse_adjusted_barplot = frame_barplot(mouse_adjusted_df, plot_title = "Mouse Single Cell Frames", ymax = 50)
+
+#save_plot_pdf("mouse_adjusted_barplot.pdf", mouse_adjusted_barplot, width = 1.9, height = 2.3)
+
+
+
+
+mouse_raw_barplot = frame_barplot(mouse_single_cell_raw_points, plot_title = "Mouse Single Cell Frames", ymax = 40)
 
 save_plot_pdf("mouse_raw_barplot.pdf", mouse_raw_barplot, width = 1.9, height = 2.3)
 
-mouse_adjusted_barplot = frame_barplot(mouse_adjusted_df, plot_title = "Mouse Single Cell Frames", ymax = 50)
+mouse_adjusted_barplot = frame_barplot(mouse_single_cell_adjusted_points, plot_title = "Mouse Single Cell Frames", ymax = 50)
 
 save_plot_pdf("mouse_adjusted_barplot.pdf", mouse_adjusted_barplot, width = 1.9, height = 2.3)
 
@@ -181,13 +260,22 @@ save_plot_pdf("mouse_adjusted_barplot.pdf", mouse_adjusted_barplot, width = 1.9,
 
 # Human Plots
 
-human_100cell_adjusted_plot = frame_barplot(human_100cell_adjusted_df, plot_title = "Human 100-Cell Frames", ymax = 50)
+# human_100cell_adjusted_plot = frame_barplot(human_100cell_adjusted_df, plot_title = "Human 100-Cell Frames", ymax = 50)
+# 
+# human_monosome_adjusted_plot = frame_barplot(human_monosome_adjusted_df, plot_title = "Human 10M-Cell Frames", ymax = 50)
+# 
+# save_plot_pdf("human_100cell_adjusted.pdf", human_100cell_adjusted_plot, width = 1.9, height = 2.3)
+# 
+# save_plot_pdf("human_monosome_adjusted.pdf", human_monosome_adjusted_plot, width = 1.9, height = 2.3)
 
-human_monosome_adjusted_plot = frame_barplot(human_monosome_adjusted_df, plot_title = "Human 10M-Cell Frames", ymax = 50)
+human_100cell_adjusted_plot = frame_barplot(human_100cell_adjusted_points, plot_title = "Human 100-Cell Frames", ymax = 50)
+
+human_monosome_adjusted_plot = frame_barplot(human_monosome_adjusted_points, plot_title = "Human 10M-Cell Frames", ymax = 50)
 
 save_plot_pdf("human_100cell_adjusted.pdf", human_100cell_adjusted_plot, width = 1.9, height = 2.3)
 
 save_plot_pdf("human_monosome_adjusted.pdf", human_monosome_adjusted_plot, width = 1.9, height = 2.3)
+
 
 ################################################################################
 

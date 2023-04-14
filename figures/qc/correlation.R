@@ -9,11 +9,13 @@ library(ggpubr)
 library(cowplot)
 library(dplyr)
 
+
+setwd("~/projects/ribo-itp/repos/mouse-itp/figures/qc/")
 source('./Ribo_Summary_Function.R')
 source('./rename_experiments.R')
 
-human_ribo_file = '../../../../itp/human-itp_v4.ribo'
-mouse_ribo_file = '../../../mouse-itp_v5.ribo'
+human_ribo_file = '../../../../data/human-itp_v4.ribo'
+mouse_ribo_file = '../../../../data/mouse-itp_v5.ribo'
 
 mouse_rnaseq_count_file = '../../raw_mouse_rnaseq_cds_counts.csv.gz'
 
@@ -174,16 +176,6 @@ replicate_clustering_spearman = function (rcw,
 ##### Scatter Plots
 
 ## Example Pairwise comparisons. These are not the most beautiful but I don't we should try to make them better
-sp_10M_1_vs_10M_2 = plot_pairwise_relationships(
-  human_rcw, 
-  human_experiment_names[1], 
-  human_experiment_names[2], 
-  xrange  = 2000, 
-  yrange  = 2000, 
-  num_bin = 50,
-  xlab    = human_experiment_names[1], 
-  ylab    = human_experiment_names[2])
-sp_10M_1_vs_10M_2
 
 sp_10M_2_vs_10M_3 = plot_pairwise_relationships(
   human_rcw, 
@@ -1447,6 +1439,104 @@ save_plot_pdf("Alkhb5.pdf", Alkhb5,
 ################################################################################
 
 
+# 
+# plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax = 4, plot_type = "point") { 
+#   # counts is a numeric matrix of raw read counts + gene_ids
+#   # gene to be plotted. Formatted as "Obox2"
+#   # Stages are 1cell, 2cell, MII, GV, etc
+#   set.seed(3)
+#   colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
+#   
+#   # A monkey patch for the y-axis aesthetics
+#   ybreaks = waiver()
+#   
+#   if(ymax < 4){
+#     ybreaks = 1:ymax
+#   }
+#   
+#   if (stages[1] == "all" )  {  
+#     normalizedcounts = NormalizeData(counts[,-1], 
+#                                      scale = 10000, 
+#                                      normalization.method = "CLR", 
+#                                      margin = 2)
+#   } 
+#   else { 
+#     selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
+#     normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+#                                      normalization.method = "CLR", 
+#                                      margin = 2)
+#   }
+#   
+#   tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+#   tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+#   tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+#   tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+#   
+#   p =
+#     ggplot(tidy_norm, 
+#            aes( x =  strip_extension(as.character(gene)), y = value) ) + 
+#     # stat_summary(aes( shape = stage, color = method), fun.data = "mean_se", size = 1, 
+#     #              position = position_jitterdodge(jitter.width = 0.2, dodge.width = 1), 
+#     #              show.legend = FALSE, inherit.aes = FALSE) +
+#     geom_jitter(aes( shape = stage, color = method),
+#                 position = position_jitterdodge(jitter.width = 0.2, dodge.width = 1),
+#                 size = 2 ) +
+#     # scale_color_manual(values =  c('#089099', '#d12959')) + 
+#     theme_bw()+
+#     theme(
+#       axis.text.y       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#       axis.text.x       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#       axis.title.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#       axis.title.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#       legend.text       = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#     ) + 
+#     scale_y_continuous( limits = c(0, ymax) , breaks = ybreaks ) + 
+#     scale_color_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) + 
+#     scale_shape_manual(values = c(4, 16, 3, 6)) + 
+#     ylab("Normalized Count") + xlab("") 
+#   
+#   if(plot_type == "point"){
+#     return(p)
+#   }
+#   else if (plot_type == "barplot"){
+#     mean_se_tidy = tidy_norm %>% group_by(stage, method) %>%
+#       summarise(mean = mean(value), se = se(value))
+#     
+#     p =
+#       ggplot(mean_se_tidy, aes(x=stage , y=mean,  fill=method)) + 
+#       geom_bar(position=position_dodge(), stat="identity", width = 0.6) +
+#       geom_errorbar(aes(ymin=mean-se, ymax=mean+se),
+#                     width=.25, # Width of the error bars
+#                     position=position_dodge(.9)) + 
+#       theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+#             panel.border     = element_blank(),
+#             panel.grid       = element_blank(),
+#             panel.background = element_blank(),
+#             axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#             axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#             axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#             axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#             legend.title     = element_blank(),
+#             legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+#             legend.key.size  = unit(0.15, 'in'),
+#             legend.position  = "none", 
+#             axis.line.y      = element_line(colour = "black", size = 0.35),
+#       ) +
+#       scale_y_continuous( limits = c(0, ymax) , expand = c(0, 0), breaks = ybreaks ) + 
+#       scale_fill_manual(values = c("Ribo" = ribo_orange, "RNAseq" = rna_blue)) +  
+#       #labs(title = gene) + 
+#       ylab("Normalized Count") + 
+#       xlab(gene)
+#     
+#     return(p)
+#   }
+#   else { 
+#     print("Incorrect plot type")}
+#   
+# }
+
+################################################################################
+
 
 plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax = 4, plot_type = "point") { 
   # counts is a numeric matrix of raw read counts + gene_ids
@@ -1508,7 +1598,7 @@ plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax
   }
   else if (plot_type == "barplot"){
     mean_se_tidy = tidy_norm %>% group_by(stage, method) %>%
-      summarise(mean = mean(value), se = se(value))
+      summarise(mean = mean(value), se = se(value), value = value)
     
     p =
       ggplot(mean_se_tidy, aes(x=stage , y=mean,  fill=method)) + 
@@ -1516,6 +1606,12 @@ plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax
       geom_errorbar(aes(ymin=mean-se, ymax=mean+se),
                     width=.25, # Width of the error bars
                     position=position_dodge(.9)) + 
+      geom_point(aes(  y = value) , 
+                 stat = "identity", 
+                 alpha = 0.6,
+                 #position = position_dodge(width = 0.9),
+                 shape = 19,
+                 size = 0.8) + 
       theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
             panel.border     = element_blank(),
             panel.grid       = element_blank(),
@@ -1543,6 +1639,41 @@ plot_cpm_across_conditions_ribo = function(counts, gene, stages = c("all"), ymax
   
 }
 
+
+## Play with counts to make sure we have the data
+
+mini_processor = function(counts, gene, stages){
+  set.seed(3)
+  colnames(counts) = c( "transcript" ,  paste ( colnames(counts)[-1], 'Ribo', sep = "-" ) )
+  
+  if (stages[1] == "all" )  {  
+    normalizedcounts = NormalizeData(counts[,-1], 
+                                     scale = 10000, 
+                                     normalization.method = "CLR", 
+                                     margin = 2)
+  } 
+  else { 
+    selected_samples = grep(paste(stages, collapse  = "|"), colnames(counts))
+    normalizedcounts = NormalizeData(counts[,selected_samples], scale = 10000,
+                                     normalization.method = "CLR", 
+                                     margin = 2)
+  }
+  
+  tidy_norm        = melt(normalizedcounts[ strip_extension(as.character(counts$transcript)) %in% gene,  ] )
+  tidy_norm$stage  = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 1) 
+  tidy_norm$stage  = factor( tidy_norm$stage, levels = c("GV", "MII", "1cell",  "2cell",  "4cell", "8cell")  )
+  tidy_norm$method = sapply(strsplit(as.character(colnames(normalizedcounts)), split = "-"), "[[", 3) 
+  
+  mean_se_tidy = tidy_norm %>% group_by(stage, method) %>%
+    summarise(mean = mean(value), se = se(value), value = value)
+  
+  return(mean_se_tidy)
+}
+
+a = mini_processor(counts = rcw, gene = "Bub1b", stages = c("MII", "GV"))
+  
+########################################
+
 plot_gv_versus_mii = function(counts, gene, ymax){
   return( plot_cpm_across_conditions_ribo(counts, gene, 
                                           stages = c("MII", "GV"), 
@@ -1559,7 +1690,8 @@ Dcp1a = plot_gv_versus_mii(rcw, "Dcp1a", ymax = 5 )
 Cdc27 = plot_gv_versus_mii(rcw, "Cdc27", ymax = 4 ) 
 Cdc40 = plot_gv_versus_mii(rcw, "Cdc40", ymax = 3 ) 
 Lin7c = plot_gv_versus_mii(rcw, "Lin7c", ymax = 3 ) 
-Mos   = plot_gv_versus_mii(rcw, "Mos", ymax = 3 ) 
+#Mos   = plot_gv_versus_mii(rcw, "Mos", ymax = 3 ) 
+Mos   = plot_gv_versus_mii(rcw, "Mos", ymax = 4 ) 
 Pcm1  = plot_gv_versus_mii(rcw, "Pcm1", ymax = 4 ) 
 Pum2 = plot_gv_versus_mii(rcw, "Pum2", ymax = 3 ) 
 Suz12 = plot_gv_versus_mii(rcw, "Suz12", ymax = 3 ) 
@@ -1570,7 +1702,8 @@ Eif4a3 = plot_gv_versus_mii(rcw, "Eif4a3", ymax = 3 )
 Rpl5 = plot_gv_versus_mii(rcw, "Rpl5", ymax = 5 )
 
 
-Fzr1  = plot_gv_versus_mii(rcw, "Fzr1", ymax = 3 ) 
+#Fzr1  = plot_gv_versus_mii(rcw, "Fzr1", ymax = 3 )
+Fzr1  = plot_gv_versus_mii(rcw, "Fzr1", ymax = 4 )
 Rpl26 = plot_gv_versus_mii(rcw, "Rpl26", ymax = 3 ) 
 Rpl36 = plot_gv_versus_mii(rcw, "Rpl36", ymax = 2 ) 
 Rps17 = plot_gv_versus_mii(rcw, "Rps17", ymax = 3 ) 
@@ -1587,20 +1720,28 @@ Rimkla = plot_gv_versus_mii(rcw, "Rimkla", ymax = 2 )
 Stx5a  = plot_gv_versus_mii(rcw, "Stx5a", ymax = 3 )
 Tinf2 = plot_gv_versus_mii(rcw, "Tinf2", ymax = 3 )
 
-main_figure_gv_mii = plot_grid(Bub1b, Cdc20, Dcp1a , 
-                               Cpeb1, Eif4a3, Rpl5,
+# main_figure_gv_mii = plot_grid(Bub1b, Cdc20, Dcp1a , 
+#                                Cpeb1, Eif4a3, Rpl5,
+#                                nrow = 1)
+
+main_figure_gv_mii = plot_grid(Eif4a3, Rpl5, Mapk3,
+                               Bub1b, Cdc20, Dcp1a , 
                                nrow = 1)
+
+#save_plot_pdf("Bub1b.pdf", Bub1b, height = 1.25, width = 1.5)
 
 save_plot_pdf("gv_vs_mii_main.pdf", main_figure_gv_mii, height = 1.25, width = 5)
 
-supp_figure_gv_mii = plot_grid(Cdc27 ,
+supp_figure_gv_mii = plot_grid(
                                Cdc40 , 
                                Lin7c ,
                                Mos   ,
                                Pcm1  ,
                                Pum2 ,
                                Suz12 ,
+                               Cdc27 ,
                                Fzr1  ,
+                               Cpeb1,
                                Rpl26 ,
                                Rpl36 ,
                                Rps17 ,
@@ -1618,7 +1759,7 @@ supp_figure_gv_mii = plot_grid(Cdc27 ,
                                Tinf2 ,
                                ncol = 8) 
 
-supp_figure_gv_mii
+
 
 save_plot_pdf("supp_figure_gv_mii.pdf", supp_figure_gv_mii, height = 3.75, width = 6.7)
 

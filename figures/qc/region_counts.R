@@ -1,9 +1,15 @@
 #REGION COUNTS
 
-mouse_ribo_file = "../../../mouse-itp_v5.ribo"
-human_ribo_file = "../../../../itp/human-itp_v4.ribo"
+setwd("~/projects/ribo-itp/repos/mouse-itp/figures/qc/")
+mouse_ribo_file = "../../../../data/mouse-itp_v5.ribo"
+human_ribo_file = "../../../../data/human-itp_v4.ribo"
+human_single_cell_ribo_file = "../../../../data/human_1cell_v2.ribo"
 
-human_single_cell_ribo_file = "../../../../itp/human_1cell.ribo"
+#mouse_ribo_file = "../../../mouse-itp_v5.ribo"
+#human_ribo_file = "../../../../itp/human-itp_v4.ribo"
+
+
+#human_single_cell_ribo_file = "../../../../itp/human_1cell.ribo"
 ################################################################################
 ########                    L I B R A R I E S                          #########
 
@@ -16,7 +22,7 @@ library(reshape2)
 library(cowplot)
 library(RColorBrewer)
 
-library(Cairo)
+#library(Cairo)
 
 #Heatmap related packages
 library(pheatmap)
@@ -353,6 +359,12 @@ plot_bar_with_error_bars = function(df,
                            alpha    = 0.4, 
                            size     = 0.4,
                            position = position_dodge(width = 0.9)) +
+     geom_point( aes(  y = percentage) , 
+                 stat = "identity", 
+                 alpha = 0.6,
+                 position = position_dodge(width = 0.9),
+                 shape = 19,
+                 size = 0.5) + 
       theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
             panel.border     = element_blank(),
             panel.grid       = element_blank(),
@@ -377,7 +389,7 @@ plot_bar_with_error_bars = function(df,
 mouse_region_counts_with_error_bars = 
     plot_bar_with_error_bars(mouse_region_percentages)
 
-save_plot_pdf("mouse_region_counts_with_error_bars.pdf", 
+save_plot_pdf("mouse_region_counts_with_error_bars_new.pdf", 
               mouse_region_counts_with_error_bars, 
               width = 3.54, height = 2.6)
 
@@ -494,6 +506,10 @@ mouse_region_len_percentages_with_error =
 mouse_region_len_percentages_with_error_bars = 
   plot_bar_with_error_bars(mouse_region_len_percentages_with_error,
                            "Region lengths weighted by ribosome occupancy")
+
+save_plot_pdf("mouse_region_len_percentages_with_error_bars_new.pdf", 
+              mouse_region_len_percentages_with_error_bars, 
+              width = 3.54, height = 2.6)
 
 # EXPORT THIS FOR THE MAIN FIGURE
 

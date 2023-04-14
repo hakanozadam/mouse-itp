@@ -1,5 +1,6 @@
 #SNP Figure
 
+setwd("~/projects/ribo-itp/repos/mouse-itp/figures/snp/")
 riboseq_overall_percentage_file = "../../snp/notebooks/snp_dataframes/riboseq_snp_percentages.csv"
 rnaseq_overall_percentage_file  = "../../snp/notebooks/snp_dataframes/rnaseq_snp_percentages.csv"
 
@@ -375,7 +376,14 @@ standalone_paternal_percentage_figure =
                  width    = 0.4, 
                  alpha    = 1, 
                  size     = 0.4,
-                 position = position_dodge(width = 0.8)) + 
+                 position = position_dodge(width = 0.8)) +
+  
+  geom_point( aes(  y = average_percentage) , 
+              stat = "identity", 
+              alpha = 0.6,
+              position = position_dodge(width = 0.8),
+              shape = 19,
+              size = 0.5) + 
   
   theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
         panel.border     = element_blank(),
@@ -402,6 +410,81 @@ standalone_paternal_percentage_figure =
        y     = "Percentage")
 
 standalone_paternal_percentage_figure
+
+
+save_plot_pdf("paternal_percentage_new.pdf", 
+              standalone_paternal_percentage_figure, 
+              width = 3.5, height = 3)
+
+
+################################################################################
+
+### New Paternal Percentage Figure with Dots
+grouped_corrected_ribo_percentages = 
+  corrected_ribo_percentages %>% 
+      mutate( stage = unlist(lapply ( strsplit(  as.vector(Experiment), split = "-" ), "[[", 1) )  ) %>%
+      group_by(stage) %>%
+      mutate(average_percentage = mean(Percentage)) %>%
+      mutate(sd_percentage = sd(Percentage)) %>%
+      mutate(experiment_type = "ribo")
+
+grouped_corrected_rna_percentages = 
+  corrected_rna_percentages %>% 
+  mutate( stage = unlist(lapply ( strsplit(  as.vector(Experiment), split = "-" ), "[[", 1) )  ) %>%
+  group_by(stage) %>%
+  mutate(average_percentage = mean(Percentage)) %>%
+  mutate(sd_percentage = sd(Percentage)) %>%
+  mutate(experiment_type = "rna")
+
+grouped_corrected_percentage_averages = rbind(grouped_corrected_ribo_percentages, grouped_corrected_rna_percentages)
+
+standalone_paternal_percentage_figure_new = 
+  ggplot(data=grouped_corrected_percentage_averages, aes(x=stage, y=average_percentage, fill = experiment_type )  )  + 
+  geom_bar(position = "dodge", stat="identity", alpha = 0.8 ) +
+  geom_errorbar( aes(  x    = stage, 
+                       ymin = average_percentage - sd_percentage, 
+                       ymax = average_percentage + sd_percentage,
+                       color = (experiment_type)), 
+                 width    = 0.4, 
+                 alpha    = 1, 
+                 size     = 0.4,
+                 position = position_dodge(width = 0.8)) +
+  
+  geom_point( aes(  y = Percentage) , 
+              stat = "identity", 
+              alpha = 0.6,
+              position = position_dodge(width = 0.8),
+              shape = 19,
+              size = 0.9) + 
+  
+  theme(plot.title       = element_text(hjust = 0.5, family = FIGURE_FONT, face = "plain", size = FONT_TITLE_SIZE),
+        panel.border     = element_blank(),
+        panel.grid       = element_blank(),
+        panel.background = element_blank(),
+        axis.text.y      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.y     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.text.x      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.title.x     = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        legend.title     = element_blank(),
+        legend.text      = element_text(family = FIGURE_FONT, face = "plain", size = FONT_LABEL_SIZE),
+        axis.line.y      = element_line(colour = "black", size = 0.35), 
+        legend.key.size  = unit(0.18, "in"),
+  ) + 
+  
+  scale_y_continuous( expand = c(0, 0
+  ), limits = c(-0.5, 50) ) +
+  scale_fill_manual( name = "experiment_type", values = c(RATIO_RIBO_COLOUR,
+                                                          RATIO_RNA_COLOUR) ) + 
+  scale_color_manual(name = "experiment_type",  values = c(RATIO_RIBO_COLOUR,
+                                                           RATIO_RNA_COLOUR) ) + 
+  labs(title = "Paternal Allele Percentages", 
+       x     = "Stage", 
+       y     = "Percentage")
+
+
+save_plot_pdf("paternal_percentage_new.pdf", 
+              standalone_paternal_percentage_figure_new, 
+              width = 3.5, height = 3)
 
 ################################################################################
 ################################################################################
@@ -1981,6 +2064,7 @@ save_plot_pdf( "main_snp_plot_rna.pdf", main_snp_plot_rna, width = 7.2, height =
 save_plot_pdf("paternal_percentage.pdf", 
               standalone_paternal_percentage_figure, 
               width = 3.5, height = 3)
+
 
 ################################################################################
 #####     H e a t m a p s 
